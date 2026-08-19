@@ -36,6 +36,11 @@ conflicts, push the result, merge a pull request, or clean up Git state.
 - Never run `git rebase --continue`, `git rebase --skip`, or `git rebase
   --abort`. If the rebase conflicts, leave the rebase stopped and return
   `status: conflicted`.
+- A host-specific pre-rebase Hook may later permit one standalone recovery
+  command only when the existing `PreRebaseGate`, active rebase metadata
+  (`head-name`, `onto`, and `orig-head`), and exact registered worktree still
+  match. That guard does not authorize this Skill to choose, resolve, or run
+  recovery.
 - Do not resolve conflict markers or invoke a conflict-resolution capability.
   Recommend `detect-rebase-conflicts` only as a separate read-only analysis.
 - Keep repository paths relative in durable evidence where possible. Do not

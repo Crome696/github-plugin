@@ -118,7 +118,7 @@ The plugin currently defines 82 versioned contracts.
 | `ProductSubIssuePublication` | Exact-set publication result mapping approved product-plan unit IDs to GitHub issue numbers and URLs, with parent and hard-dependency relationship outcomes and failed operations. |
 | `CleanupResult` | Authorized branch/worktree cleanup results, preserved unsafe targets, and local/remote outcomes. |
 | `PreCommitGate` | Version-2 local snapshot binding one exact canonical commit to validated scope, worktree identity, authorization, exact message bytes, and cached staged-index contents. |
-| `PreRebaseGate` | Local snapshot binding one exact rebase to verified branch, target, worktree, and authorization. |
+| `PreRebaseGate` | Local snapshot binding one exact rebase start to the verified branch, target, worktree, and authorization; its identity evidence can be reused only for a matching active-rebase recovery. |
 | `PrePrCreateGate` | Local snapshot binding one exact Draft PR publication to commit, push, issue link, description, and validation. |
 | `PreReviewSubmitGate` | Local snapshot binding one exact review payload to current evidence, deduplication, confirmation, and authorization. |
 | `PrePrReadyGate` | Version-1 local snapshot binding one standalone Ready-for-Review transition and, only when authorized after that transition, one exact requested-reviewers POST to complete Draft/URL/branch/SHA identity, unique issue, typed reviewer set, and authorization. |

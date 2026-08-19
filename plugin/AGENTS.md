@@ -210,7 +210,7 @@ their full safety or approval lists.
 | Hook | Host projection | Responsibility |
 | --- | --- | --- |
 | `pre-commit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before an identified AI commit unless the local `PreCommitGate` and current worktree evidence pass. |
-| `pre-rebase.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before an identified local rebase unless the exact `PreRebaseGate` passes. |
+| `pre-rebase.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before a new local rebase start unless the exact `PreRebaseGate` passes, and allow only standalone recovery of the same active rebase when its metadata and registered worktree identity match. |
 | `pre-pr-create.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before `gh pr create` unless the exact Draft gate passes. |
 | `pre-review-submit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before the canonical review API write unless the exact review gate passes. |
 | `pre-pr-ready.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before `gh pr ready` or an authorized reviewer-request write unless the exact `PrePrReadyGate` passes. |

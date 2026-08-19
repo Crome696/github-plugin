@@ -886,10 +886,11 @@ scope, and pre-commit `HEAD`, plus the exact approved message-file bytes and
 cached staged-index fingerprint; it never authorizes a commit by itself. A
 version-1 snapshot fails closed and must be regenerated.
 `PreRebaseGate` is a local-only version-1 snapshot that binds one exact
-authorized local rebase to the verified pull-request head branch and SHA, clean
-worktree, current remote context, unique base branch, and complete
-`TargetBranchFetch` evidence; it never performs or authorizes a rebase by
-itself.
+authorized local rebase start to the verified pull-request head branch and SHA,
+clean worktree, current remote context, unique base branch, and complete
+`TargetBranchFetch` evidence. The pre-rebase Hook reuses that identity evidence
+for guarded recovery of the same active rebase, but the snapshot never performs
+or authorizes a rebase by itself and is never fabricated or renewed by recovery.
 `PrePrCreateGate` is a local-only version-1 snapshot that binds one exact Draft
 pull-request publication to the verified commit, pushed branch, unique issue
 link, complete description, and passed validation; it never creates or edits a
@@ -978,7 +979,7 @@ npm test
 | Hook | Hosts | Purpose |
 | --- | --- | --- |
 | `pre-commit` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-commit commands and fail closed before AI-driven commits unless the current worktree, branch, exact scope, secret scan, required validations, version-2 `PreCommitGate`, exact message bytes, staged-index fingerprint, and canonical standalone command are all verified. |
-| `pre-rebase` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-rebase commands and fail closed before an identified local `git rebase` unless the exact pull-request branch, clean worktree, current target tracking ref, unique base branch, secured pre-rebase HEAD, exact target SHA, and exact user or repository-policy authorization are verified. |
+| `pre-rebase` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-rebase commands; require the complete gate, clean worktree, current target tracking ref, secured pre-rebase HEAD, exact target SHA, and exact authorization for a new start; allow only standalone `--continue`, `--skip`, or `--abort` recovery when the existing gate, active rebase metadata, and exact registered non-primary worktree match. |
 | `pre-pr-create` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-PR commands and fail closed before `gh pr create` unless the exact command, created commit, pushed branch, unique issue link, complete description, passed validation, and absence of known blockers are verified. |
 | `pre-review-submit` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-review commands and fail closed before AI review publication unless the exact canonical `gh api` command, authorized payload, finding evidence, valid locations, deduplication, recorded confirmation, blocker support, and current pull-request head are verified. |
 | `pre-pr-ready` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow unrelated commands and fail closed before `gh pr ready` or an authorized requested-reviewers write unless the exact `PrePrReadyGate`, open Draft identity, unique issue, head SHA, and reviewer set match. |
@@ -1001,11 +1002,14 @@ The hook projections are host-specific and deliberately do not share a
   values.
 - `hooks/pre-rebase.mjs` is the host-neutral Node checker. It reads the ignored
   `.cursor/hooks/state/pre-rebase.json` `PreRebaseGate`, the exact bounded
-  rebase command, and current local Git state only. It verifies the
+  rebase command, and current local Git state only. A new start verifies the
   pull-request branch, clean worktree, registered non-primary worktree, current
   target tracking ref, secured feature-branch upstream, unique base, and exact
-  authorization. It never fetches, rebases, repairs, stages, resets, cleans, or
-  rewrites files.
+  authorization. Recovery additionally requires exactly one active
+  `rebase-merge` or `rebase-apply` administrative state whose `head-name`,
+  `onto`, and `orig-head` match the gate and the exact registered worktree. It
+  never fetches, rebases, performs recovery, repairs, stages, resets, cleans,
+  or rewrites files.
 - `hooks/pre-pr-create.mjs` is the host-neutral Node checker. It reads the
   ignored `.cursor/hooks/state/pre-pr-create.json` `PrePrCreateGate`, the exact
   `gh pr create` arguments, the current Git HEAD, and the live remote branch

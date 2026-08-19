@@ -386,7 +386,8 @@ verify exact pull request
   -> fetch and verify selected target SHA
   -> analyze planned or stopped rebase conflicts
   -> obtain exact rebase authorization
-  -> perform bounded local rebase or preserve conflict
+  -> perform bounded local rebase or preserve conflict for external resolution
+  -> permit only separately guarded standalone rebase recovery when needed
   -> validate post-rebase history, scope, tests, and checks
   -> obtain exact push authorization when the remote head changed
   -> push verified branch
@@ -449,7 +450,7 @@ Skill's own scope and authorization contract.
 | Existing matching open PR is found | Repository, base, head branch, SHA, title, body, and Draft state | Verify the existing PR; do not create a duplicate or silently edit it. |
 | Review finding is uncertain, duplicated, resolved, or style-only | Changed location, source evidence, discussion state, and confidence | Suppress, clarify, or retain as uncertainty; do not publish an unsupported blocker. |
 | Feedback is only partially addressed or unverifiable | Per-item current diff, commit, test, check, and thread evidence | Keep the item open or blocked; do not reply or resolve it as completed. |
-| Rebase or merge conflict occurs | Base/ours/theirs revisions, files, hunks, and stopped Git state | Leave the operation stopped, analyze the conflict, and hand resolution to an external capability. |
+| Rebase or merge conflict occurs | Base/ours/theirs revisions, files, hunks, and stopped Git state | Leave the operation stopped, analyze and resolve it through an external capability, and use only the existing-gate/active-metadata Hook guard for a later standalone continue, skip, or abort; never choose or perform that recovery automatically. |
 | Rebase changes the head | Pre- and post-rebase revisions and changed scope | Invalidate old readiness, revalidate, reassess, and obtain any required push authorization. |
 | Merge readiness is stale or incomplete | Current head, draft state, reviews, threads, approvals, checks, conflicts, linkage | Do not merge; refresh the affected evidence. |
 | Automatic issue closure does not occur | Verified merge, relationship, default branch, issue state, and timeline evidence | Report the cause or next step; manual closure remains separate and exact-authorized. |
