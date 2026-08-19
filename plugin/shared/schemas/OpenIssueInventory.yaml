@@ -1,0 +1,99 @@
+schema: OpenIssueInventory
+version: 1
+description: >-
+  Read-only inventory of every currently open GitHub issue in one repository,
+  excluding pull requests, with current titles, parsed P-prefix evidence, and
+  availability limitations. It never ranks issues or writes GitHub.
+required:
+  - status
+  - repository
+  - retrieved_at
+  - issues
+  - truncated
+  - unavailable_fields
+  - evidence
+  - failure
+fields:
+  status:
+    type: enum
+    values: [loaded, partial, blocked]
+  repository:
+    type: string | null
+    format: owner/repository
+    constraints:
+      - A loaded or partial result must contain the verified repository.
+  retrieved_at:
+    type: string | null
+    format: iso-8601
+  issues:
+    type: list
+    items:
+      type: object
+      required: [number, url, title, state]
+      fields:
+        number:
+          type: integer
+          minimum: 1
+        url:
+          type: string
+          format: uri
+        title:
+          type: string
+        state:
+          type: enum
+          values: [open]
+        current_priority:
+          type: integer | null
+          minimum: 1
+          constraints:
+            - Parsed from a leading P-number title prefix when present; null when absent or unparseable.
+        remainder_title:
+          type: string
+          constraints:
+            - The current title after stripping a leading P-prefix; equals title when no prefix exists.
+        labels:
+          type: list
+          items: string
+        updated_at:
+          type: string | null
+          format: iso-8601
+        created_at:
+          type: string | null
+          format: iso-8601
+  truncated:
+    type: boolean
+    constraints:
+      - True when the retrieved list may be incomplete because a page or limit cut the result.
+  unavailable_fields:
+    type: list
+    items: string
+  evidence:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - auth_unavailable
+          - permission_denied
+          - truncated_inventory
+          - api_failure
+          - invalid_input
+      message:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - The inventory identifies exactly one repository and contains only currently open GitHub issues.
+  - Pull requests are never included.
+  - Closed issues are never included.
+  - loaded requires truncated false, failure null, and a complete retrieved open-issue set.
+  - truncated true cannot be loaded; it is partial or blocked.
+  - blocked means no reliable inventory was produced.
+  - Missing, stale, unavailable, or truncated evidence is preserved and never converted into a complete inventory.

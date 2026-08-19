@@ -1,0 +1,142 @@
+schema: OpenIssueRanking
+version: 1
+description: >-
+  Unique consecutive P1-through-Pn ranking of one OpenIssueInventory with
+  recommended versus confirmed ranks, exact proposed titles, and exact-set
+  authorization. Ranking does not write GitHub.
+required:
+  - status
+  - repository
+  - source
+  - ranks
+  - authorization
+  - evidence
+  - failure
+fields:
+  status:
+    type: enum
+    values: [recommended, ranked, partial, blocked]
+  repository:
+    type: string | null
+    format: owner/repository
+    constraints:
+      - A recommended, ranked, or partial result must contain the verified repository.
+  source:
+    type: object
+    required: [open_issue_inventory_version, open_issue_inventory_status, issue_numbers]
+    fields:
+      open_issue_inventory_version:
+        type: integer
+      open_issue_inventory_status:
+        type: enum
+        values: [loaded, partial, blocked]
+      issue_numbers:
+        type: list
+        items:
+          type: integer
+          minimum: 1
+      retrieved_at:
+        type: string | null
+        format: iso-8601
+  ranks:
+    type: list
+    items:
+      type: object
+      required:
+        - number
+        - url
+        - current_title
+        - remainder_title
+        - proposed_title
+        - recommended_rank
+      fields:
+        number:
+          type: integer
+          minimum: 1
+        url:
+          type: string
+          format: uri
+        current_title:
+          type: string
+        remainder_title:
+          type: string
+        proposed_title:
+          type: string
+          constraints:
+            - Exact value P<rank> plus a single space plus remainder_title.
+        recommended_rank:
+          type: integer | null
+          minimum: 1
+        confirmed_rank:
+          type: integer | null
+          minimum: 1
+        rationale:
+          type: string | null
+        decision:
+          type: object | null
+          required: [source]
+          fields:
+            source:
+              type: enum
+              values: [recommended, user, repository_policy]
+            summary:
+              type: string | null
+  authorization:
+    type: object
+    required:
+      - ranking_confirmed
+      - exact_payload
+      - exact_set
+      - source
+      - task_scope
+      - evidence
+    fields:
+      ranking_confirmed:
+        type: boolean
+      exact_payload:
+        type: boolean
+      exact_set:
+        type: boolean
+      source:
+        type: enum
+        values: [unconfirmed, explicit_user, repository_policy]
+      task_scope:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  evidence:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - truncated_inventory
+          - identity_mismatch
+          - ranking_unconfirmed
+          - duplicate_rank
+          - non_consecutive_rank
+          - empty_remainder
+      message:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - ranks covers exactly the source issue_numbers set; no extra or missing issue.
+  - ranked requires every confirmed_rank unique and consecutive from 1 through n, n equal to ranks length, ranking_confirmed true, exact_payload true, exact_set true, and failure null.
+  - proposed_title is always P<confirmed_or_recommended_rank> plus remainder_title and never invents a new remainder.
+  - Command invocation never sets ranking_confirmed, exact_payload, or exact_set.
+  - A recommendation is not a confirmation.
+  - blocked means no ranking write payload may be produced.
+  - Partial results preserve remaining unconfirmed ranks instead of inventing them.

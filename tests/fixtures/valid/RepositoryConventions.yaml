@@ -1,0 +1,12 @@
+schema: RepositoryConventions
+version: 1
+status: verified
+repository:
+  owner: owner-value
+  name: name-value
+  full_name: octo-org/widgets
+  url: https://github.com/octo-org/widgets
+conventions: []
+conflicts: []
+findings: []
+checks: []

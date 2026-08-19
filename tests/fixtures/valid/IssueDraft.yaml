@@ -1,0 +1,17 @@
+schema: IssueDraft
+version: 2
+status: draft
+mode: create
+issue:
+  repository: octo-org/widgets
+  number: 1
+  url: url-value
+title: title-value
+body: body-value
+labels:
+  add: []
+  remove: []
+  preserve: []
+approval:
+  exact_payload: false
+  publication_authorized: false

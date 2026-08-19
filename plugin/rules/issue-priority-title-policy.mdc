@@ -1,0 +1,68 @@
+---
+description: Govern unique consecutive P-number title prefixes when reprioritizing the current open-issue inventory; forbid other Skills from silently adding those prefixes.
+alwaysApply: true
+---
+
+# Issue Priority Title Policy
+
+## Purpose
+
+When the current open GitHub issues in one repository are re-ranked, encode
+that unique order only in issue titles as `P<n> <remainder>`. `P1` is the
+highest priority. `n` equals the number of currently open issues. This rule
+does not assign MoSCoW classes and does not authorize other issue workflows
+to invent P-number prefixes.
+
+## Apply when
+
+Use this rule while listing open issues, ranking them, confirming a ranked
+title set, or applying those titles. Other issue create, refine, or update
+workflows MUST NOT add, compact, or rewrite `P<n>` prefixes unless they are
+executing this dedicated reprioritization workflow.
+
+## Required numbering
+
+MUST:
+
+- Rank only currently open GitHub issues. Exclude pull requests. Leave closed
+  issues unchanged.
+- Assign unique consecutive integers from 1 through n, with n equal to the
+  current open-issue count. Do not share a number and do not leave gaps.
+- Use the exact title form `P<n> <remainder>`.
+- Strip a leading `P<digits>`, `P<digits>:`, or `[P<digits>]` prefix before
+  composing the remainder. Preserve the remainder text. Do not invent a new
+  title.
+- Re-number the entire current open set on each authorized run. Closing an
+  issue does not compact remaining numbers until this workflow runs again.
+
+## Authorization and identity
+
+MUST:
+
+- Treat Command or Agent invocation as orchestration only.
+- Wait for explicit user approval of the exact current issue-number set,
+  order, and proposed titles, or a matching target-repository `AGENTS.md`
+  policy that names that same repository, operation, and set.
+- Re-read the live open-issue numbers immediately before any title write.
+  Stop when the live set does not match the approved set.
+- Change only the title through `update-github-issue`. Do not change body,
+  labels, assignees, milestone, or state.
+- Continue remaining title writes after a partial failure. Do not roll back
+  successful title writes.
+
+MUST NOT:
+
+- Treat a recommended order as a confirmed ranking.
+- Guess ranks for issues that appeared after the approved inventory.
+- Convert a truncated list into a complete ranking.
+- Use `prioritize-product-issues` or parent-issue MoSCoW ranking as the
+  title-prefix source of truth.
+
+## Examples
+
+Positive: Ten currently open issues become `P1` through `P10` after the user
+confirms that exact ordered title list, then each title is patched or left as
+`no_op` when it already matches.
+
+Negative: Creating a new issue with an invented `P3` prefix, or giving two
+open issues `P1`, violates this rule.

@@ -1,0 +1,6 @@
+/.idea/
+node_modules/
+coverage/
+.cursor/hooks/state/
+.codex/hooks/state/
+.plugin-eval

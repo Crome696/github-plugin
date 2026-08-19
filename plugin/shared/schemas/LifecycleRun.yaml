@@ -1,0 +1,237 @@
+schema: LifecycleRun
+version: 1
+description: >-
+  Task-authorized record of one autonomous issue-to-draft-PR run. The
+  lifecycle-agent sequences issue create or an existing-issue refine entry,
+  then preparation, external implementation, and Draft pull-request delivery,
+  and stops before review. Absent entry_phase means issue_create.
+required:
+  - status
+  - repository
+  - request
+  - issue
+  - plan
+  - workspace
+  - commit
+  - push
+  - pull_request
+  - phases
+  - authorization
+  - blockers
+  - next_user_action
+  - evidence
+  - failure
+  - metadata
+fields:
+  status:
+    type: enum
+    values: [running, draft_pr_published, partial, blocked]
+  entry_phase:
+    type: enum
+    values: [issue_create, issue_refine]
+  repository:
+    type: string
+    format: owner/repository
+  request:
+    type: object
+    required: [summary, source]
+    fields:
+      summary:
+        type: string
+      source:
+        type: string
+  issue:
+    type: object | null
+    required: [number, url]
+    fields:
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      title:
+        type: string | null
+  plan:
+    type: object | null
+    required: [status]
+    fields:
+      status:
+        type: string | null
+      handoff_schema:
+        type: string | null
+  workspace:
+    type: object | null
+    required: [status]
+    fields:
+      status:
+        type: string | null
+      branch_name:
+        type: string | null
+      worktree_path:
+        type: string | null
+        format: absolute-path
+      isolation_mode:
+        type: string | null
+  commit:
+    type: object | null
+    required: [status]
+    fields:
+      status:
+        type: string | null
+      sha:
+        type: string | null
+        format: full git commit SHA
+  push:
+    type: object | null
+    required: [status]
+    fields:
+      status:
+        type: string | null
+      branch_name:
+        type: string | null
+      remote_sha:
+        type: string | null
+        format: full git commit SHA
+  pull_request:
+    type: object | null
+    required: [number, url, draft]
+    fields:
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      draft:
+        type: boolean
+      title:
+        type: string | null
+  phases:
+    type: list
+    items:
+      type: object
+      required: [name, status, started_agent, evidence]
+      fields:
+        name:
+          type: enum
+          values:
+            - issue_create
+            - issue_refine
+            - preparation
+            - external_implementation
+            - delivery
+        status:
+          type: enum
+          values: [not_started, in_progress, completed, skipped, partial, blocked]
+        started_agent:
+          type: string | null
+        handoff_schema:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+        blockers:
+          type: list
+          items: string
+  authorization:
+    type: object
+    required: [source, routine_operations, exact_scope_approved]
+    fields:
+      source:
+        type: enum
+        values: [task_intent, plan_build, repository_policy]
+      routine_operations:
+        type: list
+        items:
+          type: enum
+          values:
+            - issue_create
+            - issue_refine
+            - workspace_create
+            - commit
+            - push
+            - draft_pr
+      exact_scope_approved:
+        type: boolean
+      evidence:
+        type: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, phase, description, status, evidence]
+      fields:
+        id:
+          type: string
+        phase:
+          type: string
+        description:
+          type: string
+        status:
+          type: enum
+          values: [open, resolved, deferred, unknown]
+        evidence:
+          type: list
+          items: string
+        next_step:
+          type: string | null
+  next_user_action:
+    type: string
+  evidence:
+    type: list
+    items:
+      type: object
+      required: [source, reference, observed]
+      fields:
+        source:
+          type: enum
+          values: [github, git, handoff, user_decision, repository_policy, session_capability]
+        reference:
+          type: string
+        observed:
+          type: string
+  failure:
+    type: object | null
+    required: [code, message, phase, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - issue_blocked
+          - refine_blocked
+          - preparation_blocked
+          - missing_implementation_capability
+          - implementation_blocked
+          - delivery_blocked
+          - authorization_missing
+          - verification_failure
+      message:
+        type: string
+      phase:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  metadata:
+    type: object
+    required: [started_at, completed_at, conversation_language]
+    fields:
+      started_at:
+        type: string | null
+        format: iso-8601
+      completed_at:
+        type: string | null
+        format: iso-8601
+      conversation_language:
+        type: string
+invariants:
+  - The run represents exactly one repository and one issue identity.
+  - Review, feedback follow-up, rebase, merge, Ready-for-Review, and cleanup are never reported as completed phases.
+  - draft_pr_published requires a verified issue, commit, non-force push, and Draft pull request. issue_create may be skipped only when entry_phase is issue_refine; issue_refine must not be skipped on a successful run.
+  - When entry_phase is issue_refine, authorization.routine_operations omits issue_create and the run does not create a new issue.
+  - A missing required implementation capability is blocked or partial and is never treated as successful implementation.
+  - Missing, stale, unavailable, or ambiguous evidence is preserved and never converted into success.

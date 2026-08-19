@@ -1,0 +1,257 @@
+schema: PullRequestReady
+version: 1
+description: >-
+  Exact authorization-gated Ready-for-Review intent, optional confirmed
+  reviewer requests, live preflight, execution result, and verification for
+  one open Draft pull request with a unique linked issue.
+required:
+  - status
+  - repository
+  - pull_request
+  - expected_head_sha
+  - draft_state
+  - linked_issue
+  - reviewers
+  - authorization
+  - preflight
+  - result
+  - verification
+  - failure
+fields:
+  status:
+    type: enum
+    values: [draft, approved, ready, already_ready, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, base_branch, head_branch]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      base_branch:
+        type: string
+      head_branch:
+        type: string
+  expected_head_sha:
+    type: string
+    format: full git commit SHA
+  draft_state:
+    type: object
+    required: [before, after]
+    fields:
+      before:
+        type: boolean
+      after:
+        type: boolean | null
+  linked_issue:
+    type: object
+    required: [repository, number, url, unique]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      unique:
+        type: boolean
+  reviewers:
+    type: object
+    required: [add, proposed, already_requested, sources]
+    fields:
+      add:
+        type: list
+        items:
+          type: object
+          required: [kind, login]
+          fields:
+            kind:
+              type: enum
+              values: [user, team]
+            login:
+              type: string
+      proposed:
+        type: list
+        items:
+          type: object
+          required: [kind, login, source]
+          fields:
+            kind:
+              type: enum
+              values: [user, team]
+            login:
+              type: string
+            source:
+              type: enum
+              values: [existing_request, codeowners, repository_policy]
+      already_requested:
+        type: list
+        items:
+          type: object
+          required: [kind, login]
+          fields:
+            kind:
+              type: enum
+              values: [user, team]
+            login:
+              type: string
+      sources:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required:
+      - exact_target
+      - exact_ready_operation
+      - ready_authorized
+      - reviewers_authorized
+      - source
+      - evidence
+    fields:
+      exact_target:
+        type: boolean
+      exact_ready_operation:
+        type: boolean
+      ready_authorized:
+        type: boolean
+      reviewers_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, repository_policy]
+      evidence:
+        type: string
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+  preflight:
+    type: object
+    required:
+      - checked_at
+      - live_head_sha
+      - open_state
+      - draft_state
+      - head_sha_match
+      - unique_issue
+      - authorization_match
+      - reviewer_set_match
+      - evidence
+    fields:
+      checked_at:
+        type: string | null
+        format: iso-8601
+      live_head_sha:
+        type: string | null
+        format: full git commit SHA
+      open_state:
+        type: enum
+        values: [pass, fail, unknown]
+      draft_state:
+        type: enum
+        values: [pass, fail, already_ready, unknown]
+      head_sha_match:
+        type: enum
+        values: [pass, fail, unknown]
+      unique_issue:
+        type: enum
+        values: [pass, fail, unknown]
+      authorization_match:
+        type: enum
+        values: [pass, fail, unknown]
+      reviewer_set_match:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  result:
+    type: object
+    required:
+      - ready_attempted
+      - reviewers_attempted
+      - api_operation
+      - marked_ready_at
+    fields:
+      ready_attempted:
+        type: boolean
+      reviewers_attempted:
+        type: boolean
+      api_operation:
+        type: string | null
+      marked_ready_at:
+        type: string | null
+        format: iso-8601
+  verification:
+    type: object
+    required:
+      - checked_at
+      - pull_request_state
+      - non_draft
+      - head_sha_match
+      - reviewers_match
+      - evidence
+    fields:
+      checked_at:
+        type: string | null
+        format: iso-8601
+      pull_request_state:
+        type: enum
+        values: [pass, fail, unknown]
+      non_draft:
+        type: enum
+        values: [pass, fail, already_ready, unknown]
+      head_sha_match:
+        type: enum
+        values: [pass, fail, unknown]
+      reviewers_match:
+        type: enum
+        values: [pass, fail, not_requested, unknown]
+      evidence:
+        type: list
+        items: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values:
+          - invalid_input
+          - authorization_missing
+          - not_draft
+          - not_open
+          - unique_issue_missing
+          - stale_head
+          - state_changed
+          - reviewer_mismatch
+          - auth_unavailable
+          - inaccessible
+          - ready_failed
+          - reviewer_request_failed
+          - verification_failed
+          - api_failure
+      description:
+        type: string
+      evidence:
+        type: list
+        items: string
+invariants:
+  - Ready-for-Review is an independently authorized pull-request state change and is never granted by Draft publication, review, merge readiness, or routine delivery authorization.
+  - Only status approved with exact_target, exact_ready_operation, ready_authorized, and reviewers_authorized all true may attempt gh pr ready.
+  - The authorized reviewer add set may be empty; a non-empty add set requires the same exact authorization and must not be inferred from a CODEOWNERS file as merge policy.
+  - Unique linked-issue evidence is required; missing, mentioned-only, or ambiguous issue candidates block the ready transition.
+  - Pending or failed CI is diagnostic evidence only and never blocks Ready-for-Review.
+  - MergeReadiness status ready is not a prerequisite and never authorizes this operation.
+  - An already non-Draft open pull request returns already_ready after identity verification and must not request additional reviewers.
+  - Ready succeeded with a failed reviewer request is partial; GitHub identity, Draft state, and head SHA must still be verified.
+  - Title, body, labels, assignees, merge, rebase, review publication, and thread mutation remain outside this contract.

@@ -1,0 +1,95 @@
+schema: CommitProposal
+version: 1
+description: Reviewable commit scope, English message, authorization record, and verified commit result.
+required:
+  - status
+  - repository
+  - branch
+  - files
+  - message
+  - authorization
+fields:
+  status:
+    type: enum
+    values: [draft, approved, created, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  branch:
+    type: string
+  base_sha:
+    type: string | null
+  files:
+    type: object
+    required: [added, modified, deleted]
+    fields:
+      added:
+        type: list
+        items: string
+      modified:
+        type: list
+        items: string
+      deleted:
+        type: list
+        items: string
+  message:
+    type: object
+    required: [subject, body]
+    fields:
+      subject:
+        type: string
+        constraints:
+          - English and concise.
+          - Describes the purpose of the change.
+      body:
+        type: string
+        constraints:
+          - English.
+          - Explains why the change is needed when additional context is required.
+  rationale:
+    type: string | null
+  validation:
+    type: object
+    fields:
+      result_status:
+        type: enum
+        values: [passed, failed, partial, blocked, unknown]
+      evidence:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required: [exact_scope_approved, commit_authorized]
+    fields:
+      exact_scope_approved:
+        type: boolean
+      commit_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, task_intent, plan_build, repository_policy, session_continuity, null]
+      task_scope:
+        type: string | null
+      evidence:
+        type: string | null
+  commit:
+    type: object
+    fields:
+      sha:
+        type: string | null
+      created_at:
+        type: string | null
+        format: iso-8601
+      files_committed:
+        type: list
+        items: string
+invariants:
+  - The commit contains only the approved file scope.
+  - create-commit accepts only status approved with exact_scope_approved and commit_authorized both true and a recorded authorization source and evidence.
+  - create-commit requires a passed validation result with evidence before staging or committing.
+  - A commit is not created when exact_scope_approved or commit_authorized is false, or when the authorization scope and source cannot be verified.
+  - task_intent, plan_build, repository_policy, and session_continuity authorization may cover routine non-force delivery; a repository policy may re-enable an interactive commit gate.
+  - Commit messages are durable English artifacts and contain no secrets.
+  - The approved message and file scope are immutable during commit creation.
+  - The commit SHA, timestamp, and files_committed are reported only after Git verifies the result.
+  - status created requires a verified commit and complete verification; status partial is reserved for a created commit with incomplete verification.

@@ -1,0 +1,11 @@
+# `auto-ci-fix-pr`
+
+`/auto-ci-fix-pr` is a thin entry point for one verified GitHub pull
+request. It resolves exactly one repository and pull-request number or URL,
+starts `ci-fix-agent`, and displays its version-1 `CiFixRun` result.
+
+The Command contains no wait, rerun, planning, implementation, Git, or
+GitHub write procedure. It never publishes a review, changes a thread,
+creates a second pull request, marks Ready-for-Review, rebases, merges,
+force-pushes, deletes, or cleans up. Green required checks are not merge or
+Ready-for-Review authorization.

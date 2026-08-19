@@ -1,0 +1,28 @@
+schema: PrePrReadyGate
+version: 1
+workspace:
+  repository: octo-org/widgets
+  path: C:/workspace/github
+pull_request:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  base_branch: base_branch-value
+  head_branch: head_branch-value
+expected_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+is_draft: true
+linked_issue:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  unique: true
+reviewers:
+  add: []
+authorization:
+  exact_target: false
+  exact_ready_operation: false
+  ready_authorized: false
+  reviewers_authorized: false
+  source: explicit_user
+  evidence: evidence-value
+written_at: '2026-01-01T00:00:00.000Z'

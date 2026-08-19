@@ -1,0 +1,23 @@
+schema: LoadedPullRequestDiscussions
+version: 1
+status: loaded
+pull_request:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+reviews: []
+threads: []
+conversation_comments: []
+summary:
+  review_count: 1
+  thread_count: 1
+  open_thread_count: 1
+  resolved_thread_count: 1
+  comment_count: 1
+metadata: {}
+unavailable_fields: []
+failure:
+  code: missing_identity
+  message: message-value
+  operation: operation-value
+  retryable: false

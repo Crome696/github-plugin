@@ -1,0 +1,24 @@
+schema: ImplementationPlan
+version: 1
+status: draft
+issue:
+  number: 1
+  title: title-value
+objective: objective-value
+assumptions: []
+prerequisites: []
+blockers: []
+unresolved_questions: []
+affected_areas: []
+implementation_steps: []
+validation:
+  required_tests: []
+  required_checks: []
+capabilities:
+  required_skills: []
+  applicable_rules: []
+workspace:
+  base_branch: base_branch-value
+  branch_name: branch_name-value
+  worktree_path: worktree_path-value
+risks: []

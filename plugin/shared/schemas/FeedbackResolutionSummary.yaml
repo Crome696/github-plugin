@@ -1,0 +1,194 @@
+schema: FeedbackResolutionSummary
+version: 1
+description: Read-only summary of one completed pull-request feedback follow-up, grouping each selected item as resolved, open, disputed, or blocked and reporting evidence-linked next steps and diagnostic merge impact.
+required:
+  - status
+  - pull_request
+  - source
+  - selected_feedback_item_ids
+  - groups
+  - blockers
+  - uncertainties
+  - next_steps
+  - merge_impact
+  - unavailable_fields
+  - metadata
+  - failure
+fields:
+  status:
+    type: enum
+    values: [summarized, partial, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url, baseline_head_sha, current_head_sha]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      baseline_head_sha:
+        type: string | null
+      current_head_sha:
+        type: string | null
+  source:
+    type: object
+    required: [feedback_resolution_validation_version, references, unavailable_inputs]
+    fields:
+      feedback_resolution_validation_version:
+        type: integer | null
+      references:
+        type: list
+        items: string
+      unavailable_inputs:
+        type: list
+        items: string
+  selected_feedback_item_ids:
+    type: list
+    items: string
+  groups:
+    type: list
+    items:
+      type: object
+      required: [feedback_item_id, category, problem_core, resolution, evidence, confidence, thread, next_step]
+      fields:
+        feedback_item_id:
+          type: string
+        category:
+          type: enum
+          values: [resolved, open, disputed, blocked]
+        problem_core:
+          type: string
+        resolution:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: object
+            required: [kind, reference, summary, head_sha]
+            fields:
+              kind:
+                type: enum
+                values: [diff, commit, test, check, thread]
+              reference:
+                type: string
+              summary:
+                type: string
+              head_sha:
+                type: string | null
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        thread:
+          type: object
+          required: [reference, current_status]
+          fields:
+            reference:
+              type: string
+            current_status:
+              type: enum
+              values: [open, resolved, outdated, unavailable]
+        next_step:
+          type: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [description, affected_feedback_item_ids, evidence, required_action]
+      fields:
+        description:
+          type: string
+        affected_feedback_item_ids:
+          type: list
+          items: string
+        evidence:
+          type: list
+          items: string
+        required_action:
+          type: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required: [feedback_item_id, question, evidence, verification]
+      fields:
+        feedback_item_id:
+          type: string
+        question:
+          type: string
+        evidence:
+          type: list
+          items: string
+        verification:
+          type: string
+  next_steps:
+    type: list
+    items:
+      type: object
+      required: [priority, feedback_item_ids, action, completion_evidence]
+      fields:
+        priority:
+          type: enum
+          values: [blocker, high, normal, low]
+        feedback_item_ids:
+          type: list
+          items: string
+        action:
+          type: string
+        completion_evidence:
+          type: string
+  merge_impact:
+    type: object
+    required: [status, rationale, evidence, remaining_conditions, diagnostic_only]
+    fields:
+      status:
+        type: enum
+        values: [ready, blocked, uncertain, not_ready]
+      rationale:
+        type: string
+      evidence:
+        type: list
+        items:
+          type: string
+      remaining_conditions:
+        type: list
+        items: string
+      diagnostic_only:
+        type: boolean
+  unavailable_fields:
+    type: list
+    items: string
+  metadata:
+    type: object
+    required: [retrieved_at, read_only]
+    fields:
+      retrieved_at:
+        type: string
+        format: iso-8601
+      read_only:
+        type: boolean
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, unsupported_version, conflicting_identity, stale_state, insufficient_evidence, summary_failure]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - Every selected feedback item appears exactly once in groups.
+  - A resolved item requires direct current evidence for the expected correction and passing applicable tests and checks at current_head_sha.
+  - Thread state never proves that feedback was resolved.
+  - Open, disputed, and blocked items retain an actionable next step or an explicit blocker.
+  - Missing, pending, skipped, unavailable, or differently SHA-bound evidence cannot establish merge readiness.
+  - merge_impact is diagnostic only and never authorizes merging or thread mutation.
+  - The current pull-request identity and head SHA are preserved exactly and never inferred.

@@ -1,0 +1,26 @@
+{
+  "name": "@cromesdk/github-plugin-contracts",
+  "version": "0.3.104",
+  "private": true,
+  "description": "Contract tests for the CromeSDK GitHub workflow handoffs.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "type": "module",
+  "scripts": {
+    "generate-project-hooks": "node plugin/hooks/generate-project-hooks.mjs",
+    "fixtures:generate": "node tests/scripts/generate-fixtures.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit --pretty false",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "latest",
+    "@types/node": "latest",
+    "js-yaml": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

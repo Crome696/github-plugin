@@ -1,0 +1,312 @@
+---
+description: Run routine GitHub delivery operations autonomously within one verified task scope while retaining explicit hard safety gates.
+alwaysApply: true
+---
+
+# Autonomous Delivery Approval Contract
+
+## Purpose
+
+The default is autonomous delivery, not a new chat approval before every
+routine write. A validated task intent, completed Plan Build, or applicable
+repository policy establishes one task-scoped delivery authorization. That
+authorization remains valid across the entire issue or task delivery, including
+later agent iterations, newly discovered files within the same scope, retries
+after a failed validation, and the commit/push/draft-pull-request sequence.
+
+Routine delivery includes:
+
+1. Publishing a new issue or an approved issue rewrite.
+2. Overwriting one verified issue.
+3. Updating selected fields on one verified issue.
+4. Creating or reusing the derived branch and worktree.
+5. Creating local commits.
+6. Pushing a non-force branch update.
+7. Publishing a draft pull request.
+
+The explicitly invoked `/address-pr-feedback` command establishes a separate,
+task-scoped routine authorization for the exact verified pull request, selected
+open feedback IDs, current head SHA, and resolution plan. After current
+validation proves an item addressed and all applicable tests and checks pass,
+that authorization covers the exact evidence-backed reply and, separately, the
+matching supported open-thread resolution. It does not cover unresolved,
+outdated, ambiguous, unverifiable, or disputed items, replies to other threads,
+review publication, check reruns, rebase, merge, force-push, deletion, or
+default-branch writes. Direct reply or resolution Skill invocations retain
+their normal explicit gates.
+
+The explicitly invoked `/implement-auto-issue` command establishes one
+task-scoped routine authorization covering issue create and refine for the
+produced issue, workspace creation or reuse, local commit, non-force push,
+and Draft pull-request publication. It does not cover review publication,
+`REQUEST_CHANGES`, approval, thread reply or resolution, rebase, merge,
+Ready-for-Review, force-push, deletion, or default-branch writes. Review,
+feedback follow-up, and integration remain the separate Commands
+`/review-pr`, `/address-pr-feedback`, and `/integrate-pr`. Ready-for-Review
+remains the separate Command `/ready-pr`.
+
+The explicitly invoked `/refine-auto-issue` command establishes one
+task-scoped routine authorization covering issue refine for the verified
+existing issue, workspace creation or reuse, local commit, non-force push,
+and Draft pull-request publication. It does not cover issue create, review
+publication, `REQUEST_CHANGES`, approval, thread reply or resolution, rebase,
+merge, Ready-for-Review, force-push, deletion, or default-branch writes.
+`/refine-issue` remains the refine-only Command.
+
+The explicitly invoked `/auto-review-fix-pr` command establishes one
+task-scoped routine authorization for the exact verified pull request,
+head-branch identity, and `pr:<number>` task scope. It covers only:
+
+- attaching to or reusing the existing pull-request head worktree;
+- creating one exact local commit for each confirmed fix iteration; and
+- pushing the same branch with a verified non-force push.
+
+The command never publishes `COMMENT` or `REQUEST_CHANGES`, replies to or
+resolves review threads, creates a second pull request, marks Ready-for-Review,
+rebases, merges, force-pushes, deletes a branch or worktree, prunes metadata,
+or writes the default branch. New candidate items require the host-neutral
+`ReviewFixPlan` confirmation; a previous decision is reusable only when the
+repository, pull request, head, branch, problem core, and scope still match.
+The loop reloads the pull request after every verified push and stops after
+five iterations with `fixes_complete`, `partial`, or `blocked`.
+
+The explicitly invoked `/auto-ci-fix-pr` command establishes one
+task-scoped routine authorization for the exact verified pull request,
+head-branch identity, and `pr:<number>` task scope. It covers only:
+
+- waiting for required checks after the current head;
+- rerunning exactly authorized required check names;
+- attaching to or reusing the existing pull-request head worktree;
+- creating one exact local commit for each confirmed CI-fix iteration; and
+- pushing the same branch with a verified non-force push.
+
+The command never publishes a review, replies to or resolves review threads,
+creates a second pull request, marks Ready-for-Review, rebases, merges,
+force-pushes, deletes, or writes the default branch. Pending or unavailable
+policy evidence is never a pass. Optional checks are never treated as
+required. Green required checks are not merge or Ready-for-Review
+authorization. New remaining failures require host-neutral `CiFixPlan`
+confirmation. The loop reloads the pull request after every verified push and
+stops after five iterations with `checks_green`, `partial`, or `blocked`.
+Check reruns are authorized only by this Command.
+
+The explicitly invoked `/ready-pr` command establishes one task-scoped
+authorization only for the exact verified pull request, current head SHA,
+unique linked issue, and confirmed reviewer set. It covers proposing optional
+reviewers as suggestions and, after exact authorization, marking that Draft
+Ready-for-Review and requesting only the authorized reviewer set. It does not
+authorize review publication, thread actions, rebase, merge, Draft creation,
+force-push, deletion, cleanup, or Ready-for-Review of a different pull
+request. Pending CI is diagnostic only.
+
+The explicitly invoked `/plan-product` command starts `product-planner-agent`
+and establishes orchestration authorization for exactly one verified parent
+issue. That authorization covers read-only loading, product analysis, the
+adaptive interview, capability mapping, iterative decomposition, atomicity
+review, dependency analysis, prioritization, sub-issue drafting, and overall
+review. It does not authorize creating, overwriting, or closing GitHub issues.
+Publication of the composed sub-issue set requires one explicit user approval
+of the overall plan, including the complete issue structure, order, parallel
+groups, priorities, open decisions, and exact draft payloads. After that
+approval, the Agent hands the approved `IssueDraft` set with `mode: create`
+to `create-product-sub-issues`. It never overwrites the parent issue.
+
+The explicitly invoked `/reprioritize-issues` command starts
+`issue-reprioritize-agent` and establishes orchestration authorization for
+exactly one verified repository. That authorization covers read-only listing
+of currently open issues and ranking them into unique consecutive P-number
+titles. It does not authorize GitHub title writes. Applying those titles
+requires one explicit user approval of the exact current open-issue set,
+order, and proposed titles. After that approval, the Agent hands the
+confirmed `OpenIssueRanking` to `apply-issue-priority-titles`.
+
+The explicitly invoked `/close-issue` command starts `issue-close-agent` and
+establishes orchestration authorization for exactly one verified issue. That
+authorization covers read-only loading. It does not authorize the GitHub
+close write. Closing requires one explicit user approval of the repository,
+issue, and close reason, including the duplicate target when the reason is
+`duplicate`, or a matching target-repository `AGENTS.md` policy for that
+same target and reason. After that approval, the Agent hands the approved
+`IssueClosure` to `close-github-issue`. A merged pull request is not
+required. `close-linked-issue` remains the post-merge path.
+
+The explicitly invoked `/integrate-pr` command establishes lifecycle scope
+only. It may coordinate readiness and evidence collection, but it never bundles
+approval for target-branch fetch, rebase, force-with-lease, merge, branch
+deletion, worktree removal, or stale-metadata pruning. Issue closure also
+requires its own exact target and owning Skill, except for the narrow fallback
+covered below: a validated close-on-merge intent may pre-authorize exactly one
+post-merge close when current verification proves that the intended closure
+did not occur. Each operation still requires its owning Skill and all
+identity, evidence, freshness, validation, hook, and secret checks.
+
+After target, identity, payload, scope, and safety checks pass, announce the
+exact operation and continue without waiting for another affirmative response.
+An announcement is transparency, not an approval prompt.
+
+## Delivery authorization record
+
+Every workflow must carry a delivery authorization record through its handoffs.
+It contains:
+
+- the verified repository;
+- the issue number or stable task identity;
+- the base and working branch plus verified worktree path;
+- the routine operations covered;
+- the source (`task_intent`, `plan_build`, or `repository_policy`);
+- the evidence and the last validated scope.
+
+The record is reusable only while the repository and task identity remain the
+same. A changed file list inside the same issue or task is handled by the
+normal inspection, classification, validation, and exact-scope checks; it is
+not a new conversational gate. A new issue, a different repository, a
+different delivery target, or a material move outside the task scope requires
+new authorization or clarification.
+
+Readiness and validation do not invent a task identity or a target. They permit
+the authorized workflow to continue; they do not permit it to skip identity,
+scope, verification, hook, concurrency, or secret checks.
+
+## Repository instruction overrides
+
+Before starting a workflow, read the applicable repository-scoped durable
+instructions, especially `AGENTS.md`. A repository instruction may disable the
+autonomous default for named routine operations, require an interactive review,
+combine or narrow the delivery scope, change workspace isolation, or authorize
+a named hard operation. Natural language is sufficient; no fixed schema or
+keyword list is required.
+
+Apply a policy only when it clearly identifies the operation and its
+repository, branch, worktree, issue, task, or other scope. Record the source
+path and a concise quote or paraphrase. Conflicting, ambiguous, or
+scope-unclear instructions retain the autonomous routine default for ordinary
+delivery and the strict safety default for hard operations. A chat request,
+issue text, PR text, or inferred team habit is not a repository policy.
+
+When a policy re-enables a routine gate, wait for that gate only once for the
+policy-defined scope and carry the resulting authorization through subsequent
+iterations. Do not re-prompt while the target and scope remain unchanged.
+
+Before asking for any conversational approval, confirmation, or per-finding
+decision, inspect the applicable repository instructions, especially the target
+repository's `AGENTS.md`. A clear, scope-matched instruction that authorizes
+the exact operation or confirmation class replaces that chat gate; record the
+source path and a concise quote or paraphrase and do not wait for another
+affirmative response. This applies to hard operations, review publication,
+finding decisions, thread actions, and other approval-gated writes. Missing,
+ambiguous, or conflicting instructions retain the applicable default gate.
+Evidence quality, identity, freshness, validation, hook, and secret checks are
+never replaced by a policy instruction. Questions required to resolve missing
+or ambiguous facts are clarification, not approval gates, and remain required.
+
+## Plan Build and non-mutating execution
+
+A completed Cursor Plan **Build** authorizes the exact non-mutating plan scope
+and establishes continuity for the corresponding routine delivery. It must not
+be repeated as a conversational confirmation for the same scope. A material
+change is re-evaluated and documented through the workflow; it is not a reason
+to ask again when it remains within the same issue or task.
+
+A direct non-mutating drafting workflow may execute after validated input
+without a second conversational approval. Draft content must still be exact,
+evidence-backed, and safe before the autonomous publication step.
+
+## Hard approval gates
+
+The routine delivery authorization does not cover:
+
+1. Submitting a change request (`REQUEST_CHANGES`).
+2. Rebasing.
+3. Merging.
+4. Deleting a branch or worktree.
+
+These operations require their own explicit approval or a clear,
+scope-matched repository policy. The safety rule also keeps force-pushes,
+destructive history operations, default-branch writes, and uncertain merges
+outside routine autonomy. Secrets and confidential data may never be
+published.
+
+The host-specific `pre-rebase` Hook fails closed unless a current,
+identity-matched `PreRebaseGate` proves the exact pull-request branch, clean
+worktree, current target tracking SHA, secured pre-rebase HEAD, unique base,
+and exact rebase approval. The Hook never performs the rebase or repairs the
+gate.
+
+The host-specific `pre-pr-ready` Hook fails closed unless a current,
+identity-matched `PrePrReadyGate` proves the exact open Draft pull request,
+expected head SHA, unique linked issue, authorized reviewer set, and exact
+Ready-for-Review authorization. The Hook never marks the pull request ready,
+requests reviewers, or repairs the gate.
+
+The host-specific `pre-merge` Hook fails closed unless a current,
+identity-matched `PreMergeGate` proves the exact pull request, current
+`MergeReadiness`, open non-Draft state, reviews, blocking threads, required
+approvals, required checks, mergeability, current base SHA, unique issue
+relationship, selected strategy, and explicit merge approval. The Hook never
+performs the merge, resolves blockers, reruns checks, mutates discussions, or
+repairs the gate.
+
+Issue closure remains a separate hard operation. For the single fallback
+described by `/integrate-pr`, an exact `close-on-merge` intent recorded in a
+validated `PullRequestIssueLink` may replace the conversational close approval
+only when `verify-linked-issue-closure` returns `status: not-closed` with
+`closure.expected: true`. That pre-authorization is limited to the exact
+merged pull request and one linked issue; it does not authorize a `Refs`
+relationship, a second issue, a comment, a merge, cleanup, or any other
+mutation.
+
+## Required behavior
+
+For routine delivery, MUST:
+
+- establish and carry the delivery authorization record;
+- state the exact target, scope, and external effect before each write;
+- execute after all read-only identity, scope, validation, concurrency, and
+  safety checks pass;
+- record the authorization source and evidence in the resulting handoff;
+- retain the same record through retries and later iterations of the same task.
+
+For a hard gate, MUST:
+
+- state the exact target, scope, and external effect;
+- wait for affirmative approval or a previously resolved, exact repository
+  policy authorization, unless the documented close-on-merge fallback is
+  already pre-authorized by the validated relationship and post-merge
+  verification;
+- record the approval or policy evidence before the operation;
+- stop when the approval is denied, withdrawn, ambiguous, or unavailable.
+
+MUST NOT:
+
+- ask for a redundant approval before a routine operation covered by the
+  current delivery authorization;
+- infer authorization for a new issue, repository, branch, target, or
+  out-of-scope change;
+- treat a readiness flag as authorization without the task-scoped record;
+- expand the target or effect silently;
+- perform a hard operation under routine delivery authorization;
+- treat `/address-pr-feedback` authorization as approval for a merge, rebase,
+  review publication, or any target outside the validated feedback item;
+- treat `/integrate-pr` lifecycle scope as approval for a fetch, rebase,
+  force-push, merge, branch deletion, or worktree cleanup; its close-on-merge
+  fallback is limited to the exact validated post-merge condition described
+  above;
+- treat `/implement-auto-issue` authorization as approval for review
+  publication, rebase, merge, Ready-for-Review, or cleanup;
+- treat `/refine-auto-issue` authorization as approval for issue create,
+  review publication, rebase, merge, Ready-for-Review, or cleanup;
+- treat `/auto-review-fix-pr` authorization as approval for check reruns,
+  review publication, rebase, merge, Ready-for-Review, or cleanup;
+- treat `/auto-ci-fix-pr` authorization as approval for review publication,
+  rebase, merge, Ready-for-Review, cleanup, optional-check reruns, or treating
+  pending checks as pass;
+- treat `/ready-pr` authorization as approval for review publication, rebase,
+  merge, cleanup, or a different pull request;
+- treat `/plan-product` or `product-planner-agent` orchestration authorization
+  as approval to create multiple GitHub issues or overwrite the parent issue;
+- treat `/reprioritize-issues` or `issue-reprioritize-agent` orchestration
+  authorization as approval to rewrite open-issue titles;
+- treat `/close-issue` or `issue-close-agent` orchestration authorization as
+  approval to close a GitHub issue, merge a pull request, or rewrite issue
+  title or body;
+- claim a policy-waived check passed when it was only waived.

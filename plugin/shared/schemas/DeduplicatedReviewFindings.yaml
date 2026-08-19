@@ -1,0 +1,450 @@
+schema: DeduplicatedReviewFindings
+version: 1
+description: Read-only deduplication of proposed pull-request review findings against one another and retrieved pull-request discussions.
+required:
+  - status
+  - repository
+  - pull_request
+  - head_sha
+  - source
+  - discussions
+  - findings
+  - suppressed
+  - related_threads
+  - uncertainties
+  - summary
+  - recommended_next_skill
+  - failure
+  - deduplicated_at
+fields:
+  status:
+    type: enum
+    values: [deduplicated, partial, blocked]
+  repository:
+    type: string | null
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  head_sha:
+    type: string | null
+  source:
+    type: object | null
+    required:
+      - schema
+      - version
+      - status
+      - finding_count
+      - uncertainty_count
+      - findings_processed
+      - evidence
+    fields:
+      schema:
+        type: enum
+        values: [DetectedReviewFindings]
+      version:
+        type: integer
+        values: [1]
+      status:
+        type: enum
+        values: [detected, partial, blocked]
+      finding_count:
+        type: integer
+        minimum: 0
+      uncertainty_count:
+        type: integer
+        minimum: 0
+      findings_processed:
+        type: integer
+        minimum: 0
+      evidence:
+        type: list
+        items: string
+      unavailable_fields:
+        type: list
+        items: string
+      limitation:
+        type: string | null
+  discussions:
+    type: object
+    required:
+      - schema
+      - version
+      - availability
+      - thread_count
+      - evidence
+    fields:
+      schema:
+        type: enum | null
+        values: [LoadedPullRequestDiscussions]
+      version:
+        type: integer | null
+        values: [1]
+      availability:
+        type: enum
+        values: [loaded, partial, blocked, unavailable, not_supplied]
+      thread_count:
+        type: integer
+        minimum: 0
+      evidence:
+        type: list
+        items: string
+      unavailable_fields:
+        type: list
+        items: string
+      limitation:
+        type: string | null
+  findings:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - status
+        - category
+        - severity
+        - confidence
+        - location
+        - evidence
+        - impact
+        - recommendation
+        - verification
+        - sources
+        - merged_from
+        - related_threads
+      fields:
+        id:
+          type: string
+          format: F-001
+        status:
+          type: enum
+          values: [proposed]
+        category:
+          type: enum
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        severity:
+          type: enum
+          values: [blocker, major, minor, nit]
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        location:
+          type: object
+          required: [path]
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+            commit_sha:
+              type: string | null
+        evidence:
+          type: string
+          constraints:
+            - Identifies the observed problem core and every relevant source.
+            - Does not rely on an unverified assumption or a style preference without project evidence.
+        impact:
+          type: string
+        recommendation:
+          type: string
+        verification:
+          type: string
+        sources:
+          type: list
+          items:
+            type: enum
+            values:
+              - diff_analysis
+              - issue_coverage
+              - checks
+              - discussions
+              - external_rules
+        related_acceptance_criterion:
+          type: string | null
+        references:
+          type: list
+          items: string
+        merged_from:
+          type: list
+          items: string
+          constraints:
+            - Contains input finding IDs absorbed into this survivor; it is empty when no finding was merged.
+        related_threads:
+          type: list
+          items: string
+          constraints:
+            - Uses discussion:<thread-id> references for threads that are related but do not suppress this finding.
+  suppressed:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - disposition
+        - merged_into
+        - category
+        - severity
+        - confidence
+        - location
+        - evidence
+        - impact
+        - recommendation
+        - verification
+        - sources
+        - rationale
+        - related_threads
+      fields:
+        id:
+          type: string
+          format: F-001
+        disposition:
+          type: enum
+          values: [merged_into, already_discussed, already_addressed]
+        merged_into:
+          type: string | null
+          format: F-001
+        status:
+          type: enum
+          values: [proposed]
+        category:
+          type: enum
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        severity:
+          type: enum
+          values: [blocker, major, minor, nit]
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        location:
+          type: object
+          required: [path]
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+            commit_sha:
+              type: string | null
+        evidence:
+          type: string
+        impact:
+          type: string
+        recommendation:
+          type: string
+        verification:
+          type: string
+        sources:
+          type: list
+          items:
+            type: enum
+            values:
+              - diff_analysis
+              - issue_coverage
+              - checks
+              - discussions
+              - external_rules
+        related_acceptance_criterion:
+          type: string | null
+        references:
+          type: list
+          items: string
+        rationale:
+          type: string
+          constraints:
+            - Explains the same-problem match, existing discussion match, or both with evidence.
+        related_threads:
+          type: list
+          items: string
+  related_threads:
+    type: list
+    items:
+      type: object
+      required:
+        - thread_id
+        - relationship
+        - is_resolved
+        - is_outdated
+        - evidence
+      fields:
+        thread_id:
+          type: string
+        relationship:
+          type: enum
+          values: [duplicate, addressed, discussed, related]
+        is_resolved:
+          type: boolean | null
+        is_outdated:
+          type: boolean | null
+        location:
+          type: object | null
+          required: [path]
+          fields:
+            path:
+              type: string | null
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+        thread_url:
+          type: string | null
+          format: uri
+        comment_ids:
+          type: list
+          items: string
+        evidence:
+          type: list
+          items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - category
+        - statement
+        - evidence
+        - limitation
+        - confidence
+        - verification
+      fields:
+        id:
+          type: string
+          format: U-001
+        category:
+          type: enum
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        statement:
+          type: string
+        evidence:
+          type: string
+        limitation:
+          type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        verification:
+          type: string
+        location:
+          type: object | null
+          required: [path]
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+        sources:
+          type: list
+          items:
+            type: enum
+            values:
+              - diff_analysis
+              - issue_coverage
+              - checks
+              - discussions
+              - external_rules
+  summary:
+    type: string
+  recommended_next_skill:
+    type: enum
+    values:
+      - classify-review-findings
+      - load-pr-discussions
+      - detect-review-findings
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - source_conflict
+          - discussion_unavailable
+          - incomplete_source
+          - deduplication_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  deduplicated_at:
+    type: string | null
+    format: iso-8601
+invariants:
+  - The deduplication is read-only and never publishes comments, reviews, change requests, approvals, merges, or discussion updates.
+  - The result is tied to one verified repository, pull request, and head SHA; conflicting source identity blocks deduplication.
+  - The active findings list contains only unique survivor findings with proposed status; suppressed entries remain available for audit.
+  - Findings are merged only when they describe the same problem core and the same or equivalent relevant location. Different causal mechanisms remain separate even when symptoms or locations overlap.
+  - Merging unions sources, evidence references, and material references, retains the highest evidence-supported severity, and raises confidence only for independent corroboration.
+  - An active finding with a related thread keeps that finding and records discussion:<thread-id>; related context is not treated as a duplicate.
+  - An open, non-outdated thread may suppress a finding as already_discussed only when the thread covers the same problem core. A resolved or outdated thread may suppress it as already_addressed only when the same problem core and addressing evidence are established.
+  - A resolved or outdated thread never suppresses a separate finding with a different cause merely because its symptom or location is related.
+  - Suppressed findings record their original evidence, disposition, rationale, and thread references; no finding is silently discarded.
+  - Input uncertainties are carried forward separately and are never converted into findings or used as proof that a discussion addressed a problem.
+  - Deduplicated status requires a valid source and complete discussion evidence; partial preserves usable survivors with source or discussion limitations; blocked means reliable deduplication is not possible.
+  - Failure is null for deduplicated results and non-null for partial or blocked results.

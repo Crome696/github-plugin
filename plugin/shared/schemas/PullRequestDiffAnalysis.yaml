@@ -1,0 +1,261 @@
+schema: PullRequestDiffAnalysis
+version: 1
+description: Read-only, evidence-based analysis of one GitHub pull-request diff across correctness, architecture, security, performance, maintainability, tests, documentation, and scope.
+required:
+  - status
+  - repository
+  - pull_request
+  - base_branch
+  - base_sha
+  - head_sha
+  - source
+  - categories_evaluated
+  - capabilities_applied
+  - findings
+  - uncertainties
+  - summary
+  - recommended_next_skill
+  - failure
+  - analyzed_at
+fields:
+  status:
+    type: enum
+    values: [analyzed, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  base_branch:
+    type: string | null
+  base_sha:
+    type: string | null
+  head_sha:
+    type: string | null
+  source:
+    type: object
+    required:
+      - diff_source
+      - loaded_pull_request_status
+      - evidence
+      - unavailable_fields
+    fields:
+      diff_source:
+        type: enum
+        values: [live_diff, unavailable]
+      loaded_pull_request_status:
+        type: enum
+        values: [loaded, partial, blocked, not_supplied]
+      evidence:
+        type: list
+        items: string
+      unavailable_fields:
+        type: list
+        items: string
+  categories_evaluated:
+    type: list
+    items:
+      type: enum
+      values:
+        - correctness
+        - architecture
+        - security
+        - performance
+        - maintainability
+        - tests
+        - documentation
+        - scope
+    constraints:
+      - Each category appears at most once.
+      - An analyzed result includes all eight categories.
+  capabilities_applied:
+    type: list
+    items:
+      type: object
+      required: [name, type, availability, applied, usage, evidence]
+      fields:
+        name:
+          type: string
+        type:
+          type: enum
+          values: [skill, rule, agent, tool, domain]
+        availability:
+          type: enum
+          values: [available, unavailable, unknown]
+        applied:
+          type: boolean
+        usage:
+          type: string
+        evidence:
+          type: string
+  findings:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - status
+        - category
+        - severity
+        - confidence
+        - location
+        - evidence
+        - impact
+        - recommendation
+        - verification
+      fields:
+        id:
+          type: string
+          format: F-001
+        status:
+          type: enum
+          values: [proposed, accepted, dismissed, blocked]
+        category:
+          type: enum
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        severity:
+          type: enum
+          values: [blocker, major, minor, nit]
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        location:
+          type: object
+          required: [path]
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+            commit_sha:
+              type: string | null
+        evidence:
+          type: string
+          constraints:
+            - Identifies the changed code or the smallest verified relevant context.
+            - Does not rely on an unverified assumption.
+        impact:
+          type: string
+        recommendation:
+          type: string
+        verification:
+          type: string
+        references:
+          type: list
+          items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - category
+        - statement
+        - evidence
+        - limitation
+        - confidence
+        - verification
+      fields:
+        id:
+          type: string
+          format: U-001
+        category:
+          type: enum
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        statement:
+          type: string
+        evidence:
+          type: string
+        limitation:
+          type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        verification:
+          type: string
+        location:
+          type: object | null
+          required: [path]
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+  summary:
+    type: string
+  recommended_next_skill:
+    type: enum
+    values: [inspect-pr-checks, load-pr-discussions, none]
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - invalid_pull_request_number
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - diff_unavailable
+          - incomplete_source
+          - analysis_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+  analyzed_at:
+    type: string | null
+    format: iso-8601
+invariants:
+  - The analysis is read-only and never publishes comments, reviews, change requests, merges, or other GitHub mutations.
+  - A finding has proposed status and is not approval for a ReviewDecision or publication.
+  - Every finding is grounded in the retrieved diff or explicitly supplied repository evidence and is tied to a changed line or the smallest verified relevant context.
+  - Severity reflects observed impact, not personal preference or style disagreement.
+  - Uncertainties describe incomplete evidence or hypotheses and are never presented as established problems.
+  - A suggestion or inline comment is not part of this contract; publication workflows must create their own approved payload.
+  - Analyzed status requires a valid pull-request identity and a retrieved live diff covering all eight categories.
+  - Partial status preserves reliable source evidence while identifying unavailable fields or capabilities that could materially affect the analysis.
+  - Blocked status means the identity, source, or input cannot support a reliable analysis; findings do not contain fabricated facts.
+  - Failure is null for analyzed results and non-null for partial or blocked results.

@@ -1,0 +1,12 @@
+schema: PullRequestDraft
+version: 1
+status: draft
+repository: octo-org/widgets
+title: title-value
+body: body-value
+base_branch: base_branch-value
+head_branch: head_branch-value
+draft: false
+authorization:
+  push_authorized: false
+  draft_pull_request_authorized: false

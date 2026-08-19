@@ -1,0 +1,45 @@
+schema: LinkedIssueStatusAssessment
+version: 1
+status: consistent
+repository: octo-org/widgets
+pull_request:
+  number: 1
+  url: https://github.com/octo-org/widgets
+  state: open
+head_sha: head_sha-value
+linkage:
+  status: linked
+  primary_issue: {}
+  candidates: []
+  closing_relationship:
+    status: confirmed
+    keyword_evidence: []
+    github_evidence: []
+    consistency: consistent
+  evidence: []
+issue:
+  status: loaded
+  repository: octo-org/widgets
+  number: 1
+  state: open
+  title: title-value
+  evidence: []
+acceptance_criteria:
+  status: complete
+  items: []
+  evidence: []
+integration:
+  status: consistent
+  issue_pr_relationship: consistent
+  rationale: rationale-value
+blockers: []
+uncertainties: []
+evidence:
+  status: complete
+  sources: []
+rationale: rationale-value
+failure:
+  code: missing_identity
+  message: message-value
+  operation: operation-value
+  retryable: false

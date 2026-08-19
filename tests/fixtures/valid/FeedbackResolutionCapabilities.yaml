@@ -1,0 +1,35 @@
+schema: FeedbackResolutionCapabilities
+version: 1
+status: resolved
+pull_request:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  head_sha: head_sha-value
+source:
+  classified_review_feedback_version: 1
+  implementation_context: supplied
+  references: []
+  unavailable_inputs: []
+scope:
+  confirmed_feedback_item_ids: []
+  excluded_feedback_item_ids: []
+  scope_guard: scope_guard-value
+focus:
+  summary: summary-value
+  technologies: []
+  architecture_signals: []
+  testing_signals: []
+  security_signals: []
+  documentation_signals: []
+  risks: []
+capabilities: []
+missing_capabilities: []
+unresolved_questions: []
+blockers: []
+recommended_next_skill: build-feedback-resolution-plan
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false

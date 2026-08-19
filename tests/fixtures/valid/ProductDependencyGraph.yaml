@@ -1,0 +1,27 @@
+schema: ProductDependencyGraph
+version: 1
+status: graphed
+source:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  product_capability_decomposition_version: 1
+  product_capability_decomposition_status: decomposed
+  issue_atomicity_assessment_version: 1
+  issue_atomicity_assessment_status: assessed
+  unavailable_fields: []
+nodes: []
+edges: []
+independent_units: []
+parallel_groups: []
+cycles: []
+problematic_cuts: []
+priority_boundary:
+  technical_order_is_priority: false
+  guidance: guidance-value
+recommended_next_skill: prioritize-product-issues
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false

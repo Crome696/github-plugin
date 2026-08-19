@@ -1,0 +1,79 @@
+schema: ReviewFinding
+version: 1
+description: Evidence-based finding for one pull-request review.
+required:
+  - id
+  - severity
+  - location
+  - evidence
+  - impact
+  - recommendation
+  - verification
+fields:
+  status:
+    type: enum
+    values: [proposed, accepted, dismissed, blocked]
+  id:
+    type: string
+    format: F-001
+  category:
+    type: enum
+    values:
+      - correctness
+      - architecture
+      - security
+      - performance
+      - maintainability
+      - tests
+      - documentation
+      - scope
+  severity:
+    type: enum
+    values: [blocker, major, minor, nit]
+  confidence:
+    type: enum
+    values: [high, medium, low]
+  location:
+    type: object
+    required: [path]
+    fields:
+      path:
+        type: string
+      start_line:
+        type: integer | null
+        minimum: 1
+      end_line:
+        type: integer | null
+        minimum: 1
+      side:
+        type: enum
+        values: [LEFT, RIGHT, unknown]
+      commit_sha:
+        type: string | null
+  evidence:
+    type: string
+    constraints:
+      - Identifies the observed behavior and the relevant source or check.
+      - Does not rely on an unverified assumption.
+  impact:
+    type: string
+  recommendation:
+    type: string
+  verification:
+    type: string
+  inline_comment:
+    type: string | null
+  suggestion:
+    type: string | null
+    constraints:
+      - Include only a complete, syntactically valid small replacement.
+  related_acceptance_criterion:
+    type: string | null
+  references:
+    type: list
+    items: string
+invariants:
+  - A finding is tied to a changed line or the smallest verified relevant context.
+  - Severity reflects impact, not personal preference or style disagreement.
+  - A suggestion is absent when the exact replacement is not fully supported by evidence.
+  - Findings do not include secrets or unrelated repository observations.

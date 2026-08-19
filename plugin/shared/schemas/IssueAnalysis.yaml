@@ -1,0 +1,221 @@
+schema: IssueAnalysis
+version: 1
+description: Evidence-based analysis of one loaded GitHub issue without rewriting it.
+required:
+  - status
+  - source
+  - implementation_ready
+  - overall_readiness
+  - inventories
+  - findings
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [analyzed, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - repository
+      - number
+      - url
+      - loaded_issue_version
+      - loaded_issue_status
+      - unavailable_fields
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      loaded_issue_version:
+        type: integer
+      loaded_issue_status:
+        type: enum
+        values: [loaded, partial, blocked]
+      unavailable_fields:
+        type: list
+        items: string
+  implementation_ready:
+    type: boolean
+  overall_readiness:
+    type: enum
+    values: [ready, needs_work, blocked]
+  inventories:
+    type: object
+    required:
+      - explicit_requirements
+      - implicit_assumptions
+      - acceptance_criteria
+      - affected_areas
+      - open_questions
+      - potential_blockers
+    fields:
+      explicit_requirements:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      implicit_assumptions:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      acceptance_criteria:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      affected_areas:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      open_questions:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      potential_blockers:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+  findings:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - category
+        - severity
+        - confidence
+        - summary
+        - rationale
+        - evidence
+        - uncertainty
+        - recommended_improvement
+      fields:
+        id:
+          type: string
+          format: A-001
+        category:
+          type: enum
+          values:
+            - clarity
+            - completeness
+            - feasibility
+            - scope
+            - testability
+            - dependencies
+            - risks
+            - contradictions
+            - missing_information
+        severity:
+          type: enum
+          values: [blocker, major, minor, info]
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        summary:
+          type: string
+        rationale:
+          type: string
+        evidence:
+          type: string
+        uncertainty:
+          type: string | null
+        recommended_improvement:
+          type: string
+  recommended_next_skill:
+    type: enum
+    values:
+      - structure-issue
+      - define-acceptance-criteria
+      - rewrite-issue
+      - rewrite-github-issue
+      - assess-issue-quality
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - analysis_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - source preserves the loaded issue identity, contract version, status, and unavailable fields without inventing replacements.
+  - analyzed status requires a valid LoadedIssue version 1 with all evidence needed for the analysis.
+  - partial status means the analysis is possible but one or more material source fields are unavailable; failure identifies the incomplete source.
+  - blocked status means the source is blocked or the input cannot be validated; findings and inventories contain no fabricated issue facts.
+  - Every finding is grounded in available issue, comment, metadata, linked-pull-request, label, or explicitly supplied repository evidence.
+  - Certainty distinguishes retrieved evidence from interpretation; inferred and uncertain items are never presented as explicit requirements.
+  - implementation_ready is false when a blocker or major finding remains, or when a material open question or potential blocker is unresolved.
+  - overall_readiness is ready only when implementation_ready is true, needs_work when further issue work is required but the source is assessable, and blocked when the source or required evidence prevents a reliable assessment.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for analyzed results and non-null for partial or blocked results.

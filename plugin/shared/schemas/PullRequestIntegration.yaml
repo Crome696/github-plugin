@@ -1,0 +1,383 @@
+schema: PullRequestIntegration
+version: 1
+description: Evidence-backed lifecycle record for integrating one GitHub pull request through readiness, optional rebase, merge, issue-closure verification, and separately authorized cleanup.
+required:
+  - status
+  - repository
+  - pull_request
+  - revisions
+  - phases
+  - authorizations
+  - blockers
+  - deferred_operations
+  - cleanup
+  - evidence
+  - failure
+  - metadata
+fields:
+  status:
+    type: enum
+    values: [completed, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, base_branch, head_branch, initial_head_sha, current_head_sha]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      state:
+        type: enum
+        values: [open, merged, closed, unknown]
+      base_branch:
+        type: string
+      head_branch:
+        type: string
+      initial_head_sha:
+        type: string | null
+        format: full git commit SHA
+      current_head_sha:
+        type: string | null
+        format: full git commit SHA
+      merge_commit_sha:
+        type: string | null
+        format: full git commit SHA
+  revisions:
+    type: object
+    required:
+      - initial_head_sha
+      - original_base_sha
+      - refreshed_base_sha
+      - pre_rebase_head_sha
+      - rebased_head_sha
+      - final_head_sha
+      - merge_commit_sha
+    fields:
+      initial_head_sha:
+        type: string | null
+        format: full git commit SHA
+      original_base_sha:
+        type: string | null
+        format: full git commit SHA
+      refreshed_base_sha:
+        type: string | null
+        format: full git commit SHA
+      pre_rebase_head_sha:
+        type: string | null
+        format: full git commit SHA
+      rebased_base_sha:
+        type: string | null
+        format: full git commit SHA
+      rebased_head_sha:
+        type: string | null
+        format: full git commit SHA
+      final_head_sha:
+        type: string | null
+        format: full git commit SHA
+      merge_commit_sha:
+        type: string | null
+        format: full git commit SHA
+      evidence:
+        type: list
+        items: string
+  phases:
+    type: list
+    items:
+      type: object
+      required:
+        - name
+        - status
+        - handoff_schema
+        - handoff_status
+        - evidence
+        - blockers
+      fields:
+        name:
+          type: enum
+          values:
+            - target_validation
+            - initial_readiness
+            - blocker_discussion
+            - target_branch_fetch
+            - planned_conflict_analysis
+            - rebase
+            - stopped_conflict_analysis
+            - rebase_validation
+            - push
+            - final_readiness
+            - merge
+            - issue_closure_verification
+            - linked_issue_closure
+            - branch_cleanup
+            - worktree_cleanup
+        status:
+          type: enum
+          values: [not_started, in_progress, completed, skipped, deferred, partial, blocked, not_applicable]
+        handoff_schema:
+          type: string | null
+        handoff_status:
+          type: string | null
+        head_sha:
+          type: string | null
+          format: full git commit SHA
+        authorization_status:
+          type: enum
+          values: [not_required, pending, approved, denied, not_applicable]
+        evidence:
+          type: list
+          items: string
+        blockers:
+          type: list
+          items: string
+        notes:
+          type: string | null
+  authorizations:
+    type: list
+    items:
+      type: object
+      required: [operation, status, exact_target, evidence]
+      fields:
+        operation:
+          type: enum
+          values:
+            - fetch_target_branch
+            - rebase
+            - force_push
+            - merge
+            - close_linked_issue
+            - delete_local_branch
+            - delete_remote_branch
+            - cleanup_worktree
+            - prune_worktree
+        status:
+          type: enum
+          values: [not_requested, pending, approved, denied, not_applicable]
+        exact_target:
+          type: boolean
+        repository:
+          type: string | null
+          format: owner/repository
+        branch:
+          type: string | null
+        source_branch:
+          type: string | null
+        target_branch:
+          type: string | null
+        remote_name:
+          type: string | null
+        worktree_path:
+          type: string | null
+          format: absolute-path
+        issue_number:
+          type: integer | null
+          minimum: 1
+        head_sha:
+          type: string | null
+          format: full git commit SHA
+        base_sha:
+          type: string | null
+          format: full git commit SHA
+        target_sha:
+          type: string | null
+          format: full git commit SHA
+        evidence:
+          type: string
+        approved_by:
+          type: string | null
+        approved_at:
+          type: string | null
+          format: iso-8601
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, phase, severity, description, status, evidence]
+      fields:
+        id:
+          type: string
+        phase:
+          type: string
+        severity:
+          type: enum
+          values: [low, medium, high]
+        description:
+          type: string
+        status:
+          type: enum
+          values: [open, resolved, deferred, disputed, unknown]
+        evidence:
+          type: list
+          items: string
+        next_step:
+          type: string | null
+  deferred_operations:
+    type: list
+    items:
+      type: object
+      required: [operation, target, reason, status]
+      fields:
+        operation:
+          type: enum
+          values:
+            - rebase
+            - force_push
+            - merge
+            - close_linked_issue
+            - delete_local_branch
+            - delete_remote_branch
+            - cleanup_worktree
+            - prune_worktree
+        target:
+          type: string
+        reason:
+          type: string
+        status:
+          type: enum
+          values: [approval_pending, denied, blocked, deferred, not_applicable]
+        next_step:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+  cleanup:
+    type: object
+    required: [status, branch, worktree]
+    fields:
+      status:
+        type: enum
+        values: [completed, partial, deferred, blocked, not_applicable]
+      branch:
+        type: object
+        required: [local, remote, status]
+        fields:
+          local:
+            type: object
+            required: [target, status]
+            fields:
+              target:
+                type: string | null
+              status:
+                type: enum
+                values: [performed, deferred, preserved, not_requested, blocked, not_applicable]
+              handoff_schema:
+                type: string | null
+              evidence:
+                type: list
+                items: string
+          remote:
+            type: object
+            required: [target, status]
+            fields:
+              target:
+                type: string | null
+              status:
+                type: enum
+                values: [performed, deferred, preserved, not_requested, blocked, not_applicable]
+              handoff_schema:
+                type: string | null
+              evidence:
+                type: list
+                items: string
+          status:
+            type: enum
+            values: [performed, deferred, preserved, not_requested, blocked, not_applicable]
+      worktree:
+        type: object
+        required: [target, status]
+        fields:
+          target:
+            type: string | null
+            format: absolute-path
+          status:
+            type: enum
+            values: [performed, deferred, preserved, not_requested, blocked, not_applicable]
+          handoff_schema:
+            type: string | null
+          evidence:
+            type: list
+            items: string
+      evidence:
+        type: list
+        items: string
+  evidence:
+    type: list
+    items:
+      type: object
+      required: [source, reference, observed]
+      fields:
+        source:
+          type: enum
+          values: [github, git, handoff, user_decision, repository_policy]
+        reference:
+          type: string
+        observed:
+          type: string
+        head_sha:
+          type: string | null
+          format: full git commit SHA
+  failure:
+    type: object | null
+    required: [code, message, phase, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - stale_head
+          - readiness_blocked
+          - authorization_missing
+          - fetch_blocked
+          - rebase_blocked
+          - rebase_conflicted
+          - validation_blocked
+          - push_blocked
+          - merge_blocked
+          - closure_inconclusive
+          - cleanup_blocked
+          - verification_failure
+      message:
+        type: string
+      phase:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  metadata:
+    type: object
+    required: [started_at, completed_at, conversation_language]
+    fields:
+      started_at:
+        type: string | null
+        format: iso-8601
+      completed_at:
+        type: string | null
+        format: iso-8601
+      conversation_language:
+        type: string
+      unavailable_fields:
+        type: list
+        items: string
+      assumptions:
+        type: list
+        items: string
+      uncertainties:
+        type: list
+        items: string
+invariants:
+  - Every phase preserves the exact repository, pull-request identity, target branches, and current head SHA that were observed for that phase.
+  - A readiness result is diagnostic only and never authorizes a rebase, push, merge, issue closure, branch deletion, or worktree removal.
+  - Fetch, rebase, force-push, merge, issue closure, branch deletion, and worktree cleanup have independent exact authorization records.
+  - A conflict or unresolved blocker stops the lifecycle at the affected phase; later phases are not reported as completed.
+  - After a successful rebase, pre-rebase validation and readiness are invalidated and the new head is validated before any push or merge decision.
+  - Merge is reported only after a verified successful merge and its actual merge commit, base branch, and strategy are recorded.
+  - Issue-closure verification starts only after merge verification and keeps automatic closure separate from an explicitly authorized manual closure.
+  - Local branch deletion, remote branch deletion, worktree removal, and stale-metadata pruning remain separate cleanup decisions.
+  - A completed lifecycle may record cleanup as deferred or not_applicable; deferred cleanup is not reported as performed.
+  - Missing, stale, unavailable, or ambiguous evidence is preserved as a blocker, limitation, or partial result and never treated as success.

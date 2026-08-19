@@ -1,0 +1,156 @@
+schema: AffectedAreas
+version: 1
+description: Evidence-based mapping of an issue or task to repository areas and potential downstream impact.
+required:
+  - status
+  - source
+  - focus
+  - areas
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [identified, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - task_or_issue
+      - issue
+      - loaded_issue_version
+      - issue_analysis_version
+      - repository_context_version
+      - references
+      - unavailable_inputs
+    fields:
+      task_or_issue:
+        type: string | null
+      issue:
+        type: object | null
+        required: [repository, number, title, url]
+        fields:
+          repository:
+            type: string | null
+            format: owner/repository
+          number:
+            type: integer | null
+            minimum: 1
+          title:
+            type: string | null
+          url:
+            type: string | null
+            format: uri
+      loaded_issue_version:
+        type: integer | null
+      issue_analysis_version:
+        type: integer | null
+      repository_context_version:
+        type: integer | null
+      references:
+        type: list
+        items:
+          type: string
+      unavailable_inputs:
+        type: list
+        items:
+          type: string
+  focus:
+    type: object | null
+    required: [summary, paths_of_interest]
+    fields:
+      summary:
+        type: string
+      paths_of_interest:
+        type: list
+        items:
+          type: string
+  areas:
+    type: list
+    items:
+      type: object
+      required:
+        - area
+        - category
+        - relevant_paths
+        - impact_type
+        - rationale
+        - evidence
+        - dependencies
+        - confidence
+        - recommended_investigation_points
+      fields:
+        area:
+          type: string
+        category:
+          type: enum
+          values:
+            - application
+            - library
+            - module
+            - file
+            - api
+            - test
+            - configuration
+            - documentation
+            - data_model
+            - dependency
+        relevant_paths:
+          type: list
+          items:
+            type: string
+        impact_type:
+          type: enum
+          values: [direct, indirect, uncertain]
+        rationale:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: string
+        dependencies:
+          type: list
+          items:
+            type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        recommended_investigation_points:
+          type: list
+          items:
+            type: string
+  recommended_next_skill:
+    type: enum
+    values:
+      - inspect-repository
+      - detect-repository-conventions
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - insufficient_context
+          - analysis_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The source preserves supplied task, issue, and handoff references without inferring an issue identity or silently substituting the current workspace.
+  - Identified status requires enough validated task or issue evidence and repository context to support the reported areas; partial status records material unavailable context, and blocked status records missing or invalid required input.
+  - Every area, path, relationship, and impact statement is grounded in issue, task, handoff, repository file, configuration, dependency, API, test, or documentation evidence.
+  - No area or repository-relative path is invented. A conceptual area may have an empty relevant_paths list when no path-level mapping is evidenced.
+  - Direct impact is reserved for an explicitly requested area or a repository location with a strong evidenced relationship to the requested change; indirect impact requires a traced downstream or supporting relationship; uncertain impact remains clearly marked when the relationship is plausible but unverified.
+  - Dependencies contain only named areas or repository-relative paths whose relationship is supported by the evidence listed for that area.
+  - Confidence reflects evidence quality and completeness, not implementation effort or personal preference.
+  - Recommended investigation points identify evidence to verify and do not prescribe an implementation, architecture, project-specific test strategy, or product decision.
+  - The result identifies scope only; it does not design or implement the requested solution.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for identified results and non-null for partial or blocked results.

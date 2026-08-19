@@ -1,0 +1,290 @@
+schema: LoadedPullRequestDiscussions
+version: 1
+description: Read-only GitHub pull-request discussion snapshot grouped by review thread and affected location.
+required:
+  - status
+  - pull_request
+  - reviews
+  - threads
+  - conversation_comments
+  - summary
+  - metadata
+  - unavailable_fields
+  - failure
+fields:
+  status:
+    type: enum
+    values: [loaded, partial, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  reviews:
+    type: list | null
+    items:
+      type: object
+      required: [body, state]
+      fields:
+        id:
+          type: string | null
+        author:
+          type: object | null
+          required: [login]
+          fields:
+            login:
+              type: string
+            name:
+              type: string | null
+            url:
+              type: string | null
+        body:
+          type: string
+          constraints:
+            - Preserve the exact review body returned by GitHub, including empty strings.
+        state:
+          type: enum
+          values: [APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING]
+        submitted_at:
+          type: string | null
+          format: iso-8601
+        updated_at:
+          type: string | null
+          format: iso-8601
+        dismissed_at:
+          type: string | null
+          format: iso-8601
+        commit_sha:
+          type: string | null
+        url:
+          type: string | null
+          format: uri
+  threads:
+    type: list | null
+    items:
+      type: object
+      required: [id, location, is_resolved, is_outdated, comments]
+      fields:
+        id:
+          type: string
+        review_id:
+          type: string | null
+        location:
+          type: object
+          required: [path, start_line, line, side]
+          fields:
+            path:
+              type: string | null
+            start_line:
+              type: integer | null
+              minimum: 1
+            line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+            start_side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+            original_start_line:
+              type: integer | null
+              minimum: 1
+            original_line:
+              type: integer | null
+              minimum: 1
+            original_side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+            original_start_side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+            diff_position:
+              type: integer | null
+              minimum: 1
+            subject_type:
+              type: string | null
+            commit_sha:
+              type: string | null
+            original_commit_sha:
+              type: string | null
+        is_resolved:
+          type: boolean | null
+        is_outdated:
+          type: boolean | null
+        resolved_by:
+          type: object | null
+          required: [login]
+          fields:
+            login:
+              type: string
+            name:
+              type: string | null
+            url:
+              type: string | null
+        resolved_at:
+          type: string | null
+          format: iso-8601
+        comments:
+          type: list
+          items:
+            type: object
+            required: [id, body]
+            fields:
+              id:
+                type: string
+              database_id:
+                type: integer | null
+                minimum: 1
+              author:
+                type: object | null
+                required: [login]
+                fields:
+                  login:
+                    type: string
+                  name:
+                    type: string | null
+                  url:
+                    type: string | null
+              body:
+                type: string
+                constraints:
+                  - Preserve the exact comment body returned by GitHub, including empty strings.
+              created_at:
+                type: string | null
+                format: iso-8601
+              updated_at:
+                type: string | null
+                format: iso-8601
+              url:
+                type: string | null
+                format: uri
+              reply_to_id:
+                type: string | null
+              pull_request_review_id:
+                type: string | null
+              commit_sha:
+                type: string | null
+              is_minimized:
+                type: boolean | null
+  conversation_comments:
+    type: list | null
+    items:
+      type: object
+      required: [body]
+      fields:
+        id:
+          type: string | null
+        author:
+          type: object | null
+          required: [login]
+          fields:
+            login:
+              type: string
+            name:
+              type: string | null
+            url:
+              type: string | null
+        body:
+          type: string
+          constraints:
+            - Preserve the exact comment body returned by GitHub, including empty strings.
+        created_at:
+          type: string | null
+          format: iso-8601
+        updated_at:
+          type: string | null
+          format: iso-8601
+        url:
+          type: string | null
+          format: uri
+        is_minimized:
+          type: boolean | null
+  summary:
+    type: object | null
+    required:
+      - review_count
+      - thread_count
+      - open_thread_count
+      - resolved_thread_count
+      - comment_count
+    fields:
+      review_count:
+        type: integer
+        minimum: 0
+      thread_count:
+        type: integer
+        minimum: 0
+      open_thread_count:
+        type: integer
+        minimum: 0
+      resolved_thread_count:
+        type: integer
+        minimum: 0
+      outdated_thread_count:
+        type: integer
+        minimum: 0
+      comment_count:
+        type: integer
+        minimum: 0
+        constraints:
+          - Count all comments in threads and all conversation comments; do not count top-level review bodies.
+      thread_comment_count:
+        type: integer
+        minimum: 0
+      conversation_comment_count:
+        type: integer
+        minimum: 0
+  metadata:
+    type: object | null
+    fields:
+      retrieved_at:
+        type: string | null
+        format: iso-8601
+  unavailable_fields:
+    type: list
+    items: string
+    constraints:
+      - Use dot paths such as reviews, threads, threads.comments, or conversation_comments.
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - invalid_pull_request_number
+          - repository_not_found
+          - pull_request_not_found
+          - inaccessible
+          - auth_unavailable
+          - api_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The snapshot is an immutable source reference for downstream workflows; consumers must not rewrite, rank, or reinterpret retrieved fields.
+  - The pull-request identity must come from the supplied repository and number or URL; it is never inferred from the current workspace, branch, or text.
+  - Reviews are top-level review submissions, threads are inline review conversations, and conversation_comments are pull-request issue comments outside review threads.
+  - Each thread is represented once by its GitHub thread ID and contains its replies in chronological order when GitHub provides them.
+  - Threads are grouped by their GitHub thread identity and affected location; a missing location remains null and is never guessed from a reply.
+  - The thread resolution and outdated states are retrieved GitHub facts; they are never inferred from the latest comment, commit, or body text.
+  - Review bodies and comment bodies preserve GitHub's returned text exactly, including whitespace and empty strings.
+  - Authors and all available creation, update, submission, dismissal, and resolution timestamps are preserved; unavailable values remain null.
+  - An empty list means that the field was retrieved and contains no entries; null means that the field was unavailable or not produced.
+  - Every unavailable field is listed in unavailable_fields using its output field path.
+  - comment_count equals thread_comment_count plus conversation_comment_count and excludes top-level review bodies.
+  - loaded requires all requested discussion sources to be retrieved; partial means the primary pull-request identity was retrieved but one or more discussion sources or paginated enrichments were unavailable; blocked means the primary identity load failed.
+  - This Skill is strictly read-only and must never reply to, resolve, unresolve, minimize, dismiss, submit, or otherwise modify GitHub discussions.

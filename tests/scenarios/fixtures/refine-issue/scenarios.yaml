@@ -1,0 +1,136 @@
+schema: CommandScenario
+version: 1
+scenarios:
+  - id: refine-issue-happy-path
+    command: refine-issue
+    description: Publishes one reviewed issue revision for the exact issue target.
+    expected:
+      status: completed
+      successful_writes: [create-github-issue]
+      preserved_artifacts: []
+    target:
+      repository: &repo octo-org/widgets
+      issue_number: &issue 42
+      exact: true
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs:
+      IssueDraft:
+        patch:
+          status: approved
+          mode: edit
+          issue:
+            repository: *repo
+            number: *issue
+            url: https://github.com/octo-org/widgets/issues/42
+          approval:
+            exact_payload: true
+            publication_authorized: true
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+      - operation: issue-agent:refine
+        effect: read
+        handoff: IssueDraft
+      - operation: create-github-issue
+        effect: write
+        handoff: IssueDraft
+
+  - id: refine-issue-missing-issue
+    command: refine-issue
+    description: Refuses overwrite when the issue identity is missing.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: create-github-issue
+      preserved_artifacts: []
+    target:
+      repository: octo-org/widgets
+      issue_number: null
+      exact: false
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs: {}
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+      - operation: issue-agent:refine
+        effect: read
+      - operation: create-github-issue
+        effect: write
+
+  - id: refine-issue-load-api-error
+    command: refine-issue
+    description: Stops before overwrite when loading the source issue fails.
+    expected:
+      status: partial
+      successful_writes: []
+      blocked_operation: load-issue
+      preserved_artifacts: []
+    target:
+      repository: octo-org/widgets
+      issue_number: 42
+      exact: true
+    facts:
+      api_errors: [load-issue]
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs: {}
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+        result: api-error
+      - operation: issue-agent:refine
+        effect: read
+      - operation: create-github-issue
+        effect: write
+
+  - id: refine-issue-unapproved-draft
+    command: refine-issue
+    description: Never overwrites an issue from an unapproved revision.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: create-github-issue
+      preserved_artifacts: []
+    target:
+      repository: octo-org/widgets
+      issue_number: 42
+      exact: true
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs:
+      IssueDraft:
+        patch:
+          mode: edit
+          issue:
+            repository: octo-org/widgets
+            number: 42
+            url: https://github.com/octo-org/widgets/issues/42
+          approval:
+            exact_payload: false
+            publication_authorized: false
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+      - operation: issue-agent:refine
+        effect: read
+        handoff: IssueDraft
+      - operation: create-github-issue
+        effect: write
+        handoff: IssueDraft

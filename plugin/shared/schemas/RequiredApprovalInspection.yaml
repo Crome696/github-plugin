@@ -1,0 +1,256 @@
+schema: RequiredApprovalInspection
+version: 1
+description: Read-only evidence-backed inspection of one pull request's explicitly retrieved review-approval requirements and current review state.
+required:
+  - status
+  - repository
+  - pull_request
+  - base_branch
+  - head_sha
+  - requirements
+  - requirement_sources
+  - reviews
+  - review_requests
+  - summary
+  - satisfied_requirements
+  - missing_requirements
+  - active_change_requests
+  - uncertainties
+  - unavailable_fields
+  - failure
+  - inspected_at
+fields:
+  status:
+    type: enum
+    values: [inspected, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  base_branch:
+    type: string | null
+  head_sha:
+    type: string | null
+  requirements:
+    type: object
+    required: [status, required_approving_review_count, evidence]
+    fields:
+      status:
+        type: enum
+        values: [known, empty, partial, unavailable]
+      required_approving_review_count:
+        type: integer | null
+        minimum: 0
+      evidence:
+        type: list
+        items: string
+  requirement_sources:
+    type: list
+    items:
+      type: object
+      required: [source, status, endpoint, required_requirements, evidence]
+      fields:
+        source:
+          type: enum
+          values: [branch_protection, ruleset]
+        status:
+          type: enum
+          values: [loaded, empty, partial, unavailable]
+        branch:
+          type: string | null
+        ruleset_id:
+          type: string | null
+        ruleset_name:
+          type: string | null
+        enforcement:
+          type: string | null
+        endpoint:
+          type: string | null
+          format: uri
+        required_requirements:
+          type: list
+          items:
+            type: object
+            required: [kind, value, evidence]
+            fields:
+              kind:
+                type: enum
+                values: [approving_review_count, code_owner_review, last_push_approval, dismiss_stale_reviews, required_review_thread_resolution]
+              value:
+                type: string | integer | boolean
+              evidence:
+                type: list
+                items: string
+        evidence:
+          type: list
+          items: string
+        unavailable_reason:
+          type: string | null
+  policy_conditions:
+    type: list
+    items:
+      type: object
+      required: [kind, status, evidence]
+      fields:
+        kind:
+          type: enum
+          values: [code_owner_review, last_push_approval, dismiss_stale_reviews, required_review_thread_resolution]
+        status:
+          type: enum
+          values: [required, satisfied, not_required, unavailable, not_assessed]
+        evidence:
+          type: list
+          items: string
+        reason:
+          type: string | null
+  reviews:
+    type: list
+    items:
+      type: object
+      required: [id, author, state, submitted_at, current_for_head, qualifying_approval, evidence]
+      fields:
+        id:
+          type: string
+        author:
+          type: string | null
+        state:
+          type: string
+        submitted_at:
+          type: string | null
+          format: iso-8601
+        commit_id:
+          type: string | null
+        current_for_head:
+          type: boolean | null
+        qualifying_approval:
+          type: boolean | null
+        evidence:
+          type: list
+          items: string
+  review_requests:
+    type: list
+    items:
+      type: object
+      required: [requested_reviewer, reviewer_type, evidence]
+      fields:
+        requested_reviewer:
+          type: string
+        reviewer_type:
+          type: enum
+          values: [user, team, code_owner, unknown]
+        state:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+  summary:
+    type: object
+    required: [effective_approval_count, active_change_request_count, pending_review_request_count, required_approvals, requirements_met]
+    fields:
+      effective_approval_count:
+        type: integer | null
+        minimum: 0
+      active_change_request_count:
+        type: integer | null
+        minimum: 0
+      pending_review_request_count:
+        type: integer | null
+        minimum: 0
+      required_approvals:
+        type: integer | null
+        minimum: 0
+      requirements_met:
+        type: boolean | null
+  satisfied_requirements:
+    type: list
+    items:
+      type: object
+      required: [id, description, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  missing_requirements:
+    type: list
+    items:
+      type: object
+      required: [id, description, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  active_change_requests:
+    type: list
+    items:
+      type: object
+      required: [review_id, author, evidence]
+      fields:
+        review_id:
+          type: string
+        author:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required: [id, question, evidence, verification]
+      fields:
+        id:
+          type: string
+        question:
+          type: string
+        evidence:
+          type: list
+          items: string
+        verification:
+          type: string
+  unavailable_fields:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values: [missing_identity, invalid_pull_request_number, repository_not_found, pull_request_not_found, inaccessible, auth_unavailable, requirement_unavailable, api_failure, stale_head]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  inspected_at:
+    type: string | null
+    format: iso-8601
+invariants:
+  - The inspection is read-only and tied to the recorded pull-request head SHA; it never requests, submits, dismisses, or changes reviews and never authorizes merging.
+  - A review requirement is emitted only from retrieved branch-protection or applicable active-ruleset evidence; repository habits, review counts, workflow files, pull-request text, and pending requests never create a requirement.
+  - unavailable and partial policy evidence never become an empty policy or a satisfied requirement.
+  - An approval counts only when the retrieved review state is current for the recorded head and the evidence supports that it is not dismissed or superseded.
+  - Active change requests remain visible and actionable only when their current review evidence supports that state; pending review requests are not blockers unless an explicit retrieved requirement makes them relevant.
+  - A head change invalidates the inspection and requires a fresh inspection; evidence from different heads must not be combined.
+  - inspected requires the primary pull-request payload, reviews, review requests, and all requested policy sources; partial preserves available evidence when a secondary source is unavailable; blocked means the exact identity or primary payload could not be loaded.

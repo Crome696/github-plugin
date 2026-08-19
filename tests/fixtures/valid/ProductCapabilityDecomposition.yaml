@@ -1,0 +1,21 @@
+schema: ProductCapabilityDecomposition
+version: 1
+status: decomposed
+source:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  loaded_issue_version: 1
+  loaded_issue_status: loaded
+  product_capability_map_version: 1
+  product_capability_map_status: mapped
+  unavailable_fields: []
+units: []
+relations: []
+gaps: []
+recommended_next_skill: rewrite-github-issue
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false

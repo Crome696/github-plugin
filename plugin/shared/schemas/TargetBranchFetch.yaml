@@ -1,0 +1,112 @@
+schema: TargetBranchFetch
+version: 1
+description: Approval-bounded fetch and verification result for one exact remote target branch.
+required:
+  - status
+  - repository
+  - remote
+  - branch_name
+  - remote_ref
+  - tracking_ref
+  - remote_sha
+  - tracking_sha
+  - authorization
+  - fetch
+  - verification
+  - failure
+  - recommended_next_skill
+fields:
+  status:
+    type: enum
+    values: [verified, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  remote:
+    type: object
+    required: [name, owner_repository, fetch_url_sanitized]
+    fields:
+      name:
+        type: string
+      owner_repository:
+        type: string | null
+        format: owner/repository
+      fetch_url_sanitized:
+        type: string | null
+  branch_name:
+    type: string
+  remote_ref:
+    type: string
+    value: refs/heads/<branch_name>
+  tracking_ref:
+    type: string
+    value: refs/remotes/<remote.name>/<branch_name>
+  remote_sha:
+    type: string | null
+    format: full git commit SHA
+  tracking_sha:
+    type: string | null
+    format: full git commit SHA
+  authorization:
+    type: object
+    required: [approved, scope, evidence]
+    fields:
+      approved:
+        type: boolean
+      scope:
+        type: string | null
+      evidence:
+        type: string | null
+  fetch:
+    type: object
+    required: [attempted, result, refspec, completed_at, evidence]
+    fields:
+      attempted:
+        type: boolean
+      result:
+        type: enum
+        values: [success, up_to_date, failed, not_run]
+      refspec:
+        type: string | null
+      completed_at:
+        type: string | null
+        format: ISO 8601
+      evidence:
+        type: list
+        items: string
+  verification:
+    type: object
+    required: [repository_match, remote_branch_exists, tracking_ref_exists, sha_match]
+    fields:
+      repository_match:
+        type: enum
+        values: [pass, fail, unknown]
+      remote_branch_exists:
+        type: enum
+        values: [pass, fail, unknown]
+      tracking_ref_exists:
+        type: enum
+        values: [pass, fail, unknown]
+      sha_match:
+        type: enum
+        values: [pass, fail, unknown]
+  failure:
+    type: object | null
+    required: [code, description, evidence]
+    fields:
+      code:
+        type: enum
+        values: [invalid_input, repository_mismatch, remote_mismatch, branch_missing, authorization_missing, fetch_failed, verification_failed, sha_mismatch]
+      description:
+        type: string
+      evidence:
+        type: list
+        items: string
+  recommended_next_skill:
+    type: enum
+    values: [none, inspect-repository, clarify-input]
+invariants:
+  - Only the exact authorized remote tracking ref may be updated.
+  - A verified result requires matching full remote and tracking commit SHAs.
+  - Fetch never changes the working tree, index, HEAD, local branches, worktrees, or remote configuration.
+  - Rebase, merge, reset, checkout, restore, clean, push, and worktree operations are prohibited.

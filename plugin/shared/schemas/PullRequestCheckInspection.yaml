@@ -1,0 +1,235 @@
+schema: PullRequestCheckInspection
+version: 1
+description: Read-only evidence-backed inspection of one pull request's status checks, CI results, and explicitly retrieved required checks.
+required:
+  - status
+  - repository
+  - pull_request
+  - base_branch
+  - head_sha
+  - requirements
+  - requirement_sources
+  - required_checks
+  - checks
+  - summary
+  - unavailable_fields
+  - failure
+  - inspected_at
+fields:
+  status:
+    type: enum
+    values: [inspected, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  base_branch:
+    type: string | null
+  head_sha:
+    type: string | null
+  requirements:
+    type: object
+    required: [status, evidence]
+    fields:
+      status:
+        type: enum
+        values: [known, partial, unavailable]
+      evidence:
+        type: list
+        items: string
+  requirement_sources:
+    type: list
+    items:
+      type: object
+      required: [source, status, required_checks, evidence]
+      fields:
+        source:
+          type: enum
+          values: [branch_protection, ruleset]
+        status:
+          type: enum
+          values: [loaded, empty, partial, unavailable]
+        branch:
+          type: string | null
+        ruleset_id:
+          type: string | null
+        ruleset_name:
+          type: string | null
+        enforcement:
+          type: string | null
+        endpoint:
+          type: string | null
+          format: uri
+        required_checks:
+          type: list
+          items:
+            type: object
+            required: [name, evidence]
+            fields:
+              name:
+                type: string
+              context:
+                type: string | null
+              integration_id:
+                type: integer | null
+              evidence:
+                type: list
+                items: string
+        evidence:
+          type: list
+          items: string
+        unavailable_reason:
+          type: string | null
+  required_checks:
+    type: list
+    items:
+      type: object
+      required: [name, sources, evidence]
+      fields:
+        name:
+          type: string
+        context:
+          type: string | null
+        sources:
+          type: list
+          items: string
+        evidence:
+          type: list
+          items: string
+  checks:
+    type: list
+    items:
+      type: object
+      required: [name, result, required, evidence]
+      fields:
+        name:
+          type: string
+        context:
+          type: string | null
+        result:
+          type: enum
+          values: [pass, fail, pending, skipped, missing]
+        required:
+          type: boolean | null
+        source:
+          type: enum
+          values: [check_run, commit_status, status_rollup, missing_required_check]
+        raw_status:
+          type: string | null
+        raw_conclusion:
+          type: string | null
+        details_url:
+          type: string | null
+          format: uri
+        workflow_name:
+          type: string | null
+        run_id:
+          type: string | null
+        started_at:
+          type: string | null
+          format: iso-8601
+        completed_at:
+          type: string | null
+          format: iso-8601
+        failure_summary:
+          type: string | null
+        evidence:
+          type: string
+  summary:
+    type: object
+    required:
+      - total
+      - pass
+      - fail
+      - pending
+      - skipped
+      - missing
+      - required_pass
+      - required_failed
+      - required_pending
+      - required_skipped
+      - required_missing
+    fields:
+      total:
+        type: integer
+        minimum: 0
+      pass:
+        type: integer
+        minimum: 0
+      fail:
+        type: integer
+        minimum: 0
+      pending:
+        type: integer
+        minimum: 0
+      skipped:
+        type: integer
+        minimum: 0
+      missing:
+        type: integer
+        minimum: 0
+      required_pass:
+        type: integer
+        minimum: 0
+      required_failed:
+        type: integer
+        minimum: 0
+      required_pending:
+        type: integer
+        minimum: 0
+      required_skipped:
+        type: integer
+        minimum: 0
+      required_missing:
+        type: integer
+        minimum: 0
+  unavailable_fields:
+    type: list
+    items: string
+    constraints:
+      - Use dot paths such as requirement_sources.branch_protection, checks, or checks.failure_summary.
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - invalid_pull_request_number
+          - repository_not_found
+          - pull_request_not_found
+          - inaccessible
+          - auth_unavailable
+          - requirement_unavailable
+          - api_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  inspected_at:
+    type: string | null
+    format: iso-8601
+invariants:
+  - The inspection is read-only and tied to the recorded pull-request head SHA; it does not authorize merging, rerunning checks, changing GitHub resources, or changing local files.
+  - Every required check in required_checks is copied only from a successfully retrieved branch-protection or applicable-ruleset response; no requirement is inferred from repository convention, workflow names, branch names, pull-request text, or check frequency.
+  - A required check is classified as missing only when a retrieved requirement has no exact matching check or commit-status context for the recorded head SHA; unavailable requirement evidence does not produce missing checks.
+  - required is true only for an exact match to retrieved requirement evidence, false only when requirement evidence is known and the check is not required, and null when requirement evidence is unavailable or ambiguous.
+  - Skipped checks are not passes, and failure_summary contains only sanitized, concise output or annotations when GitHub provides them.
+  - inspected requires the primary pull-request check data and all required-check sources requested by the workflow to be available; partial preserves available evidence when an enrichment or requirement source is unavailable; blocked means the primary pull-request identity or payload could not be loaded.
+  - An empty required-check list from an available source means that source reported no required checks; it is distinct from an unavailable source.
+  - Unknown or unsupported GitHub states are preserved in raw_status or raw_conclusion and cause partial status rather than being assigned an invented result.

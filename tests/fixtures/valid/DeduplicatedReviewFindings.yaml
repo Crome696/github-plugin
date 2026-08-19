@@ -1,0 +1,35 @@
+schema: DeduplicatedReviewFindings
+version: 1
+status: deduplicated
+repository: octo-org/widgets
+pull_request:
+  number: 1
+  url: https://github.com/octo-org/widgets
+head_sha: head_sha-value
+source:
+  schema: DetectedReviewFindings
+  version: 1
+  status: detected
+  finding_count: 1
+  uncertainty_count: 1
+  findings_processed: 1
+  evidence: []
+discussions:
+  schema: LoadedPullRequestDiscussions
+  version: 1
+  availability: loaded
+  thread_count: 1
+  evidence: []
+findings: []
+suppressed: []
+related_threads: []
+uncertainties: []
+summary: summary-value
+recommended_next_skill: classify-review-findings
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false
+  evidence: []
+deduplicated_at: '2026-01-01T00:00:00.000Z'

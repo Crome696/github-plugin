@@ -1,0 +1,300 @@
+schema: ClassifiedReviewFindings
+version: 1
+description: Read-only classification of deduplicated pull-request review findings by evidence-supported severity and domain category.
+required:
+  - status
+  - repository
+  - pull_request
+  - head_sha
+  - source
+  - findings
+  - uncertainties
+  - summary
+  - recommended_next_skill
+  - failure
+  - classified_at
+fields:
+  status:
+    type: enum
+    values: [classified, partial, blocked]
+  repository:
+    type: string | null
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  head_sha:
+    type: string | null
+  source:
+    type: object | null
+    required:
+      - schema
+      - version
+      - status
+      - finding_count
+      - uncertainty_count
+      - suppressed_count
+      - findings_preserved
+      - evidence
+    fields:
+      schema:
+        type: enum
+        values: [DeduplicatedReviewFindings]
+      version:
+        type: integer
+        values: [1]
+      status:
+        type: enum
+        values: [deduplicated, partial, blocked]
+      finding_count:
+        type: integer
+        minimum: 0
+      uncertainty_count:
+        type: integer
+        minimum: 0
+      suppressed_count:
+        type: integer
+        minimum: 0
+      findings_preserved:
+        type: integer
+        minimum: 0
+      evidence:
+        type: list
+        items: string
+      unavailable_fields:
+        type: list
+        items: string
+      limitation:
+        type: string | null
+  findings:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - status
+        - category
+        - severity
+        - confidence
+        - needs_discussion
+        - discussion_reason
+        - classification_rationale
+        - location
+        - evidence
+        - impact
+        - recommendation
+        - verification
+        - sources
+        - merged_from
+        - related_threads
+      fields:
+        id:
+          type: string
+          format: F-001
+        status:
+          type: enum
+          values: [proposed]
+        category:
+          type: enum
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        severity:
+          type: enum
+          values: [blocker, major, minor, suggestion]
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        needs_discussion:
+          type: boolean
+        discussion_reason:
+          type: string | null
+        classification_rationale:
+          type: string
+          constraints:
+            - Explains the selected severity and category using observed impact and evidence.
+            - Does not rely on the wording strength of the finding.
+        previous_severity:
+          type: enum | null
+          values: [blocker, major, minor, nit, suggestion]
+        previous_category:
+          type: enum | null
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        location:
+          type: object
+          required: [path]
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+            commit_sha:
+              type: string | null
+        evidence:
+          type: string
+          constraints:
+            - Preserves the observed behavior or material gap and its relevant source.
+            - Does not rely on an unverified assumption or wording alone.
+        impact:
+          type: string
+        recommendation:
+          type: string
+        verification:
+          type: string
+        sources:
+          type: list
+          items:
+            type: enum
+            values:
+              - diff_analysis
+              - issue_coverage
+              - checks
+              - discussions
+              - external_rules
+        related_acceptance_criterion:
+          type: string | null
+        references:
+          type: list
+          items: string
+        merged_from:
+          type: list
+          items: string
+        related_threads:
+          type: list
+          items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - category
+        - statement
+        - evidence
+        - limitation
+        - confidence
+        - verification
+      fields:
+        id:
+          type: string
+          format: U-001
+        category:
+          type: enum
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        statement:
+          type: string
+        evidence:
+          type: string
+        limitation:
+          type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        verification:
+          type: string
+        location:
+          type: object | null
+          required: [path]
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+        sources:
+          type: list
+          items:
+            type: enum
+            values:
+              - diff_analysis
+              - issue_coverage
+              - checks
+              - discussions
+              - external_rules
+  summary:
+    type: string
+  recommended_next_skill:
+    type: enum
+    values:
+      - deduplicate-review-findings
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - source_conflict
+          - incomplete_source
+          - classification_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  classified_at:
+    type: string | null
+    format: iso-8601
+invariants:
+  - The classification is read-only and never publishes comments, reviews, change requests, approvals, merges, or discussion updates.
+  - The result is tied to one verified repository, pull request, and head SHA; conflicting identity blocks classification.
+  - Every active input finding is preserved exactly once by its original ID; classification never removes, deduplicates, dismisses, or publishes a finding. Suppressed findings remain auditable through the deduplicated source handoff.
+  - Severity is one of blocker, major, minor, or suggestion and reflects observed impact supported by evidence, never wording strength, reviewer status, or personal preference.
+  - Incoming nit severity is mapped to suggestion in this contract without changing the existing ReviewFinding, DetectedReviewFindings, or DeduplicatedReviewFindings contracts.
+  - Category reflects the domain of the observed problem and must not be invented when the evidence cannot support it.
+  - "A finding with insufficient, conflicting, or low-confidence evidence remains in findings and has needs_discussion: true with a concrete discussion reason."
+  - "merged_from and related_threads are preserved from the deduplicated source and are not recomputed during classification."
+  - Input uncertainties are carried forward; a finding is never silently removed or converted into an uncertainty.
+  - Classified status requires a valid version-1 DeduplicatedReviewFindings input and an evidence-backed classification for every active finding; partial preserves usable findings with material source limitations; blocked means classification cannot be reliable.
+  - Failure is null for classified results and non-null for partial or blocked results.

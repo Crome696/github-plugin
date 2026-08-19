@@ -1,0 +1,221 @@
+schema: FeedbackResolutionCapabilities
+version: 1
+description: Read-only, evidence-based resolution of external skills and rules needed to address explicitly confirmed open pull-request feedback.
+required:
+  - status
+  - pull_request
+  - source
+  - scope
+  - focus
+  - capabilities
+  - missing_capabilities
+  - unresolved_questions
+  - blockers
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [resolved, partial, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url, head_sha]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      head_sha:
+        type: string
+  source:
+    type: object
+    required: [classified_review_feedback_version, implementation_context, references, unavailable_inputs]
+    fields:
+      classified_review_feedback_version:
+        type: integer
+      collected_review_feedback_version:
+        type: integer | null
+      implementation_context:
+        type: enum
+        values: [supplied, not_supplied, unavailable]
+      references:
+        type: list
+        items: string
+      unavailable_inputs:
+        type: list
+        items: string
+  scope:
+    type: object
+    required: [confirmed_feedback_item_ids, excluded_feedback_item_ids, scope_guard]
+    fields:
+      confirmed_feedback_item_ids:
+        type: list
+        items: string
+      excluded_feedback_item_ids:
+        type: list
+        items:
+          type: object
+          required: [id, reason]
+          fields:
+            id:
+              type: string
+            reason:
+              type: string
+      scope_guard:
+        type: string
+  focus:
+    type: object
+    required: [summary, technologies, architecture_signals, testing_signals, security_signals, documentation_signals, risks]
+    fields:
+      summary:
+        type: string
+      technologies:
+        type: list
+        items: string
+      architecture_signals:
+        type: list
+        items: string
+      testing_signals:
+        type: list
+        items: string
+      security_signals:
+        type: list
+        items: string
+      documentation_signals:
+        type: list
+        items: string
+      risks:
+        type: list
+        items: string
+  capabilities:
+    type: list
+    items:
+      type: object
+      required: [feedback_item_ids, capability, type, relevance, priority, required_outcome, intended_usage, scope_boundary, availability, evidence, confidence]
+      fields:
+        feedback_item_ids:
+          type: list
+          items: string
+        capability:
+          type: string
+        type:
+          type: enum
+          values: [skill, rule, agent, tool, domain]
+        relevance:
+          type: enum
+          values: [required, optional]
+        priority:
+          type: enum
+          values: [high, medium, low]
+        required_outcome:
+          type: string
+        intended_usage:
+          type: string
+        scope_boundary:
+          type: string
+        availability:
+          type: enum
+          values: [available, unavailable, missing]
+        evidence:
+          type: list
+          items: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  missing_capabilities:
+    type: list
+    items:
+      type: object
+      required: [feedback_item_ids, capability, type, relevance, priority, required_outcome, intended_usage, availability, impact, evidence, confidence]
+      fields:
+        feedback_item_ids:
+          type: list
+          items: string
+        capability:
+          type: string
+        type:
+          type: enum
+          values: [skill, rule, agent, tool, domain]
+        relevance:
+          type: enum
+          values: [required, optional]
+        priority:
+          type: enum
+          values: [high, medium, low]
+        required_outcome:
+          type: string
+        intended_usage:
+          type: string
+        availability:
+          type: enum
+          values: [unavailable, missing]
+        impact:
+          type: enum
+          values: [blocking, manual_required]
+        evidence:
+          type: list
+          items: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  unresolved_questions:
+    type: list
+    items:
+      type: object
+      required: [question, impact, blocking, evidence]
+      fields:
+        question:
+          type: string
+        impact:
+          type: string
+        blocking:
+          type: boolean
+        evidence:
+          type: list
+          items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [description, resolution_needed, evidence]
+      fields:
+        description:
+          type: string
+        resolution_needed:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: string
+  recommended_next_skill:
+    type: enum
+    values: [build-feedback-resolution-plan, none]
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, unsupported_version, conflicting_evidence, insufficient_context, resolution_failure]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The result identifies exactly one pull request and one head SHA.
+  - Only explicitly confirmed feedback item IDs with triage_status open may receive capability assignments.
+  - Resolved, outdated, addressed, uncertain, and excluded items are never reactivated as implementation work.
+  - Every capability and missing_capabilities entry preserves at least one feedback item ID.
+  - "availability: available requires current host-session evidence; repository files, technology names, and generic capability descriptions do not prove availability."
+  - unavailable identifies a known capability that cannot be used in the current session; missing identifies a required or useful capability for which no specific capability was found.
+  - blocking identifies a gap that prevents reliable resolution planning or execution; manual_required identifies a gap requiring an owner, decision, or capability outside the current session.
+  - The handoff resolves applicability only and never executes, installs, authorizes, or publishes a capability or implementation.
+  - The GitHub plugin does not duplicate technology, architecture, testing, security, documentation, domain, or product implementation knowledge.
+  - failure is null only for resolved results; partial and blocked results preserve failure evidence.

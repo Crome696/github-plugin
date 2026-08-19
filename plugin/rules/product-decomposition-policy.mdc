@@ -1,0 +1,144 @@
+---
+description: Split large GitHub product issues into nearly atomic sub-issues with one outcome, verifiable acceptance criteria, and independent value.
+alwaysApply: true
+---
+
+# Product Decomposition Policy
+
+## Purpose
+
+Keep GitHub product issues nearly atomic. Split a large request into
+sub-issues only when each resulting issue delivers one clearly bounded,
+independently understandable outcome with verifiable acceptance criteria and
+its own product value.
+
+This is issue-quality policy for GitHub collaboration. It does not add
+product-specific business rules, implementation knowledge, or a substitute
+for `ImplementationPlan` steps.
+
+Before locking a split or selected slice, apply
+`product-interview-policy.mdc`. Gather missing product decisions through
+that adaptive user interview. Do not invent actors, outcomes, behavior,
+business rules, variants, edge cases, priorities, dependencies,
+constraints, or out-of-scope boundaries to make a request look atomic.
+
+## Apply when
+
+Use this rule while creating, structuring, analyzing, assessing, rewriting,
+or refining a GitHub issue, and before planning implementation of that issue.
+
+Do not treat technical task breakdown, layer splits, or implementation-plan
+steps as product sub-issues.
+
+## Atomic sub-issue
+
+Each GitHub issue or proposed sub-issue MUST have:
+
+1. Exactly one clearly bounded outcome that a reader can understand without
+   reconstructing intent from a parent issue.
+2. Verifiable acceptance criteria that pass or fail for that one outcome.
+3. Distinct product value for affected users or stakeholders.
+4. A safe stopping point: the slice can be implemented and validated even if
+   sibling issues wait, unless a documented dependency makes independent
+   validation impossible.
+
+A parent tracker is allowed only when every child remains independently
+valuable and complete. The parent must not hide a compound requirement.
+
+`issue-agent` still prepares exactly one issue per run. Propose the split,
+ask which atomic slice to publish when more than one remains, and do not
+create extra issues under the original one-issue authorization.
+
+## Too large
+
+An issue is too large when any of the following is true:
+
+- It contains more than one independent user- or stakeholder-visible outcome.
+- It mixes unrelated journeys, audiences, or value propositions.
+- It mixes discovery or research with delivery of a product outcome.
+- It hides multiple requirements behind "and", "also", "including", or a
+  bundled feature list.
+- Completion cannot be validated as one result.
+- The work exceeds a credible review and delivery boundary for one issue.
+
+Do not publish or rewrite a too-large request as one compound GitHub issue.
+Propose nearly atomic sub-issues and continue with exactly one selected
+slice.
+
+## Too small
+
+An issue is too small, or artificially fragmented, when:
+
+- It has no distinct product value (for example "add a DTO", "write tests",
+  or "prepare a migration" as a standalone issue when those are only steps
+  of one outcome).
+- Understanding or acceptance requires a sibling issue.
+- One inseparable outcome is split into labels, layers, or phases.
+- The slices would have to ship together to be valuable or testable.
+
+Keep or merge those slices. Do not create GitHub issues merely to look
+smaller.
+
+## Atomic enough
+
+An issue is atomic enough when:
+
+- One outcome is independently understandable.
+- Acceptance criteria can pass or fail without sibling delivery.
+- Shipping the slice leaves a complete increment, not a partial hole.
+- Remaining work can wait without leaving this issue incomplete.
+- Dependencies are explicit rather than hidden in the description.
+
+## Dependencies
+
+Dependencies MAY constrain atomicity when independent validation is
+impossible, such as an inseparable security, migration, or contract
+decision. In that case:
+
+- Keep the inseparable work in one issue, or sequence slices with an
+  explicit prerequisite, owner, and validation reason.
+- Prefer sequencing over merging when each slice still has product value
+  and its own acceptance evidence.
+- Merge only when a slice cannot be understood or validated alone.
+- Record the dependency, order, and reason in the issue. Do not use
+  implied backend/frontend phases to hide one outcome.
+
+Do not derive product priority solely from technical or
+implementation order. Record evidenced product dependencies and only
+those technical dependencies that make independent validation
+impossible. Identify slices that can proceed in parallel. A later
+slice may still have higher product priority than its technical
+predecessor.
+
+Splitting one inseparable decision into labels does not make it atomic.
+
+## Anti-patterns
+
+- Technical task decomposition without product value.
+- Hidden multiple requirements in one issue body.
+- Artificial fragmentation of one outcome.
+- Backend, frontend, test, or documentation issues that cannot each
+  deliver a complete increment.
+- Using an `ImplementationPlan` step list as a substitute for splitting a
+  too-large product issue.
+
+## Examples
+
+Bad: "Rebuild billing: invoice export, saved payment methods, dunning
+emails, and tax reports."
+
+Good: "Export the current month's invoices as CSV from the billing
+dashboard," with acceptance criteria that a billing user can download the
+file and that it contains those invoices.
+
+Bad: "Add `InvoiceCsvWriter`, then add the export button, then write
+tests."
+
+Good: Keep those technical steps inside one invoice-export issue, or later
+inside that issue's implementation plan, not as separate GitHub issues.
+
+Bad: "Users can export invoices and also manage saved payment methods."
+
+Good: Two issues, each with one outcome and its own acceptance criteria,
+plus an explicit dependency only if export cannot be validated without
+saved payment methods.

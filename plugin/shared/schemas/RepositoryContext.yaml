@@ -1,0 +1,181 @@
+schema: RepositoryContext
+version: 1
+description: Verified repository identity, local project context, and evidence used by collaboration workflows.
+required:
+  - status
+  - repository
+  - git
+  - remotes
+  - relevant_paths
+  - instructions
+fields:
+  status:
+    type: enum
+    values: [verified, partial, blocked]
+  repository:
+    type: object
+    required: [owner, name, full_name, url]
+    fields:
+      owner:
+        type: string
+      name:
+        type: string
+      full_name:
+        type: string
+        format: owner/repository
+      url:
+        type: string
+        format: uri
+      default_branch:
+        type: string | null
+      visibility:
+        type: enum
+        values: [public, private, internal, unknown]
+  git:
+    type: object
+    required: [checkout_path, current_branch, working_tree]
+    fields:
+      checkout_path:
+        type: string
+      current_branch:
+        type: string | null
+      head_sha:
+        type: string | null
+      base_branch:
+        type: string | null
+      base_sha:
+        type: string | null
+      working_tree:
+        type: enum
+        values: [clean, dirty, unknown]
+      staged_changes:
+        type: boolean | null
+      untracked_changes:
+        type: boolean | null
+  remotes:
+    type: list
+    items:
+      type: object
+      required: [name, fetch_url, push_url]
+      fields:
+        name:
+          type: string
+        fetch_url:
+          type: string
+        push_url:
+          type: string
+        hosting_service:
+          type: string | null
+        is_target:
+          type: boolean
+  relevant_paths:
+    type: list
+    items:
+      type: object
+      required: [path, reason]
+      fields:
+        path:
+          type: string
+        reason:
+          type: string
+  instructions:
+    type: list
+    items:
+      type: object
+      required: [path, scope]
+      fields:
+        path:
+          type: string
+        scope:
+          type: string
+        precedence:
+          type: integer | null
+  focus:
+    type: object | null
+    fields:
+      summary:
+        type: string
+      issue:
+        type: object | null
+        fields:
+          repository:
+            type: string | null
+            format: owner/repository
+          number:
+            type: integer | null
+            minimum: 1
+          url:
+            type: string | null
+            format: uri
+      paths_of_interest:
+        type: list
+        items:
+          type: string
+  technologies:
+    type: list
+    items:
+      type: object
+      required: [name, category, certainty, evidence]
+      fields:
+        name:
+          type: string
+        category:
+          type: enum
+          values: [language, framework, runtime, build_system, package_manager, test, documentation, configuration, tooling]
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+        evidence:
+          type: string
+  commands:
+    type: list
+    items:
+      type: object
+      required: [name, command, certainty, evidence]
+      fields:
+        name:
+          type: string
+        command:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+        evidence:
+          type: string
+  findings:
+    type: list
+    items:
+      type: object
+      required: [kind, text, certainty, evidence]
+      fields:
+        kind:
+          type: enum
+          values: [fact, assumption, open_question]
+        text:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+        evidence:
+          type: string
+  checks:
+    type: list
+    items:
+      type: object
+      required: [check, result]
+      fields:
+        check:
+          type: string
+        result:
+          type: enum
+          values: [pass, fail, skipped, unknown]
+        evidence:
+          type: string
+invariants:
+  - Repository identity is verified before any GitHub-side write or branch operation.
+  - Remote URLs are treated as identifiers and must not contain credentials or tokens.
+  - A dirty primary checkout does not become an implementation workspace implicitly.
+  - Instructions are read according to their repository-defined scope and precedence.
+  - Repository inspection never exposes secrets, credential-bearing URLs, private keys, or `.env` contents.
+  - Technologies, commands, and findings distinguish direct evidence from inference and unresolved questions.
+  - A provided focus narrows inspection but never replaces repository identity verification.

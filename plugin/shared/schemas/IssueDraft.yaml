@@ -1,0 +1,138 @@
+schema: IssueDraft
+version: 2
+description: >-
+  Task-authorized GitHub issue create or rewrite payload and publication
+  evidence. The issue-agent refine orchestration mode produces mode: edit; the
+  publication enum remains create | edit.
+required:
+  - status
+  - mode
+  - issue
+  - title
+  - body
+  - labels
+  - approval
+fields:
+  status:
+    type: enum
+    values: [draft, approved, published, partial, blocked]
+  mode:
+    type: enum
+    values: [create, edit]
+  issue:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer | null
+        constraints:
+          - Required and minimum 1 in edit mode.
+          - Null before publication in create mode.
+      url:
+        type: string | null
+        constraints:
+          - Required and a URI identifying the same issue in edit mode.
+          - Null before publication in create mode.
+      state_before:
+        type: enum
+        values: [open, closed, unknown]
+      state_after:
+        type: enum
+        values: [open, closed, unchanged, unknown]
+  title:
+    type: string
+    constraints:
+      - English and outcome-focused unless an explicit artifact-language override exists.
+      - Must be the exact title presented for approval.
+  body:
+    type: string
+    constraints:
+      - English and actionable unless an explicit artifact-language override exists.
+      - Must contain observable acceptance criteria when the issue is implementation-ready.
+  labels:
+    type: object
+    required: [add, remove, preserve]
+    fields:
+      add:
+        type: list
+        items: string
+      remove:
+        type: list
+        items: string
+      preserve:
+        type: list
+        items: string
+  approval:
+    type: object
+    required: [exact_payload, publication_authorized]
+    fields:
+      exact_payload:
+        type: boolean
+      publication_authorized:
+        type: boolean
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+      source:
+        type: enum
+        values: [explicit_user, task_intent, plan_build, repository_policy, session_continuity, null]
+      task_scope:
+        type: string | null
+      evidence:
+        type: string | null
+  publication:
+    type: object
+    fields:
+      operation:
+        type: enum
+        values:
+          - not_requested
+          - not_published
+          - created
+          - created_with_labels
+          - title_body_and_labels
+          - partial
+      external_effects:
+        type: list
+        items: string
+      published_url:
+        type: string | null
+        format: uri
+      published_at:
+        type: string | null
+        format: iso-8601
+  verification:
+    type: object
+    fields:
+      repository_match:
+        type: enum
+        values: [pass, fail, unknown]
+      title_match:
+        type: enum
+        values: [pass, fail, unknown]
+      body_match:
+        type: enum
+        values: [pass, fail, unknown]
+      labels_match:
+        type: enum
+        values: [pass, fail, unknown]
+      state_unchanged:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+invariants:
+  - Create mode uses null issue.number and issue.url before publication and does not remove or preserve labels.
+  - Edit mode requires issue.number and issue.url for one verified existing issue.
+  - The issue-agent create mode produces create mode; its refine mode produces edit mode.
+  - Labels not explicitly approved for addition or removal remain in preserve.
+  - Issue state and unrelated metadata are unchanged unless separately authorized.
+  - A published status requires exact_payload and publication_authorized to be true, with a verified task-scoped authorization source.
+  - Routine create and edit publication may use task_intent, plan_build, repository_policy, or session_continuity authorization; a repository policy may re-enable one interactive publish or overwrite gate.
+  - Create mode uses created or created_with_labels; edit mode uses title_body_and_labels.
+  - A failed post-publication verification changes status to partial.

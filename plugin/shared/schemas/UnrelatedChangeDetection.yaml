@@ -1,0 +1,212 @@
+schema: UnrelatedChangeDetection
+version: 1
+description: Read-only, evidence-based detection of changes that are unrelated to an issue or ImplementationPlan, or that require clarification before commit or pull-request preparation.
+required:
+  - status
+  - repository
+  - branch_name
+  - worktree_path
+  - source
+  - findings
+  - blockers
+  - clarifications
+  - summary
+  - evidence
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [clear, needs_clarification, blocked, partial]
+  repository:
+    type: string
+    format: owner/repository
+  branch_name:
+    type: string
+  worktree_path:
+    type: string
+  source:
+    type: object
+    required:
+      - task_or_issue
+      - change_classification_version
+      - implementation_plan_version
+      - loaded_issue_version
+      - issue_analysis_version
+      - affected_areas_version
+      - references
+      - unavailable_inputs
+    fields:
+      task_or_issue:
+        type: string | null
+      change_classification_version:
+        type: integer | null
+      implementation_plan_version:
+        type: integer | null
+      loaded_issue_version:
+        type: integer | null
+      issue_analysis_version:
+        type: integer | null
+      affected_areas_version:
+        type: integer | null
+      references:
+        type: list
+        items: string
+      unavailable_inputs:
+        type: list
+        items: string
+  findings:
+    type: list
+    items:
+      type: object
+      required:
+        - path
+        - previous_path
+        - change_kind
+        - verdict
+        - confidence
+        - rationale
+        - evidence
+    fields:
+      path:
+        type: string
+      previous_path:
+        type: string | null
+      change_kind:
+        type: enum
+        values: [added, modified, deleted, renamed, untracked]
+      verdict:
+        type: enum
+        values: [related, necessary_side_effect, scope_violation, uncertain]
+      confidence:
+        type: enum
+        values: [high, medium, low]
+      side_effect_kind:
+        type: enum | null
+        values:
+          - generated_artifact
+          - dependency_lockfile
+          - manifest_sync
+          - coupled_test
+          - coupled_documentation
+          - build_metadata
+          - other
+      rationale:
+        type: string
+      evidence:
+        type: list
+        items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - severity
+        - path
+        - description
+        - evidence
+    fields:
+      id:
+        type: string
+      severity:
+        type: enum
+        values: [high, medium]
+      path:
+        type: string | null
+      description:
+        type: string
+      evidence:
+        type: list
+        items: string
+  clarifications:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - path
+        - question
+        - required_evidence
+        - evidence
+    fields:
+      id:
+        type: string
+      path:
+        type: string | null
+      question:
+        type: string
+      required_evidence:
+        type: string
+      evidence:
+        type: list
+        items: string
+  summary:
+    type: object
+    required:
+      - related_paths
+      - necessary_side_effect_paths
+      - scope_violation_paths
+      - uncertain_paths
+      - commit_gate
+      - pr_gate
+    fields:
+      related_paths:
+        type: list
+        items: string
+      necessary_side_effect_paths:
+        type: list
+        items: string
+      scope_violation_paths:
+        type: list
+        items: string
+      uncertain_paths:
+        type: list
+        items: string
+      commit_gate:
+        type: enum
+        values: [pass, clarify, block]
+      pr_gate:
+        type: enum
+        values: [pass, clarify, block]
+  evidence:
+    type: list
+    items: string
+  recommended_next_skill:
+    type: string | null
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - classification_missing
+          - insufficient_evidence
+          - detection_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - Detection is read-only and never edits files, the index, branches, worktrees, Git administrative state, or GitHub resources.
+  - Detection never runs or recommends reset, restore, clean, checkout, remove, or another destructive operation as a remedy; files remain available for user review.
+  - Every finding path and previous_path comes from the supplied ChangeClassification and remains repository-relative.
+  - related requires evidence connecting the path to the supplied issue, task, ImplementationPlan, or a corroborated supporting change.
+  - necessary_side_effect requires evidence of a technical dependency on a related change; a generated, lockfile, manifest, test, or documentation path is not automatically a necessary side effect.
+  - scope_violation requires sufficient evidence of an explicit out-of-scope or unrelated relationship and is not inferred from a missing optional issue or plan.
+  - potentially_foreign, uncertain, missing, redacted, or conflicting evidence produces uncertain or needs_clarification rather than an unsupported scope violation.
+  - A high-confidence scope violation creates a blocker and sets both commit_gate and pr_gate to block.
+  - Any unresolved uncertain finding sets both commit_gate and pr_gate to clarify unless a blocker already sets them to block.
+  - necessary_side_effect never creates a blocker by itself and does not change a pass gate.
+  - clear is valid only when all findings are related or necessary_side_effect and both gates are pass; blocked and partial results never authorize a commit, push, or pull request.
+  - Gate results are diagnostic only and never grant commit, push, pull-request, or cleanup authorization.
+  - Evidence must not contain secrets, tokens, private keys, .env contents, or credential-bearing remote URLs.

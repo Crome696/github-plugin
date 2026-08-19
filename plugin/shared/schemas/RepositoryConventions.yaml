@@ -1,0 +1,164 @@
+schema: RepositoryConventions
+version: 1
+description: Evidence-based repository development conventions for planning and implementation.
+required:
+  - status
+  - repository
+  - conventions
+  - conflicts
+  - findings
+  - checks
+fields:
+  status:
+    type: enum
+    values: [verified, partial, blocked]
+  repository:
+    type: object
+    required: [owner, name, full_name, url]
+    fields:
+      owner:
+        type: string
+      name:
+        type: string
+      full_name:
+        type: string
+        format: owner/repository
+      url:
+        type: string
+        format: uri
+      default_branch:
+        type: string | null
+      visibility:
+        type: enum
+        values: [public, private, internal, unknown]
+  focus:
+    type: object | null
+    fields:
+      summary:
+        type: string
+      paths_of_interest:
+        type: list
+        items:
+          type: string
+  conventions:
+    type: list
+    items:
+      type: object
+      required:
+        - category
+        - convention
+        - evidence
+        - scope
+        - confidence
+        - authority
+        - paths
+      fields:
+        category:
+          type: enum
+          values:
+            - naming
+            - project_structure
+            - architecture
+            - coding_organization
+            - branching
+            - commits
+            - testing
+            - documentation
+            - formatting
+            - linting
+            - contribution
+        convention:
+          type: string
+        evidence:
+          type: string
+        scope:
+          type: string
+        confidence:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+        authority:
+          type: enum
+          values: [mandatory, observed]
+        paths:
+          type: list
+          items:
+            type: string
+  conflicts:
+    type: list
+    items:
+      type: object
+      required: [description, evidence, categories, paths, resolution]
+      fields:
+        description:
+          type: string
+        evidence:
+          type: string
+        categories:
+          type: list
+          items:
+            type: enum
+            values:
+              - naming
+              - project_structure
+              - architecture
+              - coding_organization
+              - branching
+              - commits
+              - testing
+              - documentation
+              - formatting
+              - linting
+              - contribution
+        paths:
+          type: list
+          items:
+            type: string
+        resolution:
+          type: enum
+          values: [unresolved, resolved_by_scope, resolved_by_authority]
+  findings:
+    type: list
+    items:
+      type: object
+      required: [kind, text, certainty, evidence]
+      fields:
+        kind:
+          type: enum
+          values: [fact, assumption, open_question]
+        text:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+        evidence:
+          type: string
+        paths:
+          type: list
+          items:
+            type: string
+  checks:
+    type: list
+    items:
+      type: object
+      required: [check, result]
+      fields:
+        check:
+          type: string
+        result:
+          type: enum
+          values: [pass, fail, skipped, unknown]
+        evidence:
+          type: string
+invariants:
+  - Explicit repository instructions take precedence over inferred conventions.
+  - Every inferred convention has concrete evidence from repository files, code, or read-only Git metadata.
+  - Mandatory conventions come only from explicit applicable instructions or authoritative repository configuration.
+  - Observed conventions describe patterns and must not be presented as mandatory requirements.
+  - Conflicting evidence is preserved in conflicts and unresolved decisions are recorded as open questions.
+  - Repository identity is verified before conventions are reported for downstream planning or implementation.
+  - Repository inspection never exposes secrets, credential-bearing URLs, private keys, or .env contents.
+  - Paths are repository-relative except for values explicitly identified as external metadata.
+  - Every convention has concrete evidence and at least one repository-relative path.
+  - Read-only Git history alone can support an observed convention, never a mandatory one.
+  - A declared command or script is not a convention without documented or repeated usage evidence.
+  - Categories without supporting evidence produce no placeholder convention.

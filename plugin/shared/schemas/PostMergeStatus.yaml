@@ -1,0 +1,214 @@
+schema: PostMergeStatus
+version: 1
+description: Read-only post-merge status for one observed GitHub pull-request merge, including linked-issue closure and separately authorized cleanup availability.
+required:
+  - status
+  - repository
+  - pull_request
+  - merge
+  - issue_closure
+  - cleanup
+  - deviations
+  - open_actions
+  - evidence
+  - rationale
+  - checked_at
+  - failure
+fields:
+  status:
+    type: enum
+    values: [verified, partial, needs-attention, blocked]
+  repository:
+    type: string | null
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, state, base_branch, head_branch]
+    fields:
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      state:
+        type: enum
+        values: [merged, closed, open, unknown]
+      base_branch:
+        type: string | null
+      head_branch:
+        type: string | null
+  merge:
+    type: object
+    required: [observed, merged_at, merge_commit_sha, target_branch, target_contains_merge_commit, evidence]
+    fields:
+      observed:
+        type: boolean
+      merged_at:
+        type: string | null
+        format: iso-8601
+      merge_commit_sha:
+        type: string | null
+        format: full git commit SHA
+      target_branch:
+        type: string | null
+      target_contains_merge_commit:
+        type: enum
+        values: [verified, not-verified, unavailable, not-applicable]
+      evidence:
+        type: list
+        items: string
+  issue_closure:
+    type: object
+    required: [expected, observed, attribution, issue, relationship_evidence, evidence]
+    fields:
+      expected:
+        type: boolean | null
+      observed:
+        type: enum
+        values: [closed, open, unknown, not-applicable]
+      attribution:
+        type: enum
+        values: [verified, supported, unsupported, conflicting, unavailable, not-applicable]
+      issue:
+        type: object | null
+        fields:
+          repository:
+            type: string
+            format: owner/repository
+          number:
+            type: integer
+            minimum: 1
+          url:
+            type: string | null
+            format: uri
+          title:
+            type: string | null
+          state:
+            type: enum
+            values: [open, closed, unknown]
+          closed_at:
+            type: string | null
+            format: iso-8601
+      relationship_evidence:
+        type: object
+        required: [status, keyword_evidence, github_evidence]
+        fields:
+          status:
+            type: enum
+            values: [confirmed, keyword-only, conflicting, absent, unavailable]
+          keyword_evidence:
+            type: list
+            items: string
+          github_evidence:
+            type: list
+            items: string
+      evidence:
+        type: list
+        items: string
+  cleanup:
+    type: object
+    required: [available_actions, performed_by_hook, approval_required, evidence]
+    fields:
+      available_actions:
+        type: list
+        items:
+          type: object
+          required: [target, identifier, state, requires_separate_approval, suggested_skill, evidence]
+          fields:
+            target:
+              type: enum
+              values: [local_branch, remote_branch, worktree]
+            identifier:
+              type: string
+            state:
+              type: enum
+              values: [available, already_absent, unsafe, unknown]
+            requires_separate_approval:
+              type: boolean
+            suggested_skill:
+              type: string | null
+            evidence:
+              type: list
+              items: string
+      performed_by_hook:
+        type: list
+        items: string
+      approval_required:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  deviations:
+    type: list
+    items:
+      type: object
+      required: [id, description, impact, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        impact:
+          type: string
+        evidence:
+          type: list
+          items: string
+  open_actions:
+    type: list
+    items:
+      type: object
+      required: [id, action, target, suggested_skill, requires_separate_approval, reason]
+      fields:
+        id:
+          type: string
+        action:
+          type: string
+        target:
+          type: string
+        suggested_skill:
+          type: string | null
+        requires_separate_approval:
+          type: boolean
+        reason:
+          type: string
+  evidence:
+    type: object
+    required: [status, sources]
+    fields:
+      status:
+        type: enum
+        values: [complete, partial, unavailable]
+      sources:
+        type: list
+        items:
+          type: object
+          required: [name, status, evidence]
+          fields:
+            name:
+              type: string
+            status:
+              type: enum
+              values: [loaded, empty, unavailable]
+            evidence:
+              type: list
+              items: string
+  rationale:
+    type: string
+  checked_at:
+    type: string
+    format: iso-8601
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values: [invalid_input, merge_not_observed, pull_request_not_found, issue_link_ambiguous, auth_unavailable, inaccessible, api_failure, local_state_unavailable]
+      description:
+        type: string
+invariants:
+  - The hook is read-only and never deletes, creates, edits, stages, resets, cleans, or rewrites Git, GitHub, worktree, or state files.
+  - "Every cleanup action has requires_separate_approval: true."
+  - performed_by_hook is always an empty list.
+  - Merge approval, PreMergeGate.merge.delete_branch, routine delivery authorization, and issue closure evidence never authorize cleanup.
+  - Missing, stale, contradictory, or unavailable evidence remains partial, needs-attention, or blocked and is never treated as verified.

@@ -1,0 +1,187 @@
+schema: ProductCapabilityMap
+version: 1
+description: Hierarchical product Capability Map from one parent LoadedIssue and one confirmed ProductInterview, grouping requirements by independently understandable Product Value and behavior areas without creating sub-issues.
+required:
+  - status
+  - source
+  - requirements
+  - capabilities
+  - overlaps
+  - gaps
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [mapped, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - repository
+      - number
+      - url
+      - loaded_issue_version
+      - loaded_issue_status
+      - product_interview_version
+      - product_interview_status
+      - unavailable_fields
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      loaded_issue_version:
+        type: integer
+      loaded_issue_status:
+        type: enum
+        values: [loaded, partial, blocked]
+      product_interview_version:
+        type: integer
+      product_interview_status:
+        type: enum
+        values: [complete, needs_clarification, blocked]
+      unavailable_fields:
+        type: list
+        items: string
+  requirements:
+    type: list
+    items:
+      type: object
+      required: [id, text, origin, evidence]
+      fields:
+        id:
+          type: string
+        text:
+          type: string
+        origin:
+          type: enum
+          values: [parent_issue, product_interview]
+        evidence:
+          type: string
+  capabilities:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - parent_id
+        - name
+        - product_value
+        - behavior_areas
+        - assigned_requirement_ids
+        - relations
+      fields:
+        id:
+          type: string
+        parent_id:
+          type: string | null
+        name:
+          type: string
+        product_value:
+          type: string
+        behavior_areas:
+          type: list
+          items:
+            type: object
+            required: [id, name, description]
+            fields:
+              id:
+                type: string
+              name:
+                type: string
+              description:
+                type: string
+        assigned_requirement_ids:
+          type: list
+          items: string
+        relations:
+          type: list
+          items:
+            type: object
+            required: [target_id, type, evidence]
+            fields:
+              target_id:
+                type: string
+              type:
+                type: enum
+                values: [depends_on, sequences, overlaps]
+              evidence:
+                type: string
+  overlaps:
+    type: list
+    items:
+      type: object
+      required: [requirement_id, capability_ids, evidence]
+      fields:
+        requirement_id:
+          type: string
+        capability_ids:
+          type: list
+          items: string
+        evidence:
+          type: string
+  gaps:
+    type: list
+    items:
+      type: object
+      required: [kind, text, evidence]
+      fields:
+        kind:
+          type: enum
+          values:
+            - unassigned_requirement
+            - uncovered_interview_decision
+            - empty_capability
+            - missing_behavior
+        text:
+          type: string
+        evidence:
+          type: string
+        requirement_id:
+          type: string | null
+        capability_id:
+          type: string | null
+  recommended_next_skill:
+    type: enum
+    values:
+      - decompose-product-capabilities
+      - rewrite-github-issue
+      - structure-issue
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - identity_mismatch
+          - unconfirmed_interview
+          - mapping_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - source preserves the LoadedIssue and ProductInterview identities, contract versions, statuses, and unavailable fields without inventing replacements.
+  - mapped status requires a valid LoadedIssue version 1, a confirmed ProductInterview version 1, unique requirement assignment, and remaining gaps that are documented rather than invented.
+  - partial status means mapping is possible but one or more requirements, identities, or source fields remain incomplete; failure identifies the remaining gap.
+  - blocked status means a required handoff is missing, invalid, unsupported, blocked, unconfirmed, or identity-mismatched; capabilities and inventories contain no fabricated product decisions.
+  - Capabilities group independently understandable Product Value and behavior areas; technical components, layers, or ImplementationPlan steps are not capabilities.
+  - Each requirement is assigned to exactly one capability; overlapping candidates are recorded in overlaps instead of dual assignment.
+  - Non-goals and unconfirmed assumptions are not mapped as capabilities or confirmed requirements.
+  - This handoff never creates, proposes as a write, splits, or publishes GitHub sub-issues.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for mapped results and non-null for partial or blocked results.

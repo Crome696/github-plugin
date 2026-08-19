@@ -1,0 +1,602 @@
+schema: CommandScenario
+version: 1
+scenarios:
+  - id: refine-auto-issue-happy-path
+    command: refine-auto-issue
+    description: Refines one existing issue, prepares, implements, and publishes one Draft PR.
+    expected:
+      status: completed
+      successful_writes:
+        - create-github-issue
+        - create-worktree
+        - create-commit
+        - push-branch
+        - create-draft-pr
+      preserved_artifacts: []
+    target:
+      repository: &repo octo-org/widgets
+      issue_number: &issue 42
+      exact: true
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+      workspace_creation: true
+      commit: true
+      push: true
+      draft_pr: true
+    handoffs:
+      IssueDraft:
+        patch:
+          status: approved
+          mode: edit
+          issue:
+            repository: *repo
+            number: *issue
+            url: https://github.com/octo-org/widgets/issues/42
+          approval:
+            exact_payload: true
+            publication_authorized: true
+      LoadedIssue: {}
+      ImplementationPlan:
+        patch:
+          status: approved
+          issue:
+            repository: *repo
+            number: *issue
+      BranchWorkspace:
+        patch:
+          status: planned
+          repository: *repo
+          base_branch: main
+          branch_name: agent/issue-42
+          worktree_path: C:/workspace/github-issue-42
+          isolation_mode: dedicated_worktree
+          primary_checkout_untouched: true
+      ContextCapabilities:
+        patch:
+          status: resolved
+          missing_capabilities: []
+          failure: null
+      ValidationResult:
+        patch:
+          status: passed
+          required_checks_passed: true
+          evaluation:
+            scope:
+              status: aligned
+            acceptance_criteria: []
+            completion_criteria: []
+            planned_steps: []
+            unexpected_changes: []
+            documented_deviations: []
+          blockers: []
+          readiness:
+            commit_preparation_allowed: true
+            draft_pr_preparation_allowed: true
+      UnrelatedChangeDetection:
+        patch:
+          status: clear
+          findings: []
+          blockers: []
+      CommitProposal:
+        patch:
+          status: approved
+          repository: *repo
+          branch: agent/issue-42
+          files:
+            added: [src/feature.ts]
+            modified: []
+            deleted: []
+          authorization:
+            exact_scope_approved: true
+            commit_authorized: true
+            source: task_intent
+            task_scope: issue-42
+            evidence: Task-scoped refine-auto-issue authorization.
+          validation:
+            result_status: passed
+            evidence: [ValidationResult passed with aligned scope.]
+      PreCommitGate:
+        patch:
+          workspace:
+            repository: *repo
+            path: C:/workspace/github-issue-42
+            branch: agent/issue-42
+          validation:
+            required_checks_passed: true
+            readiness:
+              commit_preparation_allowed: true
+          commit_proposal:
+            status: approved
+            repository: *repo
+            authorization:
+              exact_scope_approved: true
+              commit_authorized: true
+      BranchPush: {}
+      PullRequestDraft:
+        patch:
+          status: draft
+          repository: *repo
+          title: Publish validated GitHub Draft PR
+          body: |
+            ## Problem / issue context
+            Issue 42 needs the validated implementation delivered.
+
+            ## Solution summary
+            The implementation is committed and pushed for review.
+
+            ## Key changes and scope
+            The exact approved scope is limited to the implementation.
+
+            ## Tests and validations
+            ValidationResult passed with required checks.
+
+            ## Known limitations
+            No known limitations.
+
+            ## Risks
+            No evidenced risks remain.
+
+            ## Issue linkage
+            Fixes octo-org/widgets#42
+          base_branch: main
+          head_branch: agent/issue-42
+          head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          draft: true
+          linked_issues:
+            - repository: *repo
+              number: *issue
+          authorization:
+            push_authorized: true
+            draft_pull_request_authorized: true
+      PullRequestIssueLink:
+        patch:
+          repository: *repo
+          issue:
+            repository: *repo
+            number: *issue
+            url: https://github.com/octo-org/widgets/issues/42
+          linked_issues:
+            - repository: *repo
+              number: *issue
+      PrePrCreateGate:
+        patch:
+          validation:
+            readiness:
+              draft_pr_preparation_allowed: true
+          pull_request_draft:
+            repository: *repo
+            draft: true
+          issue_link:
+            status: linked
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+        handoff: LoadedIssue
+      - operation: issue-agent:refine
+        effect: read
+        handoff: IssueDraft
+      - operation: create-github-issue
+        effect: write
+        phase: refine
+        handoff: IssueDraft
+      - operation: build-implementation-plan
+        effect: read
+        handoff: ImplementationPlan
+      - operation: create-worktree
+        effect: write
+        handoff: BranchWorkspace
+      - operation: verify-worktree
+        effect: read
+        handoff: BranchWorkspace
+      - operation: handoff-external-implementation
+        effect: read
+        handoff: ContextCapabilities
+      - operation: inspect-working-tree
+        effect: read
+      - operation: classify-changes
+        effect: read
+      - operation: validate-implementation-result
+        effect: read
+        handoff: ValidationResult
+      - operation: create-commit
+        effect: write
+        handoff: CommitProposal
+      - operation: push-branch
+        effect: write
+        phase: delivery
+        handoff: BranchPush
+      - operation: link-pr-to-issue
+        effect: read
+        handoff: PullRequestIssueLink
+      - operation: create-draft-pr
+        effect: write
+        handoff: PullRequestDraft
+
+  - id: refine-auto-issue-missing-issue
+    command: refine-auto-issue
+    description: Refuses the lifecycle when the existing issue identity is missing.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: create-github-issue
+      preserved_artifacts: []
+    target:
+      repository: octo-org/widgets
+      issue_number: null
+      exact: false
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+      workspace_creation: true
+      commit: true
+      push: true
+      draft_pr: true
+    handoffs: {}
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+      - operation: issue-agent:refine
+        effect: read
+      - operation: create-github-issue
+        effect: write
+        phase: refine
+
+  - id: refine-auto-issue-forbids-create
+    command: refine-auto-issue
+    description: Blocks issue create so the run cannot publish a new issue.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: issue-agent:create
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      issue_number: *issue
+      exact: true
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+      workspace_creation: true
+      commit: true
+      push: true
+      draft_pr: true
+    handoffs:
+      LoadedIssue: {}
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: issue-agent:create
+        effect: read
+
+  - id: refine-auto-issue-forbids-review
+    command: refine-auto-issue
+    description: Blocks review publication after the Draft PR is delivered.
+    expected:
+      status: blocked
+      successful_writes:
+        - create-github-issue
+        - create-worktree
+        - create-commit
+        - push-branch
+        - create-draft-pr
+      blocked_operation: submit-pr-review
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      issue_number: *issue
+      exact: true
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+      workspace_creation: true
+      commit: true
+      push: true
+      draft_pr: true
+    handoffs:
+      IssueDraft:
+        patch:
+          status: approved
+          mode: edit
+          issue:
+            repository: *repo
+            number: *issue
+            url: https://github.com/octo-org/widgets/issues/42
+          approval:
+            exact_payload: true
+            publication_authorized: true
+      LoadedIssue: {}
+      ImplementationPlan:
+        patch:
+          status: approved
+          issue:
+            repository: *repo
+            number: *issue
+      BranchWorkspace:
+        patch:
+          status: planned
+          repository: *repo
+          worktree_path: C:/workspace/github-issue-42
+          isolation_mode: dedicated_worktree
+      ContextCapabilities:
+        patch:
+          status: resolved
+          missing_capabilities: []
+          failure: null
+      ValidationResult:
+        patch:
+          status: passed
+          required_checks_passed: true
+          evaluation:
+            scope:
+              status: aligned
+            unexpected_changes: []
+          readiness:
+            commit_preparation_allowed: true
+            draft_pr_preparation_allowed: true
+      UnrelatedChangeDetection:
+        patch:
+          status: clear
+          findings: []
+      CommitProposal:
+        patch:
+          status: approved
+          repository: *repo
+          authorization:
+            exact_scope_approved: true
+            commit_authorized: true
+      PreCommitGate:
+        patch:
+          workspace:
+            repository: *repo
+          validation:
+            readiness:
+              commit_preparation_allowed: true
+          commit_proposal:
+            status: approved
+            authorization:
+              exact_scope_approved: true
+              commit_authorized: true
+      BranchPush: {}
+      PullRequestDraft:
+        patch:
+          status: draft
+          repository: *repo
+          draft: true
+          linked_issues:
+            - repository: *repo
+              number: *issue
+      PullRequestIssueLink:
+        patch:
+          repository: *repo
+          issue:
+            repository: *repo
+            number: *issue
+          linked_issues:
+            - repository: *repo
+              number: *issue
+      PrePrCreateGate:
+        patch:
+          validation:
+            readiness:
+              draft_pr_preparation_allowed: true
+          pull_request_draft:
+            draft: true
+          issue_link:
+            status: linked
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+        handoff: LoadedIssue
+      - operation: issue-agent:refine
+        effect: read
+        handoff: IssueDraft
+      - operation: create-github-issue
+        effect: write
+        phase: refine
+        handoff: IssueDraft
+      - operation: build-implementation-plan
+        effect: read
+        handoff: ImplementationPlan
+      - operation: create-worktree
+        effect: write
+        handoff: BranchWorkspace
+      - operation: verify-worktree
+        effect: read
+      - operation: handoff-external-implementation
+        effect: read
+        handoff: ContextCapabilities
+      - operation: inspect-working-tree
+        effect: read
+      - operation: classify-changes
+        effect: read
+      - operation: validate-implementation-result
+        effect: read
+        handoff: ValidationResult
+      - operation: create-commit
+        effect: write
+        handoff: CommitProposal
+      - operation: push-branch
+        effect: write
+        phase: delivery
+      - operation: link-pr-to-issue
+        effect: read
+        handoff: PullRequestIssueLink
+      - operation: create-draft-pr
+        effect: write
+        handoff: PullRequestDraft
+      - operation: submit-pr-review
+        effect: write
+
+  - id: refine-auto-issue-forbids-merge
+    command: refine-auto-issue
+    description: Blocks merge after the Draft PR is delivered.
+    expected:
+      status: blocked
+      successful_writes:
+        - create-github-issue
+        - create-worktree
+        - create-commit
+        - push-branch
+        - create-draft-pr
+      blocked_operation: merge-pull-request
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      issue_number: *issue
+      exact: true
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+      workspace_creation: true
+      commit: true
+      push: true
+      draft_pr: true
+      merge: true
+    handoffs:
+      IssueDraft:
+        patch:
+          status: approved
+          mode: edit
+          issue:
+            repository: *repo
+            number: *issue
+            url: https://github.com/octo-org/widgets/issues/42
+          approval:
+            exact_payload: true
+            publication_authorized: true
+      LoadedIssue: {}
+      ImplementationPlan:
+        patch:
+          status: approved
+          issue:
+            repository: *repo
+            number: *issue
+      BranchWorkspace:
+        patch:
+          status: planned
+          repository: *repo
+          worktree_path: C:/workspace/github-issue-42
+          isolation_mode: dedicated_worktree
+      ContextCapabilities:
+        patch:
+          status: resolved
+          missing_capabilities: []
+          failure: null
+      ValidationResult:
+        patch:
+          status: passed
+          required_checks_passed: true
+          evaluation:
+            scope:
+              status: aligned
+            unexpected_changes: []
+          readiness:
+            commit_preparation_allowed: true
+            draft_pr_preparation_allowed: true
+      UnrelatedChangeDetection:
+        patch:
+          status: clear
+          findings: []
+      CommitProposal:
+        patch:
+          status: approved
+          repository: *repo
+          authorization:
+            exact_scope_approved: true
+            commit_authorized: true
+      PreCommitGate:
+        patch:
+          workspace:
+            repository: *repo
+          validation:
+            readiness:
+              commit_preparation_allowed: true
+          commit_proposal:
+            status: approved
+            authorization:
+              exact_scope_approved: true
+              commit_authorized: true
+      BranchPush: {}
+      PullRequestDraft:
+        patch:
+          status: draft
+          repository: *repo
+          draft: true
+          linked_issues:
+            - repository: *repo
+              number: *issue
+      PullRequestIssueLink:
+        patch:
+          repository: *repo
+          issue:
+            repository: *repo
+            number: *issue
+          linked_issues:
+            - repository: *repo
+              number: *issue
+      PrePrCreateGate:
+        patch:
+          validation:
+            readiness:
+              draft_pr_preparation_allowed: true
+          pull_request_draft:
+            draft: true
+          issue_link:
+            status: linked
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+        handoff: LoadedIssue
+      - operation: issue-agent:refine
+        effect: read
+        handoff: IssueDraft
+      - operation: create-github-issue
+        effect: write
+        phase: refine
+        handoff: IssueDraft
+      - operation: build-implementation-plan
+        effect: read
+        handoff: ImplementationPlan
+      - operation: create-worktree
+        effect: write
+        handoff: BranchWorkspace
+      - operation: verify-worktree
+        effect: read
+      - operation: handoff-external-implementation
+        effect: read
+        handoff: ContextCapabilities
+      - operation: inspect-working-tree
+        effect: read
+      - operation: classify-changes
+        effect: read
+      - operation: validate-implementation-result
+        effect: read
+        handoff: ValidationResult
+      - operation: create-commit
+        effect: write
+        handoff: CommitProposal
+      - operation: push-branch
+        effect: write
+        phase: delivery
+      - operation: link-pr-to-issue
+        effect: read
+        handoff: PullRequestIssueLink
+      - operation: create-draft-pr
+        effect: write
+        handoff: PullRequestDraft
+      - operation: merge-pull-request
+        effect: write

@@ -1,0 +1,139 @@
+---
+description: Require draft pull requests for AI implementations with mandatory description content, validation gates, duplicate avoidance, and no automatic ready or merge.
+alwaysApply: true
+---
+
+# Pull Request Policy
+
+## Draft default
+
+Every new AI implementation delivered through GitHub MUST be published as one
+GitHub Draft pull request. Set `draft: true`; do not add a `[Draft]` prefix to
+the title. Routine authorization and the confidential-data boundary are
+defined by `interactive-approval.mdc` and `github-safety.mdc`; this rule
+defines the Draft PR contract.
+
+## Required title and description
+
+The title MUST be concise, outcome-focused, and in English. Apply a repository
+pull-request title convention only when that convention is evidenced.
+
+The description MUST be in English and contain the following information,
+using these headings or equivalent headings from an applicable repository
+template:
+
+- **Problem / issue context:** the verified issue and the problem it defines.
+- **Solution summary:** the implemented outcome supported by the plan and
+  committed change.
+- **Key changes and scope:** completed plan steps and exact committed paths;
+  distinguish in-scope work from explicit non-goals.
+- **Tests and validations:** every supplied check with its exact result and
+  evidence; failed, skipped, and not-run checks must retain that status.
+- **Known limitations:** documented deviations, warnings, unavailable inputs,
+  unresolved questions, and explicit out-of-scope behavior.
+- **Risks:** each evidenced implementation risk, severity, and mitigation;
+  do not invent risks or claim that a mitigation was completed without proof.
+- **Issue linkage:** exactly the verified issue, by default as
+  `Fixes owner/repository#number` so GitHub closes it after a merge into the
+  repository's default branch. Use `Refs` only when an explicit close-on-merge
+  opt-out or an applicable repository convention selects neutral linkage;
+  `Closes` and `Resolves` remain valid explicit closing-keyword choices.
+
+Do not claim tests, validations, scope, behavior, limitations, risks, or issue
+relationships that are absent from the supplied evidence. Do not infer a
+second issue from prose, a branch name, a filename, or a commit message.
+
+## Validation gate
+
+Before creating a pull request, the implementation result MUST be validated.
+Block pull-request creation when any of the following is true:
+
+- `ValidationResult.status` is not `passed`.
+- Any validation `blocker` is unresolved, or the scope gate is blocked,
+  uncertain, or awaiting clarification.
+- `readiness.draft_pr_preparation_allowed` is not `true`.
+- A required check is failed, skipped, or not run.
+- Acceptance or completion criteria are not all passed.
+- Scope drift, unexpected changes, or documented deviations remain unresolved.
+- The input `PullRequestDraft.status` is `blocked` or `partial`.
+- The exact repository, issue, branches, committed scope, head SHA, or
+  task-scoped draft-publication authorization cannot be verified.
+
+Readiness is not authorization. Apply `interactive-approval.mdc` for the
+routine publication gate and `github-safety.mdc` for the global safety floor.
+Do not create a pull request from a warning, partial result, unresolved
+blocker, or ambiguous handoff.
+
+## Deterministic pre-publication gate
+
+Immediately before `gh pr create`, the `create-draft-pr` Skill MUST write a
+current local version-1 `PrePrCreateGate` containing the exact active
+`BranchWorkspace`, passed `ValidationResult`, created `CommitProposal`,
+verified non-force `BranchPush`, linked `PullRequestIssueLink`, and unpublished
+`PullRequestDraft`. The host `pre-pr-create` Hook MUST fail closed unless the
+gate, live HEAD, live remote branch, exact command, complete English
+description, and unique issue link all match.
+
+The Hook MUST only read the gate, command, body file, and live Git state. It
+MUST never invent or rewrite a title, body, issue link, branch, SHA, or
+authorization, and it MUST report concrete missing prerequisites when it
+blocks. A missing, malformed, stale, identity-mismatched, partial, or
+blocker-bearing gate prevents Draft PR creation.
+
+## Existing pull requests and duplicate prevention
+
+Check for an existing open pull request with the exact head-branch to
+base-branch target before creating one, and repeat the check immediately before
+the write:
+
+- **No matching open pull request:** create exactly one Draft pull request
+  with the approved title and description.
+- **Exactly one matching open pull request:** never create a duplicate. Read
+  and verify its repository, branches, head SHA, title, description, issue
+  linkage, and Draft state. If any required value differs, return a partial
+  result and do not edit it or mark it ready.
+- **More than one matching open pull request:** block the workflow as
+  ambiguous; do not select one and do not create another.
+
+A closed or merged pull request does not justify creating a second open
+pull request when the target is ambiguous. Never fabricate a pull-request
+number, URL, or verification result.
+
+## Ready-for-review and merge boundary
+
+The Draft workflow MUST NOT request reviewers, mark a pull request
+Ready-for-Review, or change pull-request metadata. Ready-for-Review is a
+separate workflow owned by `/ready-pr` and `mark-pr-ready`. Rebase, merge,
+and cleanup remain separate workflows under `interactive-approval.mdc`,
+`github-safety.mdc`, and `merge-policy.mdc`.
+
+## Ready-for-Review workflow
+
+The explicitly invoked `/ready-pr` workflow MAY mark exactly one open Draft
+pull request Ready-for-Review after independent authorization for that
+repository, pull-request number, current head SHA, unique linked issue, and
+optional reviewer set.
+
+MUST:
+
+- Keep unique issue linkage. Missing, mentioned-only, or ambiguous issue
+  candidates block the transition.
+- Write a current local version-1 `PrePrReadyGate` immediately before
+  `gh pr ready`. The host `pre-pr-ready` Hook MUST fail closed unless the
+  gate, live identity, Draft state, unique issue, command, and authorized
+  reviewer set match.
+- Treat an already non-Draft open pull request as `already_ready` after
+  identity verification. Do not request additional reviewers.
+- Request reviewers only from the authorized `reviewers.add` set after the
+  ready transition. An empty set is valid. CODEOWNERS matches are optional
+  suggestions and MUST NOT be treated as merge-required policy.
+- Treat pending or failed CI as a warning, not a Ready-for-Review blocker.
+  `MergeReadiness.status: ready` is not a prerequisite.
+
+MUST NOT:
+
+- Infer Ready-for-Review authorization from Draft publication, review
+  publication, routine delivery, lifecycle, review-fix, feedback, or merge
+  readiness.
+- Convert a ready pull request back to Draft, edit title or body, add labels
+  or assignees, merge, rebase, or publish a review as part of this workflow.

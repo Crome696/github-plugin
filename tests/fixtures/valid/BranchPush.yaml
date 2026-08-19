@@ -1,0 +1,37 @@
+schema: BranchPush
+version: 1
+status: pushed
+repository: octo-org/widgets
+branch_name: branch_name-value
+worktree_path: C:/workspace/github
+remote:
+  name: name-value
+  owner_repository: octo-org/widgets
+  url_sanitized: url_sanitized-value
+upstream:
+  exists: false
+  ref: ref-value
+  ahead: 1
+  behind: 1
+local:
+  head_sha: head_sha-value
+  branch_match: false
+  detached: false
+  in_progress_operation: in_progress_operation-value
+  dirty: false
+push:
+  attempted: false
+  forced: false
+  set_upstream: false
+  remote_ref: remote_ref-value
+  remote_sha: remote_sha-value
+  result: success
+authorization:
+  push_authorized: false
+  force_push_authorized: false
+verification:
+  repository_match: pass
+  branch_match: pass
+  remote_branch_exists: pass
+  sha_match: pass
+  upstream_configured: pass

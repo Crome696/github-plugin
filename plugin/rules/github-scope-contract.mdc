@@ -1,0 +1,46 @@
+---
+description: Keep GitHub workflows within repository collaboration scope.
+alwaysApply: true
+---
+
+# GitHub Plugin Scope Contract
+
+## Purpose
+
+Keep the GitHub plugin focused on repository collaboration and delivery
+workflows. Do not turn it into a source-code, framework, testing, domain, or
+product-knowledge plugin.
+
+## In scope
+
+The GitHub plugin MUST support and coordinate:
+
+- Creating, editing, and triage-closing GitHub issues without a merged
+  pull request
+- Loading repository and issue context
+- Managing branches and worktrees
+- Preparing commits
+- Creating pull requests
+- Marking a verified Draft pull request Ready-for-Review and requesting
+  optional authorized reviewers
+- Reviewing pull requests
+- Processing review feedback
+- Coordinating rebase, merge, and cleanup workflows
+
+## Out of scope
+
+The GitHub plugin MUST NOT provide or assume:
+
+- TypeScript implementation knowledge
+- Angular, React, or NestJS architecture
+- Project-specific testing strategies
+- Domain knowledge
+- Product-specific business rules
+
+When a workflow requires out-of-scope knowledge, keep the GitHub collaboration
+steps separate and rely on separately provided skills or rules for that
+knowledge. The plugin may record an exposed external capability by its
+host-session identity, such as `session:skill:typescript-implementation` or
+`session:rule:project-testing`, together with its availability and scope
+evidence. It must not copy, repackage, execute, or claim ownership of that
+capability's implementation knowledge.

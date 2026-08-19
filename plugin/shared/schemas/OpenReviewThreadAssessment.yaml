@@ -1,0 +1,200 @@
+schema: OpenReviewThreadAssessment
+version: 1
+description: Evidence-backed read-only assessment of one pull request's review-thread states and merge-relevant open discussion categories.
+required:
+  - status
+  - pull_request
+  - head_sha
+  - threads
+  - summary
+  - sources
+  - uncertainties
+  - evidence
+  - failure
+fields:
+  status:
+    type: enum
+    values: [clear, needs-attention, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  head_sha:
+    type: string | null
+  threads:
+    type: list
+    items:
+      type: object
+      required: [id, state, is_outdated, classification, evidence]
+      fields:
+        id:
+          type: string
+        state:
+          type: enum
+          values: [open, resolved, unknown]
+        is_outdated:
+          type: boolean | null
+        classification:
+          type: enum
+          values: [required_problem, optional_discussion, uncertain, not_assessed]
+        location:
+          type: object | null
+          fields:
+            path:
+              type: string | null
+            start_line:
+              type: integer | null
+            line:
+              type: integer | null
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+        first_comment:
+          type: object | null
+          fields:
+            id:
+              type: string | null
+            author:
+              type: string | null
+            body:
+              type: string | null
+            created_at:
+              type: string | null
+              format: iso-8601
+            url:
+              type: string | null
+              format: uri
+        latest_comment:
+          type: object | null
+          fields:
+            id:
+              type: string | null
+            author:
+              type: string | null
+            body:
+              type: string | null
+            created_at:
+              type: string | null
+              format: iso-8601
+            url:
+              type: string | null
+              format: uri
+        comment_count:
+          type: integer
+          minimum: 0
+        problem:
+          type: string | null
+        requested_correction:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  summary:
+    type: object
+    required: [thread_count, open_count, open_current_count, open_outdated_count, resolved_count, unknown_count, required_problem_count, optional_discussion_count, uncertain_count]
+    fields:
+      thread_count:
+        type: integer
+        minimum: 0
+      open_count:
+        type: integer
+        minimum: 0
+      open_current_count:
+        type: integer
+        minimum: 0
+      open_outdated_count:
+        type: integer
+        minimum: 0
+      resolved_count:
+        type: integer
+        minimum: 0
+      unknown_count:
+        type: integer
+        minimum: 0
+      required_problem_count:
+        type: integer
+        minimum: 0
+      optional_discussion_count:
+        type: integer
+        minimum: 0
+      uncertain_count:
+        type: integer
+        minimum: 0
+  sources:
+    type: object
+    required: [discussions]
+    fields:
+      discussions:
+        type: object
+        required: [status, evidence, unavailable_fields]
+        fields:
+          status:
+            type: enum
+            values: [loaded, partial, blocked, unavailable, not_supplied]
+          evidence:
+            type: list
+            items: string
+          unavailable_fields:
+            type: list
+            items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required: [id, question, evidence, verification]
+      fields:
+        id:
+          type: string
+        question:
+          type: string
+        evidence:
+          type: list
+          items: string
+        verification:
+          type: string
+  evidence:
+    type: object
+    required: [status, sources]
+    fields:
+      status:
+        type: enum
+        values: [complete, partial, unavailable]
+      sources:
+        type: list
+        items: string
+  assessed_at:
+    type: string | null
+    format: iso-8601
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: string
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - "A thread is open only when GitHub returned is_resolved: false."
+  - "A thread is resolved only when GitHub returned is_resolved: true; null or unavailable resolution is unknown."
+  - is_outdated is reported independently and never proves that a thread is resolved or addressed.
+  - Only current, evidence-backed required_problem entries can contribute a merge-relevant blocker.
+  - Optional discussions and uncertain classifications remain visible but never become required problems by inference.
+  - A partial, stale, conflicting, or unavailable discussion source prevents clear status when it could hide open threads.
+  - The assessment is tied to the recorded pull-request identity and head SHA and must be refreshed after the head changes.
+  - The contract never authorizes or performs merge, rebase, review publication, replies, thread resolution, or local changes.

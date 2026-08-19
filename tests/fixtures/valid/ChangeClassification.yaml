@@ -1,0 +1,36 @@
+schema: ChangeClassification
+version: 1
+status: classified
+repository: octo-org/widgets
+branch_name: branch_name-value
+worktree_path: worktree_path-value
+source:
+  task_or_issue: task_or_issue-value
+  working_tree_inspection_version: 1
+  implementation_plan_version: 1
+  loaded_issue_version: 1
+  issue_analysis_version: 1
+  affected_areas_version: 1
+  references: []
+  unavailable_inputs: []
+changes: []
+summary:
+  by_purpose:
+    planned_implementation: []
+    test: []
+    documentation: []
+    configuration: []
+    generated: []
+    potentially_foreign: []
+  in_scope_paths: []
+  out_of_scope_or_foreign_paths: []
+  uncertain_paths: []
+  scope_alignment: aligned
+evidence: []
+recommended_next_skill: recommended_next_skill-value
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false
+  evidence: []

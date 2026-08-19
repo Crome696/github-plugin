@@ -1,0 +1,215 @@
+schema: PullRequestMerge
+version: 1
+description: Exact authorization-gated GitHub pull-request merge intent, execution result, and verification record.
+required:
+  - status
+  - repository
+  - pull_request
+  - expected_head_sha
+  - expected_base_sha
+  - merge
+  - authorization
+  - readiness
+  - preflight
+  - result
+  - verification
+  - failure
+fields:
+  status:
+    type: enum
+    values: [draft, approved, merged, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, base_branch, head_branch]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      base_branch:
+        type: string
+      head_branch:
+        type: string
+  expected_head_sha:
+    type: string
+    format: full git commit SHA
+  expected_base_sha:
+    type: string
+    format: full git commit SHA
+  merge:
+    type: object
+    required: [method, delete_branch]
+    fields:
+      method:
+        type: enum
+        values: [merge, squash, rebase]
+      commit_title:
+        type: string | null
+      commit_message:
+        type: string | null
+      delete_branch:
+        type: boolean
+  authorization:
+    type: object
+    required: [exact_target, exact_merge_operation, merge_authorized, delete_branch_authorized, source, evidence]
+    fields:
+      exact_target:
+        type: boolean
+      exact_merge_operation:
+        type: boolean
+      merge_authorized:
+        type: boolean
+      delete_branch_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, repository_policy]
+      evidence:
+        type: string
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+  readiness:
+    type: object
+    required: [schema, version, status, repository, pull_request_number, assessed_head_sha, evidence]
+    fields:
+      schema:
+        type: string
+        value: MergeReadiness
+      version:
+        type: integer
+        value: 2
+      status:
+        type: enum
+        values: [ready]
+      repository:
+        type: string
+        format: owner/repository
+      pull_request_number:
+        type: integer
+        minimum: 1
+      assessed_head_sha:
+        type: string
+        format: full git commit SHA
+      evidence:
+        type: list
+        items: string
+  preflight:
+    type: object
+    required: [checked_at, live_head_sha, live_base_sha, target_match, open_state, non_draft, head_sha_match, base_branch_match, base_sha_match, mergeability, reviews_current, checks_current, method_allowed, authorization_match, evidence]
+    fields:
+      checked_at:
+        type: string | null
+        format: iso-8601
+      live_head_sha:
+        type: string | null
+        format: full git commit SHA
+      live_base_sha:
+        type: string | null
+        format: full git commit SHA
+      target_match:
+        type: enum
+        values: [pass, fail, unknown]
+      open_state:
+        type: enum
+        values: [pass, fail, unknown]
+      non_draft:
+        type: enum
+        values: [pass, fail, unknown]
+      head_sha_match:
+        type: enum
+        values: [pass, fail, unknown]
+      base_branch_match:
+        type: enum
+        values: [pass, fail, unknown]
+      base_sha_match:
+        type: enum
+        values: [pass, fail, unknown]
+      mergeability:
+        type: enum
+        values: [pass, fail, unknown]
+      reviews_current:
+        type: enum
+        values: [pass, fail, unknown]
+      checks_current:
+        type: enum
+        values: [pass, fail, unknown]
+      method_allowed:
+        type: enum
+        values: [pass, fail, unknown]
+      authorization_match:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  result:
+    type: object
+    required: [attempted, api_operation, merged_at, merge_commit_sha, merged_by]
+    fields:
+      attempted:
+        type: boolean
+      api_operation:
+        type: string | null
+      merged_at:
+        type: string | null
+        format: iso-8601
+      merge_commit_sha:
+        type: string | null
+        format: full git commit SHA
+      merged_by:
+        type: string | null
+  verification:
+    type: object
+    required: [checked_at, pull_request_state, merged_flag, merge_commit_match, base_contains_merge_commit, branch_deletion_match, evidence]
+    fields:
+      checked_at:
+        type: string | null
+        format: iso-8601
+      pull_request_state:
+        type: enum
+        values: [pass, fail, unknown]
+      merged_flag:
+        type: enum
+        values: [pass, fail, unknown]
+      merge_commit_match:
+        type: enum
+        values: [pass, fail, unknown]
+      base_contains_merge_commit:
+        type: enum
+        values: [pass, fail, unknown]
+      branch_deletion_match:
+        type: enum
+        values: [pass, fail, not_requested, unknown]
+      evidence:
+        type: list
+        items: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values: [invalid_input, authorization_missing, readiness_not_ready, stale_readiness, state_changed, method_not_allowed, auth_unavailable, inaccessible, merge_failed, verification_failed, api_failure]
+      description:
+        type: string
+      evidence:
+        type: list
+        items: string
+invariants:
+  - MergeReadiness is diagnostic evidence only and never grants merge authorization.
+  - Only status approved with exact_target, exact_merge_operation, and merge_authorized all true may attempt a merge.
+  - The approved authorization covers the exact repository, pull request, expected head and base SHAs, base branch, merge method, commit metadata, and branch-deletion effect.
+  - A requested branch deletion requires delete_branch_authorized true; no branch is deleted implicitly.
+  - Preflight must confirm the current open non-Draft PR, unchanged expected head and base SHAs, mergeability, checks, reviews, allowed method, and authorization immediately before the write.
+  - Any identity, head, base, readiness, check, review, conflict, strategy, or authorization change blocks without merging.
+  - The merge is performed only through the GitHub pull-request merge operation, never through a local Git merge or rebase.
+  - Merge queue, auto-merge, rebase, conflict resolution, check reruns, review or thread mutations, local Git changes, and cleanup are outside this contract.
+  - Merged is valid only after GitHub confirms the merged PR state and merge commit SHA; partial means a merge may have occurred but verification is incomplete.
+  - Cleanup is a separately authorized workflow and may not start before successful merge verification.

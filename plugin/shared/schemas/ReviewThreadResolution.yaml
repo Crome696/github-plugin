@@ -1,0 +1,185 @@
+schema: ReviewThreadResolution
+version: 2
+description: Scoped or approval-gated resolution of exactly one GitHub pull-request review thread after current evidence confirms the feedback was addressed.
+required:
+  - status
+  - repository
+  - pull_request
+  - thread
+  - validation
+  - head_sha
+  - platform
+  - approval
+  - feedback_authorization
+  - mutation
+  - verification
+  - unavailable_fields
+  - failure
+fields:
+  status:
+    type: enum
+    values: [draft, approved, resolved, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+  thread:
+    type: object
+    required: [id, parent_comment_id, current_status, is_outdated]
+    fields:
+      id:
+        type: string
+      parent_comment_id:
+        type: string
+      current_status:
+        type: enum
+        values: [open, resolved, unavailable]
+      is_outdated:
+        type: boolean | null
+      path:
+        type: string | null
+      line:
+        type: integer | null
+        minimum: 1
+  validation:
+    type: object
+    required: [version, feedback_item_id, status, resolution_eligible, evidence_references]
+    fields:
+      version:
+        type: integer
+      feedback_item_id:
+        type: string
+      status:
+        type: enum
+        values: [addressed, partially_addressed, not_addressed, unverifiable]
+      resolution_eligible:
+        type: boolean
+      evidence_references:
+        type: list
+        items: string
+      remaining_problems:
+        type: list
+        items: string
+      uncertainties:
+        type: list
+        items: string
+  head_sha:
+    type: string
+  platform:
+    type: object
+    required: [provider, resolution_supported, evidence]
+    fields:
+      provider:
+        type: string
+      resolution_supported:
+        type: boolean
+      evidence:
+        type: string
+  approval:
+    type: object
+    required: [exact_target, resolution_authorized, state_change_gate, evidence]
+    fields:
+      exact_target:
+        type: boolean
+      resolution_authorized:
+        type: boolean
+      state_change_gate:
+        type: enum
+        values: [required_and_granted, not_required, required_and_missing]
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+      evidence:
+        type: string | null
+  feedback_authorization:
+    type: object
+    required: [mode, authorized, repository, pull_request_number, feedback_item_id, validation_reference, current_head_sha, evidence]
+    fields:
+      mode:
+        type: enum
+        values: [address_pr_feedback, not_applicable]
+      authorized:
+        type: boolean
+      repository:
+        type: string | null
+      pull_request_number:
+        type: integer | null
+      feedback_item_id:
+        type: string | null
+      validation_reference:
+        type: string | null
+      current_head_sha:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  mutation:
+    type: object
+    required: [operation, attempted, result, evidence]
+    fields:
+      operation:
+        type: enum
+        values: [resolve_thread, none]
+      attempted:
+        type: boolean
+      result:
+        type: enum
+        values: [resolved, unchanged, failed, unknown]
+      evidence:
+        type: list
+        items: string
+  verification:
+    type: object
+    required: [target_match, head_match, thread_match, status_match, evidence]
+    fields:
+      target_match:
+        type: enum
+        values: [pass, fail, unknown]
+      head_match:
+        type: enum
+        values: [pass, fail, unknown]
+      thread_match:
+        type: enum
+        values: [pass, fail, unknown]
+      status_match:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  unavailable_fields:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, conflicting_identity, stale_state, unsupported_platform, approval_required, thread_not_open, insufficient_evidence, api_failure, verification_incomplete]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - Exactly one repository, pull request, thread, feedback item, and current head SHA are addressed.
+  - The validation must be version 1, status addressed, resolution_eligible true, and free of remaining problems and uncertainties.
+  - A resolved, outdated, unavailable, ambiguous, or disputed thread is never resolved by this workflow.
+  - Platform support and exact target identity must be freshly verified immediately before mutation.
+  - A state-change approval is required when applicable unless the exact feedback-mode authorization is present; general readiness or validation evidence is not authorization.
+  - Feedback-mode authorization is valid only for the named repository, pull request, feedback item, current head SHA, and exact thread; it does not authorize replies or any other mutation.
+  - Mutation is the only permitted GitHub write; replies, reopens, dismissals, edits, reviews, merges, and unrelated changes are outside this contract.
+  - Resolved requires verified target, head, thread, and resolved-status matches after the mutation.

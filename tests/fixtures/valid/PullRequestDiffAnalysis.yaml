@@ -1,0 +1,27 @@
+schema: PullRequestDiffAnalysis
+version: 1
+status: analyzed
+repository: octo-org/widgets
+pull_request:
+  number: 1
+  url: https://github.com/octo-org/widgets
+base_branch: base_branch-value
+base_sha: base_sha-value
+head_sha: head_sha-value
+source:
+  diff_source: live_diff
+  loaded_pull_request_status: loaded
+  evidence: []
+  unavailable_fields: []
+categories_evaluated: []
+capabilities_applied: []
+findings: []
+uncertainties: []
+summary: summary-value
+recommended_next_skill: inspect-pr-checks
+failure:
+  code: missing_identity
+  message: message-value
+  operation: operation-value
+  retryable: false
+analyzed_at: '2026-01-01T00:00:00.000Z'

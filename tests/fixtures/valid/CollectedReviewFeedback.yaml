@@ -1,0 +1,39 @@
+schema: CollectedReviewFeedback
+version: 1
+status: collected
+pull_request:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  head_sha: head_sha-value
+sources:
+  discussions:
+    status: loaded
+    evidence: []
+    unavailable_fields: []
+  classified_findings:
+    status: classified
+    evidence: []
+    unavailable_fields: []
+  checks:
+    status: inspected
+    evidence: []
+    unavailable_fields: []
+groups: []
+uncertainties: []
+summary:
+  group_count: 1
+  item_count: 1
+  open_count: 1
+  resolved_count: 1
+  outdated_count: 1
+  addressed_count: 1
+  failed_check_count: 1
+  missing_required_check_count: 1
+metadata: {}
+unavailable_fields: []
+failure:
+  code: code-value
+  message: message-value
+  operation: operation-value
+  retryable: false

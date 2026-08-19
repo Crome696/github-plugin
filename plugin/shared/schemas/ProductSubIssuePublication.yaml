@@ -1,0 +1,233 @@
+schema: ProductSubIssuePublication
+version: 1
+description: >-
+  Exact-set publication result for one approved product plan. Records the
+  unit-id to GitHub issue mapping, parent and hard-dependency relationship
+  outcomes, omitted units, and failed operations after creating every
+  confirmed sub-issue before finalizing relationships.
+required:
+  - status
+  - repository
+  - parent_issue
+  - authorization
+  - mapping
+  - relationships
+  - failed_operations
+  - omitted_units
+  - evidence
+  - failure
+fields:
+  status:
+    type: enum
+    values: [published, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  parent_issue:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      title:
+        type: string | null
+  authorization:
+    type: object
+    required:
+      - source
+      - task_scope
+      - publication_authorized
+      - exact_payload
+      - exact_set
+      - evidence
+    fields:
+      source:
+        type: enum
+        values: [task_intent, user_approval, repository_policy]
+      task_scope:
+        type: string
+      publication_authorized:
+        type: boolean
+      exact_payload:
+        type: boolean
+      exact_set:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  mapping:
+    type: list
+    items:
+      type: object
+      required:
+        - unit_id
+        - issue_number
+        - issue_url
+        - operation
+      fields:
+        unit_id:
+          type: string
+        issue_number:
+          type: integer
+          minimum: 1
+        issue_url:
+          type: string
+          format: uri
+        operation:
+          type: enum
+          values: [created, reused]
+        title:
+          type: string | null
+        confirmed_class:
+          type: enum
+          values: [must, should, could, later, unconfirmed]
+  relationships:
+    type: object
+    required: [parent_links, dependencies]
+    fields:
+      parent_links:
+        type: list
+        items:
+          type: object
+          required: [unit_id, status]
+          fields:
+            unit_id:
+              type: string
+            issue_number:
+              type: integer | null
+              minimum: 1
+            status:
+              type: enum
+              values: [linked, reused, failed, skipped]
+            evidence:
+              type: list
+              items: string
+      dependencies:
+        type: list
+        items:
+          type: object
+          required: [from_unit_id, to_unit_id, kind, status]
+          fields:
+            from_unit_id:
+              type: string
+            to_unit_id:
+              type: string
+            kind:
+              type: enum
+              values: [blocks, requires]
+            status:
+              type: enum
+              values: [linked, reused, failed, skipped]
+            evidence:
+              type: list
+              items: string
+  failed_operations:
+    type: list
+    items:
+      type: object
+      required: [id, phase, unit_id, code, retryable, evidence]
+      fields:
+        id:
+          type: string
+        phase:
+          type: enum
+          values: [create, parent_link, dependency]
+        unit_id:
+          type: string
+        related_unit_id:
+          type: string | null
+        code:
+          type: enum
+          values:
+            - duplicate_ambiguous
+            - create_failure
+            - parent_link_failure
+            - dependency_failure
+            - verification_failure
+            - identity_mismatch
+            - approval_missing
+        message:
+          type: string | null
+        retryable:
+          type: boolean
+        evidence:
+          type: list
+          items: string
+  omitted_units:
+    type: list
+    items:
+      type: object
+      required: [unit_id, reason, evidence]
+      fields:
+        unit_id:
+          type: string
+        reason:
+          type: string
+        evidence:
+          type: list
+          items: string
+  evidence:
+    type: list
+    items:
+      type: object
+      required: [source, reference, observed]
+      fields:
+        source:
+          type: enum
+          values: [github, git, handoff, user_decision, repository_policy]
+        reference:
+          type: string
+        observed:
+          type: string
+  failure:
+    type: object | null
+    required: [code, message, phase, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - identity_mismatch
+          - approval_missing
+          - unconfirmed_unit
+          - parent_overwrite_forbidden
+          - duplicate_ambiguous
+          - create_failure
+          - parent_link_failure
+          - dependency_failure
+          - verification_failure
+          - blocked_source
+      message:
+        type: string
+      phase:
+        type: enum
+        values: [input, create, parent_link, dependency, verification]
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - The result identifies exactly one repository and one parent issue.
+  - The parent issue is never created, overwritten, closed, or replaced as a
+    sub-issue.
+  - mapping issue numbers never equal parent_issue.number.
+  - published requires every approved confirmed unit in mapping with a verified
+    issue number and URL, every parent link linked or reused, every hard
+    dependency linked or reused, empty failed_operations, and failure null.
+  - partial means at least one external create or relationship write occurred
+    and a later create, relationship, or verification did not complete.
+  - blocked means no external write occurred.
+  - Titles, bodies, and labels of created issues match the exact approved
+    IssueDraft payloads and are never silently rewritten.
+  - Relationship writes begin only after the create phase has attempted every
+    approved unit.
+  - Hard dependency kinds are only blocks and requires.
+  - Missing, stale, unavailable, or ambiguous evidence is preserved and never
+    converted into success.

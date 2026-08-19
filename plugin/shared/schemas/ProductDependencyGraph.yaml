@@ -1,0 +1,211 @@
+schema: ProductDependencyGraph
+version: 1
+description: Read-only directed dependency graph of atomic sub-issue candidates from one parent ProductCapabilityDecomposition and one IssueAtomicityAssessment, distinguishing evidenced product and mandatory technical relations without creating sub-issues or ranking slices by technical order.
+required:
+  - status
+  - source
+  - nodes
+  - edges
+  - independent_units
+  - parallel_groups
+  - cycles
+  - problematic_cuts
+  - priority_boundary
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [graphed, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - repository
+      - number
+      - url
+      - product_capability_decomposition_version
+      - product_capability_decomposition_status
+      - issue_atomicity_assessment_version
+      - issue_atomicity_assessment_status
+      - unavailable_fields
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      product_capability_decomposition_version:
+        type: integer
+      product_capability_decomposition_status:
+        type: enum
+        values: [decomposed, partial, blocked]
+      issue_atomicity_assessment_version:
+        type: integer
+      issue_atomicity_assessment_status:
+        type: enum
+        values: [assessed, partial, blocked]
+      unavailable_fields:
+        type: list
+        items: string
+  nodes:
+    type: list
+    items:
+      type: object
+      required:
+        - unit_id
+        - name
+        - classification
+        - independence
+        - evidence
+      fields:
+        unit_id:
+          type: string
+        name:
+          type: string
+        classification:
+          type: enum
+          values: [too-large, atomic-enough, over-fragmented]
+        independence:
+          type: enum
+          values: [independent, constrained]
+        evidence:
+          type: string
+  edges:
+    type: list
+    items:
+      type: object
+      required:
+        - from_id
+        - to_id
+        - kind
+        - domain
+        - directed
+        - evidence
+        - rationale
+      fields:
+        from_id:
+          type: string
+        to_id:
+          type: string
+        kind:
+          type: enum
+          values: [blocks, requires, enables, related]
+        domain:
+          type: enum
+          values: [product, technical]
+        directed:
+          type: boolean
+        evidence:
+          type: string
+        rationale:
+          type: string
+  independent_units:
+    type: list
+    items: string
+  parallel_groups:
+    type: list
+    items:
+      type: object
+      required: [id, unit_ids, evidence]
+      fields:
+        id:
+          type: string
+        unit_ids:
+          type: list
+          items: string
+        evidence:
+          type: string
+  cycles:
+    type: list
+    items:
+      type: object
+      required: [unit_ids, evidence, cut_question]
+      fields:
+        unit_ids:
+          type: list
+          items: string
+        evidence:
+          type: string
+        cut_question:
+          type: string
+  problematic_cuts:
+    type: list
+    items:
+      type: object
+      required: [kind, unit_ids, question, evidence]
+      fields:
+        kind:
+          type: enum
+          values:
+            - cycle
+            - mutual_requirement
+            - technical_only_split
+            - assumed_dependency
+            - over_fragmented
+            - too_large
+        unit_ids:
+          type: list
+          items: string
+        question:
+          type: string
+        evidence:
+          type: string
+  priority_boundary:
+    type: object
+    required:
+      - technical_order_is_priority
+      - guidance
+    fields:
+      technical_order_is_priority:
+        type: boolean
+      guidance:
+        type: string
+  recommended_next_skill:
+    type: enum
+    values:
+      - prioritize-product-issues
+      - rewrite-github-issue
+      - assess-issue-atomicity
+      - decompose-product-capabilities
+      - structure-issue
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - identity_mismatch
+          - unconfirmed_assessment
+          - unconfirmed_decomposition
+          - graph_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - source preserves the ProductCapabilityDecomposition and IssueAtomicityAssessment identities, contract versions, statuses, and unavailable fields without inventing replacements.
+  - graphed status requires a valid ProductCapabilityDecomposition version 1 that is decomposed or partial, a valid IssueAtomicityAssessment version 1 that is assessed or partial, one node per supplied candidate, remaining uncertainty that is documented rather than invented, and priority_boundary.technical_order_is_priority equal to false.
+  - partial status means graphing is possible but one or more nodes, edges, identities, or source fields remain incomplete; failure identifies the remaining gap.
+  - blocked status means a required handoff is missing, invalid, unsupported, blocked, unconfirmed, or identity-mismatched; nodes contain no fabricated product decisions.
+  - Edges record only evidenced product dependencies or mandatory technical dependencies that make independent validation impossible; assumed, convenience, layer, or phase relations are not edges.
+  - Edge kind is blocks, requires, enables, or related. Independent is a node classification, not a directed edge. Do not emit the inverse of a requires or blocks edge unless independently evidenced as a different claim.
+  - Directed is true for blocks, requires, and enables, and false for related.
+  - Cycles are detected from directed blocks and requires edges only. A cycle or mutual requirement is a problematic cut to question, not a reason to invent a sequence.
+  - Parallel groups contain only atomic-enough units with no hard incoming blocks or requires constraint among themselves. Technical order does not rank those units.
+  - priority_boundary.technical_order_is_priority is always false. Graph order is a sequencing constraint, not product priority.
+  - This handoff never creates, proposes as a write, splits, or publishes GitHub sub-issues.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for graphed results and non-null for partial or blocked results.

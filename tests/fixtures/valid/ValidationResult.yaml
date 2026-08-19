@@ -1,0 +1,41 @@
+schema: ValidationResult
+version: 1
+status: passed
+workspace:
+  path: path-value
+  branch: branch-value
+  head_sha: head_sha-value
+checks: []
+required_checks_passed: false
+source:
+  implementation_plan_version: 1
+  working_tree_inspection_version: 1
+  change_classification_version: 1
+  unrelated_change_detection_version: 1
+  loaded_issue_version: 1
+  issue_analysis_version: 1
+  branch_workspace_version: 1
+  references: []
+  unavailable_inputs: []
+evaluation:
+  scope:
+    status: aligned
+    evidence: []
+  acceptance_criteria: []
+  completion_criteria: []
+  planned_steps: []
+  unexpected_changes: []
+  documented_deviations: []
+blockers: []
+warnings: []
+readiness:
+  commit_preparation_allowed: false
+  draft_pr_preparation_allowed: false
+  reasons: []
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false
+  evidence: []
+recommended_next_skill: recommended_next_skill-value

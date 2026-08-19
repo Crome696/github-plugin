@@ -1,0 +1,37 @@
+schema: ResolvedReviewFeedback
+version: 1
+status: identified
+pull_request:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  base_sha: base_sha-value
+  head_sha: head_sha-value
+source:
+  feedback_status: collected
+  evidence: []
+  baseline_head_sha: baseline_head_sha-value
+  unavailable_fields: []
+latest_state:
+  status: loaded
+  head_sha: head_sha-value
+  evidence: []
+  diff_status: loaded
+  commits_status: loaded
+  tests_status: loaded
+  unavailable_fields: []
+resolved_candidates: []
+uncertainties: []
+summary:
+  feedback_count: 1
+  evaluated_count: 1
+  resolved_candidate_count: 1
+  uncertain_count: 1
+  already_non_open_count: 1
+metadata: {}
+unavailable_fields: []
+failure:
+  code: code-value
+  message: message-value
+  operation: operation-value
+  retryable: false

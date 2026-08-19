@@ -1,0 +1,40 @@
+schema: PreRebaseGate
+version: 1
+workspace:
+  repository: octo-org/widgets
+  path: C:/workspace/github
+  branch: branch-value
+  head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+pull_request:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  base_branch: base_branch-value
+  head_branch: head_branch-value
+  head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+target_fetch:
+  schema: TargetBranchFetch
+  version: 1
+  status: verified
+  repository: octo-org/widgets
+  remote:
+    name: name-value
+    owner_repository: octo-org/widgets
+    fetch_url_sanitized: fetch_url_sanitized-value
+  branch_name: branch_name-value
+  remote_ref: remote_ref-value
+  tracking_ref: tracking_ref-value
+  remote_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  tracking_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  authorization: {}
+  fetch: {}
+  verification: {}
+  failure: {}
+  recommended_next_skill: recommended_next_skill-value
+authorization:
+  approved: false
+  exact_target: false
+  exact_operation: false
+  source: explicit_user
+  evidence: evidence-value
+written_at: '2026-01-01T00:00:00.000Z'

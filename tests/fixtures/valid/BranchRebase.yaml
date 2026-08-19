@@ -1,0 +1,53 @@
+schema: BranchRebase
+version: 1
+status: draft
+repository: octo-org/widgets
+worktree:
+  path: C:/workspace/github
+  branch: branch-value
+  head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+branch:
+  name: name-value
+  pre_rebase_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  post_rebase_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+target:
+  remote_name: remote_name-value
+  branch_name: branch_name-value
+  remote_ref: remote_ref-value
+  tracking_ref: tracking_ref-value
+  tracking_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+authorization:
+  approved: false
+  exact_target: false
+  exact_operation: false
+  source: explicit_user
+  evidence: evidence-value
+preflight:
+  repository_match: pass
+  worktree_registered: pass
+  branch_match: pass
+  target_fetch_verified: pass
+  target_reachable: pass
+  clean: pass
+  no_active_operation: pass
+  base_revision_match: pass
+rebase:
+  attempted: false
+  target_revision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  result: success
+  command: command-value
+  completed_at: '2026-01-01T00:00:00.000Z'
+  evidence: []
+verification:
+  repository_match: pass
+  branch_match: pass
+  target_ancestor: pass
+  active_operation_absent: pass
+  current_head_available: pass
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false
+  evidence: []
+recommended_next_skill: recommended_next_skill-value

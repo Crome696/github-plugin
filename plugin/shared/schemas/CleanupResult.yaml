@@ -1,0 +1,77 @@
+schema: CleanupResult
+version: 1
+description: Explicitly authorized cleanup record for implementation workspaces and branches.
+required:
+  - status
+  - repository
+  - authorization
+  - actions
+  - preserved_artifacts
+fields:
+  status:
+    type: enum
+    values: [not_requested, planned, completed, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  authorization:
+    type: object
+    required: [explicit]
+    fields:
+      explicit:
+        type: boolean
+      authorized_by:
+        type: string | null
+      evidence:
+        type: string | null
+  actions:
+    type: list
+    items:
+      type: object
+      required: [target, action, result]
+      fields:
+        target:
+          type: enum
+          values: [worktree, local_branch, remote_branch, temporary_file, other]
+        identifier:
+          type: string
+        action:
+          type: enum
+          values: [remove, preserve, inspect, not_run]
+        result:
+          type: enum
+          values: [pass, fail, skipped, unknown]
+        evidence:
+          type: string
+        reason:
+          type: string | null
+  preserved_artifacts:
+    type: list
+    items:
+      type: object
+      required: [path_or_identifier, reason]
+      fields:
+        path_or_identifier:
+          type: string
+        reason:
+          type: string
+  worktree:
+    type: object
+    fields:
+      path:
+        type: string | null
+      branch:
+        type: string | null
+      clean_before_cleanup:
+        type: boolean | null
+      clean_after_cleanup:
+        type: boolean | null
+  completed_at:
+    type: string | null
+    format: iso-8601
+invariants:
+  - Cleanup is never inferred from implementation, push, pull-request, or review completion.
+  - No action removes a worktree or branch without explicit authorization.
+  - Remote branches are never force-deleted.
+  - Uncommitted or otherwise recoverable work is preserved when cleanup is unsafe.
+  - The primary checkout is never a cleanup target unless separately and explicitly authorized.

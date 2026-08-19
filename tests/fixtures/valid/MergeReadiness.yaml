@@ -1,0 +1,22 @@
+schema: MergeReadiness
+version: 2
+status: ready
+repository: octo-org/widgets
+pull_request:
+  number: 1
+  url: https://github.com/octo-org/widgets
+head_sha: head_sha-value
+mergeability: mergeable
+blockers: []
+checks: []
+review_state:
+  approval_count: 1
+  change_request_count: 1
+  evidence_status: known
+issue_coverage:
+  status: covered
+  evidence: []
+evidence:
+  head_sha: head_sha-value
+  status: complete
+  sources: []

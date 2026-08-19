@@ -1,0 +1,32 @@
+schema: ProductInterview
+version: 1
+status: complete
+source:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  product_assessment_version: 1
+  product_assessment_status: analyzed
+  unavailable_fields: []
+coverage:
+  problem: confirmed
+  outcome: confirmed
+  actors: confirmed
+  user_journeys: confirmed
+  behavior: confirmed
+  variants: confirmed
+  business_rules: confirmed
+  edge_cases: confirmed
+  priorities: confirmed
+  dependencies: confirmed
+  constraints: confirmed
+  non_goals: confirmed
+confirmed_decisions: []
+assumptions: []
+open_questions: []
+recommended_next_skill: identify-product-capabilities
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false

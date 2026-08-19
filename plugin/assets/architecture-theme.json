@@ -1,0 +1,26 @@
+{
+  "theme": "dark",
+  "themeVariables": {
+    "darkMode": true,
+    "background": "transparent",
+    "primaryColor": "#2a1a3d",
+    "primaryTextColor": "#f5f3ff",
+    "primaryBorderColor": "#7c3aed",
+    "secondaryColor": "#1f1529",
+    "secondaryTextColor": "#ede9fe",
+    "secondaryBorderColor": "#8b5cf6",
+    "tertiaryColor": "#17111f",
+    "tertiaryTextColor": "#e9d5ff",
+    "tertiaryBorderColor": "#6d28d9",
+    "lineColor": "#a78bfa",
+    "textColor": "#f5f3ff",
+    "mainBkg": "#221530",
+    "nodeBorder": "#7c3aed",
+    "clusterBkg": "#120c18",
+    "clusterBorder": "#7c3aed",
+    "titleColor": "#ddd6fe",
+    "edgeLabelBackground": "#1a1224",
+    "fontFamily": "Segoe UI, Trebuchet MS, Verdana, Arial, sans-serif",
+    "fontSize": "16px"
+  }
+}

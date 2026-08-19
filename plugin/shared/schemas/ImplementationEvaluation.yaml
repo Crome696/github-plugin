@@ -1,0 +1,392 @@
+schema: ImplementationEvaluation
+version: 1
+description: Evidence-based evaluation of how one issue or task could be implemented within repository architecture and conventions.
+required:
+  - status
+  - source
+  - focus
+  - assessment
+  - recommended_approach
+  - alternatives
+  - dependencies
+  - risks
+  - blockers
+  - assumptions
+  - required_investigation
+  - unresolved_questions
+  - confidence
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [evaluated, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - task_or_issue
+      - issue
+      - loaded_issue_version
+      - issue_analysis_version
+      - affected_areas_version
+      - repository_context_version
+      - repository_conventions_version
+      - references
+      - unavailable_inputs
+    fields:
+      task_or_issue:
+        type: string | null
+      issue:
+        type: object | null
+        required: [repository, number, title, url]
+        fields:
+          repository:
+            type: string | null
+            format: owner/repository
+          number:
+            type: integer | null
+            minimum: 1
+          title:
+            type: string | null
+          url:
+            type: string | null
+            format: uri
+      loaded_issue_version:
+        type: integer | null
+      issue_analysis_version:
+        type: integer | null
+      affected_areas_version:
+        type: integer | null
+      repository_context_version:
+        type: integer | null
+      repository_conventions_version:
+        type: integer | null
+      references:
+        type: list
+        items:
+          type: string
+      unavailable_inputs:
+        type: list
+        items:
+          type: string
+  focus:
+    type: object | null
+    required: [summary, paths_of_interest, constraints, non_goals]
+    fields:
+      summary:
+        type: string
+      paths_of_interest:
+        type: list
+        items:
+          type: string
+      constraints:
+        type: list
+        items:
+          type: string
+      non_goals:
+        type: list
+        items:
+          type: string
+  assessment:
+    type: object | null
+    required:
+      - feasibility
+      - architectural_fit
+      - complexity
+      - compatibility
+      - testing_implications
+    fields:
+      feasibility:
+        type: object
+        required: [rating, rationale, evidence, confidence]
+        fields:
+          rating:
+            type: enum
+            values: [feasible, feasible_with_conditions, uncertain, infeasible]
+          rationale:
+            type: string
+          evidence:
+            type: list
+            items:
+              type: string
+          confidence:
+            type: enum
+            values: [high, medium, low]
+      architectural_fit:
+        type: object
+        required: [rating, rationale, evidence, confidence]
+        fields:
+          rating:
+            type: enum
+            values: [aligned, compatible_with_constraints, misaligned, uncertain]
+          rationale:
+            type: string
+          evidence:
+            type: list
+            items:
+              type: string
+          confidence:
+            type: enum
+            values: [high, medium, low]
+      complexity:
+        type: object
+        required: [rating, rationale, evidence, confidence]
+        fields:
+          rating:
+            type: enum
+            values: [low, medium, high, uncertain]
+          rationale:
+            type: string
+          evidence:
+            type: list
+            items:
+              type: string
+          confidence:
+            type: enum
+            values: [high, medium, low]
+      compatibility:
+        type: object
+        required: [rating, rationale, evidence, confidence]
+        fields:
+          rating:
+            type: enum
+            values: [low_risk, manageable, high_risk, unknown]
+          rationale:
+            type: string
+          evidence:
+            type: list
+            items:
+              type: string
+          confidence:
+            type: enum
+            values: [high, medium, low]
+      testing_implications:
+        type: object
+        required: [rating, rationale, evidence, confidence]
+        fields:
+          rating:
+            type: enum
+            values: [contained, cross_cutting, substantial, unknown]
+          rationale:
+            type: string
+          evidence:
+            type: list
+            items:
+              type: string
+          confidence:
+            type: enum
+            values: [high, medium, low]
+  recommended_approach:
+    type: object | null
+    required:
+      - name
+      - summary
+      - rationale
+      - advantages
+      - disadvantages
+      - trade_offs
+    fields:
+      name:
+        type: string
+      summary:
+        type: string
+      rationale:
+        type: list
+        items:
+          type: string
+      advantages:
+        type: list
+        items:
+          type: string
+      disadvantages:
+        type: list
+        items:
+          type: string
+      trade_offs:
+        type: list
+        items:
+          type: string
+      conditions:
+        type: list
+        items:
+          type: string
+  alternatives:
+    type: list
+    items:
+      type: object
+      required:
+        - name
+        - summary
+        - advantages
+        - disadvantages
+        - trade_offs
+        - suitability
+        - evidence
+        - confidence
+      fields:
+        name:
+          type: string
+        summary:
+          type: string
+        advantages:
+          type: list
+          items:
+            type: string
+        disadvantages:
+          type: list
+          items:
+            type: string
+        trade_offs:
+          type: list
+          items:
+            type: string
+        suitability:
+          type: enum
+          values: [viable, viable_with_conditions, not_recommended, uncertain]
+        evidence:
+          type: list
+          items:
+            type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  dependencies:
+    type: list
+    items:
+      type: object
+      required: [dependency, relationship, status, evidence, confidence]
+      fields:
+        dependency:
+          type: string
+        relationship:
+          type: string
+        status:
+          type: enum
+          values: [verified, assumed, unresolved, unavailable]
+        evidence:
+          type: list
+          items:
+            type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  risks:
+    type: list
+    items:
+      type: object
+      required: [severity, description, evidence, mitigation, confidence]
+      fields:
+        severity:
+          type: enum
+          values: [low, medium, high]
+        description:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: string
+        mitigation:
+          type: string | null
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [description, evidence, resolution_needed, confidence]
+      fields:
+        description:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: string
+        resolution_needed:
+          type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  assumptions:
+    type: list
+    items:
+      type: object
+      required: [assumption, evidence, confidence]
+      fields:
+        assumption:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  required_investigation:
+    type: list
+    items:
+      type: object
+      required: [question, reason, evidence_to_check, blocking]
+      fields:
+        question:
+          type: string
+        reason:
+          type: string
+        evidence_to_check:
+          type: list
+          items:
+            type: string
+        blocking:
+          type: boolean
+  unresolved_questions:
+    type: list
+    items:
+      type: object
+      required: [question, impact, blocking]
+      fields:
+        question:
+          type: string
+        impact:
+          type: string
+        blocking:
+          type: boolean
+  confidence:
+    type: enum
+    values: [high, medium, low]
+  recommended_next_skill:
+    type: enum
+    values:
+      - inspect-repository
+      - detect-repository-conventions
+      - identify-affected-areas
+      - resolve-context-capabilities
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - insufficient_context
+          - conflicting_evidence
+          - analysis_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The evaluation represents exactly one implementation request.
+  - Every material assessment, recommendation, alternative, dependency, risk, blocker, and assumption is grounded in supplied issue, task, handoff, repository, or convention evidence.
+  - Missing evidence is recorded as an uncertainty, required investigation item, unresolved question, partial result, or blocker rather than fabricated.
+  - The recommended approach is one explicit recommendation and does not silently convert assumptions or observed conventions into requirements.
+  - Alternatives are included only when they are materially different and supported enough to compare; their advantages, disadvantages, and trade-offs remain distinct.
+  - The result evaluates implementation approaches but does not provide source code, implementation steps, a project-specific test plan, workspace instructions, authorization, or external writes.
+  - ImplementationEvaluation is an evaluation handoff and does not replace the task-authorized ImplementationPlan contract.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for evaluated results and non-null for partial or blocked results.

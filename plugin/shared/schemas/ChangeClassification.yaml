@@ -1,0 +1,190 @@
+schema: ChangeClassification
+version: 1
+description: Read-only, evidence-based classification of working-tree changes by purpose, component, and relationship to an issue or implementation plan for scope validation and commit planning.
+required:
+  - status
+  - repository
+  - branch_name
+  - worktree_path
+  - source
+  - changes
+  - summary
+  - evidence
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [classified, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  branch_name:
+    type: string
+  worktree_path:
+    type: string
+  source:
+    type: object
+    required:
+      - task_or_issue
+      - working_tree_inspection_version
+      - implementation_plan_version
+      - loaded_issue_version
+      - issue_analysis_version
+      - affected_areas_version
+      - references
+      - unavailable_inputs
+    fields:
+      task_or_issue:
+        type: string | null
+      working_tree_inspection_version:
+        type: integer | null
+      implementation_plan_version:
+        type: integer | null
+      loaded_issue_version:
+        type: integer | null
+      issue_analysis_version:
+        type: integer | null
+      affected_areas_version:
+        type: integer | null
+      references:
+        type: list
+        items: string
+      unavailable_inputs:
+        type: list
+        items: string
+  changes:
+    type: list
+    items:
+      type: object
+      required:
+        - path
+        - previous_path
+        - change_kind
+        - purpose
+        - component
+        - plan_relation
+        - issue_relation
+        - confidence
+        - rationale
+        - evidence
+      fields:
+        path:
+          type: string
+        previous_path:
+          type: string | null
+        change_kind:
+          type: enum
+          values: [added, modified, deleted, renamed, untracked]
+        purpose:
+          type: enum
+          values:
+            - planned_implementation
+            - test
+            - documentation
+            - configuration
+            - generated
+            - potentially_foreign
+        component:
+          type: string
+        plan_relation:
+          type: enum
+          values: [planned, supporting, unrelated, uncertain, no_plan]
+        issue_relation:
+          type: enum
+          values: [in_scope, out_of_scope, uncertain, no_issue]
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        rationale:
+          type: string
+        evidence:
+          type: list
+          items: string
+  summary:
+    type: object
+    required:
+      - by_purpose
+      - in_scope_paths
+      - out_of_scope_or_foreign_paths
+      - uncertain_paths
+      - scope_alignment
+    fields:
+      by_purpose:
+        type: object
+        required:
+          - planned_implementation
+          - test
+          - documentation
+          - configuration
+          - generated
+          - potentially_foreign
+        fields:
+          planned_implementation:
+            type: list
+            items: string
+          test:
+            type: list
+            items: string
+          documentation:
+            type: list
+            items: string
+          configuration:
+            type: list
+            items: string
+          generated:
+            type: list
+            items: string
+          potentially_foreign:
+            type: list
+            items: string
+      in_scope_paths:
+        type: list
+        items: string
+      out_of_scope_or_foreign_paths:
+        type: list
+        items: string
+      uncertain_paths:
+        type: list
+        items: string
+      scope_alignment:
+        type: enum
+        values: [aligned, drift, unknown]
+  evidence:
+    type: list
+    items: string
+  recommended_next_skill:
+    type: string | null
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - inspection_missing
+          - insufficient_evidence
+          - classification_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - Classification is read-only and never edits files, the index, branches, worktrees, Git administrative state, or GitHub resources.
+  - Every classified path comes from the supplied WorkingTreeInspection and remains repository-relative; no path is invented from an issue or plan.
+  - Every change records a purpose, component, plan relationship, issue relationship, confidence, rationale, and reproducible evidence.
+  - planned_implementation, test, documentation, configuration, and generated purposes describe the observed change; plan_relation and issue_relation independently describe scope.
+  - potentially_foreign is a suspicion requiring diff, plan, issue, path, or explicit uncertainty evidence; it is not proof that a change is unauthorized.
+  - A clean empty inspection is a valid classified result with empty changes and summary lists.
+  - status blocked is required when the inspection is missing, identity cannot be trusted, or no reliable path inventory is available; status partial preserves useful classifications when evidence is incomplete.
+  - scope_alignment is aligned only when all observed paths are supported by the supplied scope evidence; it is drift when an explicit out-of-scope or potentially foreign path is present, and unknown when scope evidence is unavailable or incomplete.
+  - recommended_next_skill is advisory only and never authorizes or invokes another Skill, staging, committing, or any other side effect.
+  - Evidence must not contain secrets, tokens, private keys, .env contents, or credential-bearing remote URLs.

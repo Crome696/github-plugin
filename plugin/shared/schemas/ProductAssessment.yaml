@@ -1,0 +1,306 @@
+schema: ProductAssessment
+version: 1
+description: Read-only product analysis of one parent GitHub issue as interview-prep, without creating sub-issues or inventing product decisions.
+required:
+  - status
+  - source
+  - topics
+  - assumptions
+  - implicit_requirements
+  - mixed_features
+  - unclear_decisions
+  - open_questions
+  - interview_focus
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [analyzed, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - repository
+      - number
+      - url
+      - loaded_issue_version
+      - loaded_issue_status
+      - unavailable_fields
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      loaded_issue_version:
+        type: integer
+      loaded_issue_status:
+        type: enum
+        values: [loaded, partial, blocked]
+      unavailable_fields:
+        type: list
+        items: string
+  topics:
+    type: object
+    required:
+      - problem
+      - desired_outcome
+      - actors
+      - use_cases
+      - functional_requirements
+      - business_rules
+      - constraints
+      - acceptance_criteria
+      - dependencies
+      - priorities
+    fields:
+      problem:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      desired_outcome:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      actors:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      use_cases:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      functional_requirements:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      business_rules:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      constraints:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      acceptance_criteria:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      dependencies:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      priorities:
+        type: list
+        items:
+          type: object
+          required: [text, evidence, certainty]
+          fields:
+            text:
+              type: string
+            evidence:
+              type: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+  assumptions:
+    type: list
+    items:
+      type: object
+      required: [text, evidence, certainty]
+      fields:
+        text:
+          type: string
+        evidence:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+  implicit_requirements:
+    type: list
+    items:
+      type: object
+      required: [text, evidence, certainty]
+      fields:
+        text:
+          type: string
+        evidence:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+  mixed_features:
+    type: list
+    items:
+      type: object
+      required: [text, evidence, certainty]
+      fields:
+        text:
+          type: string
+        evidence:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+  unclear_decisions:
+    type: list
+    items:
+      type: object
+      required: [text, evidence, certainty]
+      fields:
+        text:
+          type: string
+        evidence:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+  open_questions:
+    type: list
+    items:
+      type: object
+      required: [text, evidence, certainty]
+      fields:
+        text:
+          type: string
+        evidence:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+  interview_focus:
+    type: list
+    items:
+      type: object
+      required: [text, evidence, certainty]
+      fields:
+        text:
+          type: string
+        evidence:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+  recommended_next_skill:
+    type: enum
+    values:
+      - conduct-product-interview
+      - rewrite-github-issue
+      - structure-issue
+      - define-acceptance-criteria
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - analysis_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - source preserves the loaded issue identity, contract version, status, and unavailable fields without inventing replacements.
+  - analyzed status requires a valid LoadedIssue version 1 with all evidence needed for the product assessment.
+  - partial status means the assessment is possible but one or more material source fields are unavailable; failure identifies the incomplete source.
+  - blocked status means the source is blocked or the input cannot be validated; topics and diagnostic inventories contain no fabricated issue facts.
+  - Every inventory item is grounded in available issue, comment, metadata, linked-pull-request, label, or explicitly supplied repository evidence.
+  - Certainty distinguishes retrieved evidence from interpretation; inferred and uncertain items are never presented as confirmed requirements.
+  - mixed_features records independent outcomes or journeys in the parent issue as diagnosis only; this handoff never creates, publishes, or writes GitHub sub-issues.
+  - interview_focus contains at most two prioritized follow-up topics for a later interview and does not itself ask the user those questions.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for analyzed results and non-null for partial or blocked results.

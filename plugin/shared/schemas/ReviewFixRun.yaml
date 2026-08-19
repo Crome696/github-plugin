@@ -1,0 +1,211 @@
+schema: ReviewFixRun
+version: 1
+description: Lifecycle record for one internal pull-request review-and-fix loop on an existing head branch.
+required:
+  - status
+  - repository
+  - pull_request
+  - iterations
+  - plan
+  - workspace
+  - commit
+  - push
+  - remaining_item_ids
+  - authorization
+  - blockers
+  - next_user_action
+  - evidence
+  - failure
+  - metadata
+fields:
+  status:
+    type: enum
+    values: [running, fixes_complete, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, title, head_sha, head_branch, base_branch]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      title:
+        type: string
+      head_sha:
+        type: string
+      head_branch:
+        type: string
+      base_branch:
+        type: string
+  iterations:
+    type: list
+    items:
+      type: object
+      required: [number, input_head_sha, output_head_sha, status, candidate_item_ids, mandatory_item_ids, commit_sha, remote_sha, evidence, blockers]
+      fields:
+        number:
+          type: integer
+          minimum: 1
+        input_head_sha:
+          type: string
+        output_head_sha:
+          type: string | null
+        status:
+          type: enum
+          values: [running, fixes_complete, partial, blocked]
+        candidate_item_ids:
+          type: list
+          items: string
+        mandatory_item_ids:
+          type: list
+          items: string
+        commit_sha:
+          type: string | null
+        remote_sha:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+        blockers:
+          type: list
+          items: string
+  plan:
+    type: object | null
+    required: [status, plan_id, head_sha, mandatory_item_ids]
+    fields:
+      status:
+        type: string
+      plan_id:
+        type: string
+      head_sha:
+        type: string
+      mandatory_item_ids:
+        type: list
+        items: string
+  workspace:
+    type: object | null
+    required: [status, branch_name, worktree_path, isolation_mode]
+    fields:
+      status:
+        type: string
+      branch_name:
+        type: string
+      worktree_path:
+        type: string
+        format: absolute-path
+      isolation_mode:
+        type: string
+  commit:
+    type: object | null
+    required: [status, sha]
+    fields:
+      status:
+        type: string
+      sha:
+        type: string | null
+  push:
+    type: object | null
+    required: [status, branch_name, remote_sha]
+    fields:
+      status:
+        type: string
+      branch_name:
+        type: string
+      remote_sha:
+        type: string | null
+  remaining_item_ids:
+    type: list
+    items: string
+  authorization:
+    type: object
+    required: [source, task_scope, routine_operations, exact_scope_approved, commit_authorized, push_authorized, evidence]
+    fields:
+      source:
+        type: string
+      task_scope:
+        type: string
+      routine_operations:
+        type: list
+        items: string
+      exact_scope_approved:
+        type: boolean
+      commit_authorized:
+        type: boolean
+      push_authorized:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, description, status, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        evidence:
+          type: list
+          items: string
+  next_user_action:
+    type: string
+  evidence:
+    type: list
+    items:
+      type: object
+      required: [source, reference, observed]
+      fields:
+        source:
+          type: string
+        reference:
+          type: string
+        observed:
+          type: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: string
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  metadata:
+    type: object
+    required: [run_id, max_iterations, started_at, completed_at, conversation_language]
+    fields:
+      run_id:
+        type: string
+      max_iterations:
+        type: integer
+        minimum: 1
+      started_at:
+        type: string
+        format: iso-8601
+      completed_at:
+        type: string | null
+        format: iso-8601
+      conversation_language:
+        type: string
+invariants:
+  - The run identifies exactly one repository and pull request.
+  - Every iteration records its input and verified output head identity.
+  - fixes_complete requires no remaining mandatory item IDs and no open blocker.
+  - partial and blocked results preserve their limiting evidence and never claim completion.
+  - Routine authorization is limited to the same pull request, head branch, worktree, commit, and non-force push.
+  - Review publication, thread mutation, Ready-for-Review, rebase, merge, and cleanup are never reported as completed.

@@ -1,0 +1,132 @@
+schema: RequiredCheckRerun
+version: 1
+description: Exact authorization-gated rerun of failed required pull-request checks with live run-identity verification; optional checks and unauthorized names fail closed with no GitHub write.
+required:
+  - status
+  - repository
+  - pull_request
+  - head_sha
+  - requested_checks
+  - authorized_checks
+  - executed
+  - verification
+  - authorization
+  - blockers
+  - evidence
+  - failure
+fields:
+  status:
+    type: enum
+    values: [approved, rerun, verified, no-op, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, head_branch, base_branch]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      head_branch:
+        type: string
+      base_branch:
+        type: string
+  head_sha:
+    type: string
+  requested_checks:
+    type: list
+    items: string
+  authorized_checks:
+    type: list
+    items: string
+  executed:
+    type: list
+    items:
+      type: object
+      required: [name, previous_run_id, new_run_id, result, evidence]
+      fields:
+        name:
+          type: string
+        previous_run_id:
+          type: string | null
+        previous_job_id:
+          type: string | null
+        new_run_id:
+          type: string | null
+        new_job_id:
+          type: string | null
+        result:
+          type: enum
+          values: [requested, verified, unmatched, skipped, failed]
+        evidence:
+          type: list
+          items: string
+  verification:
+    type: object
+    required: [identity_matched, new_runs_observed, optional_checks_excluded]
+    fields:
+      identity_matched:
+        type: boolean
+      new_runs_observed:
+        type: boolean
+      optional_checks_excluded:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required: [source, task_scope, exact_check_names, rerun_authorized, evidence]
+    fields:
+      source:
+        type: string
+      task_scope:
+        type: string
+      exact_check_names:
+        type: list
+        items: string
+      rerun_authorized:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, description, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  evidence:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: string
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - Every rerun name is an exact required check from retrieved branch-protection or ruleset evidence.
+  - Unauthorized, optional, or identity-mismatched names produce no GitHub write.
+  - New run identities are verified after the write; missing or unchanged identities are partial or blocked.
+  - The rerun never merges, publishes a review, requests reviewers, or marks Ready-for-Review.
