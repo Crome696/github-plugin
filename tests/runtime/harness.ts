@@ -1179,7 +1179,7 @@ const preRebaseRules = (context: RuntimeContext, activeOperation = false): FakeC
   ),
   exact(
     "git",
-    ["-C", context.repositoryRoot, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
+    ["-C", context.repositoryRoot, "rev-parse", "--symbolic-full-name", "@{upstream}"],
     `refs/remotes/origin/${context.branch}`,
   ),
   exact(

@@ -12,6 +12,13 @@ const ALLOWED_AUTHORIZATION_SOURCES = new Set([
 ]);
 const SAFE_REMOTE_NAME = /^[A-Za-z0-9._-]+$/;
 const SAFE_BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
+const REBASE_RECOVERY_OPTIONS = new Set([
+  "--continue",
+  "--skip",
+  "--abort",
+]);
+const REBASE_METADATA_FILES = ["head-name", "onto", "orig-head"];
+const MAX_REBASE_METADATA_BYTES = 64 * 1024;
 const ACTIVE_OPERATION_MARKERS = [
   ["MERGE_HEAD", "merge"],
   ["CHERRY_PICK_HEAD", "cherry-pick"],
@@ -403,6 +410,8 @@ function parseGitSegment(segment, currentDirectory) {
     targetDirectory,
     args: segment.slice(index + 1),
     unsafeEnvironment,
+    unsupportedWrapper:
+      firstIndex > 0 ? segment.slice(0, firstIndex).join(" ") : null,
     unsupportedTarget,
     unsupportedGlobalOption,
     parseError,
@@ -430,8 +439,10 @@ function identifyRebaseInvocations(command, initialDirectory) {
   let currentDirectory = resolve(initialDirectory);
   let parseError = null;
   const invocations = [];
+  const segments = splitCommandSegments(tokens);
+  const shellSeparators = new Set([";", "&&", "||", "|", "&", "(", ")"]);
 
-  for (const segment of splitCommandSegments(tokens)) {
+  for (const segment of segments) {
     if (segment.length === 0) {
       continue;
     }
@@ -468,7 +479,13 @@ function identifyRebaseInvocations(command, initialDirectory) {
     parseError = null;
   }
 
-  return { invocations, parseable: true, reason: null };
+  return {
+    invocations,
+    parseable: true,
+    reason: null,
+    hasShellSeparator: tokens.some((token) => shellSeparators.has(token)),
+    segmentCount: segments.length,
+  };
 }
 
 function likelyRebaseCommand(command) {
@@ -899,6 +916,7 @@ function compareGateIdentities(
   headSha,
   targetSha,
   findings,
+  { recovery = false } = {},
 ) {
   if (!isRecord(gate)) {
     return;
@@ -920,14 +938,14 @@ function compareGateIdentities(
       "run the rebase workflow from the exact verified implementation worktree",
     );
   }
-  if (isRecord(workspace) && workspace.branch !== branch) {
+  if (!recovery && isRecord(workspace) && workspace.branch !== branch) {
     addFinding(
       findings,
       "PreRebaseGate.workspace.branch does not match the live branch.",
       "refresh the gate from the currently checked-out feature branch",
     );
   }
-  if (isRecord(pullRequest) && pullRequest.head_branch !== branch) {
+  if (!recovery && isRecord(pullRequest) && pullRequest.head_branch !== branch) {
     addFinding(
       findings,
       "The live branch is not the pull-request head branch recorded in the gate.",
@@ -935,6 +953,7 @@ function compareGateIdentities(
     );
   }
   if (
+    !recovery &&
     isRecord(workspace) &&
     isSha(workspace.head_sha) &&
     workspace.head_sha.toLowerCase() !== headSha.toLowerCase()
@@ -946,6 +965,7 @@ function compareGateIdentities(
     );
   }
   if (
+    !recovery &&
     isRecord(pullRequest) &&
     isSha(pullRequest.head_sha) &&
     pullRequest.head_sha.toLowerCase() !== headSha.toLowerCase()
@@ -1057,7 +1077,13 @@ function parseWorktreeRecords(output) {
   return records;
 }
 
-function validateRegisteredWorktree(repositoryRoot, branch, headSha, findings) {
+function validateRegisteredWorktree(
+  repositoryRoot,
+  branch,
+  headSha,
+  findings,
+  { recovery = false } = {},
+) {
   let output;
   try {
     output = runGit(repositoryRoot, ["worktree", "list", "--porcelain"]);
@@ -1094,14 +1120,21 @@ function validateRegisteredWorktree(repositoryRoot, branch, headSha, findings) {
       "use the verified dedicated implementation worktree",
     );
   }
-  if (match.branch !== `refs/heads/${branch}`) {
+  if (
+    !recovery &&
+    match.branch !== `refs/heads/${branch}`
+  ) {
     addFinding(
       findings,
       "The registered worktree branch does not match the live feature branch.",
       "verify the registered worktree and checked-out branch",
     );
   }
-  if (isNonEmptyString(match.HEAD) && match.HEAD.toLowerCase() !== headSha.toLowerCase()) {
+  if (
+    !recovery &&
+    isNonEmptyString(match.HEAD) &&
+    match.HEAD.toLowerCase() !== headSha.toLowerCase()
+  ) {
     addFinding(
       findings,
       "The registered worktree HEAD does not match the live HEAD.",
@@ -1387,7 +1420,6 @@ function validateNoUnsecuredChanges(repositoryRoot, pullRequest, headSha, findin
   try {
     upstreamRef = runGit(repositoryRoot, [
       "rev-parse",
-      "--abbrev-ref",
       "--symbolic-full-name",
       "@{upstream}",
     ]);
@@ -1457,12 +1489,221 @@ function validateNoUnsecuredChanges(repositoryRoot, pullRequest, headSha, findin
   }
 }
 
+function resolveGitAdministrativePath(repositoryRoot, marker, findings) {
+  let markerPath;
+  try {
+    markerPath = runGit(repositoryRoot, ["rev-parse", "--git-path", marker]);
+  } catch {
+    addFinding(
+      findings,
+      `The Git administrative path for ${safeLabel(marker)} could not be verified.`,
+      "verify the active rebase state from the exact implementation worktree",
+    );
+    return null;
+  }
+
+  if (!isNonEmptyString(markerPath)) {
+    addFinding(
+      findings,
+      `The Git administrative path for ${safeLabel(marker)} is missing.`,
+      "verify the active rebase state from the exact implementation worktree",
+    );
+    return null;
+  }
+
+  return isAbsolute(markerPath)
+    ? resolve(markerPath)
+    : resolve(repositoryRoot, markerPath);
+}
+
+function readRebaseMetadata(metadataDirectory, name, findings) {
+  const metadataPath = resolve(metadataDirectory, name);
+  try {
+    const stats = statSync(metadataPath);
+    if (!stats.isFile() || stats.size > MAX_REBASE_METADATA_BYTES) {
+      throw new Error("invalid rebase metadata");
+    }
+    const value = readFileSync(metadataPath, "utf8").trim();
+    if (!isNonEmptyString(value) || value.includes("\0")) {
+      throw new Error("empty rebase metadata");
+    }
+    return value;
+  } catch {
+    addFinding(
+      findings,
+      `The active rebase metadata file ${safeLabel(name)} is missing, malformed, or too large.`,
+      "preserve the active Git rebase state and verify its identity before recovery",
+    );
+    return null;
+  }
+}
+
+function validateActiveRebase(repositoryRoot, gate, findings) {
+  const rebaseStates = [];
+  for (const marker of ["rebase-merge", "rebase-apply"]) {
+    const markerPath = resolveGitAdministrativePath(repositoryRoot, marker, findings);
+    if (markerPath !== null && existsSync(markerPath)) {
+      rebaseStates.push({ marker, path: markerPath });
+    }
+  }
+
+  if (rebaseStates.length === 0) {
+    addFinding(
+      findings,
+      "No active Git rebase administrative state matches the recovery command.",
+      "run recovery only while the authorized rebase is stopped in this worktree",
+    );
+    return;
+  }
+  if (rebaseStates.length > 1) {
+    addFinding(
+      findings,
+      "Both Git rebase administrative backends are active, so recovery identity is ambiguous.",
+      "preserve exactly one active rebase backend before recovery",
+    );
+    return;
+  }
+
+  const activeState = rebaseStates[0];
+  try {
+    if (!statSync(activeState.path).isDirectory()) {
+      throw new Error("rebase metadata is not a directory");
+    }
+  } catch {
+    addFinding(
+      findings,
+      `The active ${safeLabel(activeState.marker)} Git rebase state is not a directory.`,
+      "preserve a valid active Git rebase administrative directory before recovery",
+    );
+    return;
+  }
+
+  for (const [marker, label] of ACTIVE_OPERATION_MARKERS) {
+    if (marker === "rebase-merge" || marker === "rebase-apply") {
+      continue;
+    }
+    const markerPath = resolveGitAdministrativePath(repositoryRoot, marker, findings);
+    if (markerPath !== null && existsSync(markerPath)) {
+      addFinding(
+        findings,
+        `Git reports an active ${label} operation alongside the rebase.`,
+        "resolve the ambiguous Git administrative state before recovery",
+      );
+    }
+  }
+
+  const metadata = Object.fromEntries(
+    REBASE_METADATA_FILES.map((name) => [
+      name,
+      readRebaseMetadata(activeState.path, name, findings),
+    ]),
+  );
+  const workspace = gate?.workspace;
+  const pullRequest = gate?.pull_request;
+  const targetFetch = gate?.target_fetch;
+  const expectedBranch =
+    isRecord(pullRequest) && isSafeBranchName(pullRequest.head_branch)
+      ? pullRequest.head_branch
+      : isRecord(workspace) && isSafeBranchName(workspace.branch)
+        ? workspace.branch
+        : null;
+  const expectedHead = isRecord(workspace) ? workspace.head_sha : null;
+  const pullRequestHead = isRecord(pullRequest) ? pullRequest.head_sha : null;
+  const expectedTarget = isRecord(targetFetch) ? targetFetch.tracking_sha : null;
+
+  if (
+    isRecord(workspace) &&
+    isRecord(pullRequest) &&
+    isSafeBranchName(workspace.branch) &&
+    isSafeBranchName(pullRequest.head_branch) &&
+    workspace.branch !== pullRequest.head_branch
+  ) {
+    addFinding(
+      findings,
+      "The gate workspace branch and pull-request head branch do not identify the same authorized operation.",
+      "write a consistent version-1 PreRebaseGate before recovery",
+    );
+  }
+
+  if (
+    expectedBranch === null ||
+    metadata["head-name"] !== `refs/heads/${expectedBranch}`
+  ) {
+    addFinding(
+      findings,
+      "The active rebase head-name does not match the authorized pull-request feature branch.",
+      "recover only the exact authorized feature branch rebase",
+    );
+  }
+  if (!isSha(metadata.onto) || !isSha(expectedTarget)) {
+    addFinding(
+      findings,
+      "The active rebase onto metadata or the authorized target SHA is not a full commit SHA.",
+      "verify the active rebase target and write a complete version-1 gate",
+    );
+  } else if (metadata.onto.toLowerCase() !== expectedTarget.toLowerCase()) {
+    addFinding(
+      findings,
+      "The active rebase onto SHA does not match the authorized target-fetch SHA.",
+      "recover only the rebase started against the exact authorized target SHA",
+    );
+  }
+  if (!isSha(metadata["orig-head"]) || !isSha(expectedHead)) {
+    addFinding(
+      findings,
+      "The active rebase orig-head metadata or the authorized pre-rebase HEAD is not a full commit SHA.",
+      "verify the active rebase origin and write a complete version-1 gate",
+    );
+  } else if (metadata["orig-head"].toLowerCase() !== expectedHead.toLowerCase()) {
+    addFinding(
+      findings,
+      "The active rebase orig-head does not match the authorized pre-rebase HEAD.",
+      "recover only the exact authorized rebase operation",
+    );
+  }
+  if (
+    isSha(expectedHead) &&
+    isSha(pullRequestHead) &&
+    expectedHead.toLowerCase() !== pullRequestHead.toLowerCase()
+  ) {
+    addFinding(
+      findings,
+      "The gate workspace HEAD and pull-request HEAD do not identify the same authorized operation.",
+      "write a consistent version-1 PreRebaseGate before recovery",
+    );
+  }
+
+  if (expectedBranch !== null) {
+    validateRegisteredWorktree(
+      repositoryRoot,
+      expectedBranch,
+      null,
+      findings,
+      { recovery: true },
+    );
+  }
+}
+
 function validateRebaseCommand(invocation, gate, findings) {
   if (invocation.parseError) {
     addFinding(
       findings,
       invocation.parseError,
       "run one explicit, parseable git rebase command from the verified worktree",
+    );
+  }
+  if (invocation.hasShellSeparator || invocation.segmentCount !== 1) {
+    addFinding(
+      findings,
+      "The shell command contains an adjacent command segment or shell separator.",
+      "run exactly one standalone git rebase command",
+    );
+  }
+  if (invocation.unsupportedWrapper) {
+    addFinding(
+      findings,
+      `The rebase command uses unsupported command wrapper ${safeLabel(invocation.unsupportedWrapper)}.`,
+      "run the direct git rebase command from the verified worktree",
     );
   }
   if (invocation.unsupportedTarget) {
@@ -1490,13 +1731,16 @@ function validateRebaseCommand(invocation, gate, findings) {
   if (!Array.isArray(invocation.args) || invocation.args.length !== 1) {
     addFinding(
       findings,
-      "The rebase command does not contain exactly one target revision.",
-      "use git rebase with exactly the verified full target SHA and no rebase options",
+      "The rebase command does not contain exactly one start target or recovery option.",
+      "use one full target SHA for a new start or one standalone --continue, --skip, or --abort",
     );
     return null;
   }
 
   const target = invocation.args[0];
+  if (REBASE_RECOVERY_OPTIONS.has(target)) {
+    return { kind: "recovery", option: target };
+  }
   if (!isSha(target)) {
     const targetLabel = target.startsWith("-")
       ? `disallowed rebase option ${safeLabel(target)}`
@@ -1520,7 +1764,7 @@ function validateRebaseCommand(invocation, gate, findings) {
       "use only the exact approved target tracking SHA",
     );
   }
-  return target;
+  return { kind: "start", targetSha: target };
 }
 
 function writeResponse(input, result) {
@@ -1639,20 +1883,11 @@ function evaluate(input) {
     return makeDeny(findings);
   }
 
-  let targetSha = null;
   let repositoryRoot = null;
-  let branch = null;
-  let headSha = null;
   try {
     repositoryRoot = runGit(invocation.targetDirectory, [
       "rev-parse",
       "--show-toplevel",
-    ]);
-    branch = runGit(invocation.targetDirectory, ["branch", "--show-current"]);
-    headSha = runGit(invocation.targetDirectory, [
-      "rev-parse",
-      "--verify",
-      "HEAD^{commit}",
     ]);
   } catch (error) {
     const operation =
@@ -1665,42 +1900,84 @@ function evaluate(input) {
     return makeDeny(findings);
   }
 
-  if (!isNonEmptyString(branch)) {
-    addFinding(
-      findings,
-      "The rebase worktree is detached or has no current branch.",
-      "check out the verified pull-request feature branch",
-    );
-  }
-  if (!isSha(headSha)) {
-    addFinding(
-      findings,
-      "The live Git HEAD is missing or malformed.",
-      "verify the pre-rebase commit identity",
-    );
-  }
-
   const gate = readGate(repositoryRoot, findings);
-  targetSha = validateRebaseCommand(invocation, gate, findings);
+  const operation = validateRebaseCommand(
+    {
+      ...invocation,
+      hasShellSeparator: identified.hasShellSeparator,
+      segmentCount: identified.segmentCount,
+    },
+    gate,
+    findings,
+  );
+  const recovery = operation?.kind === "recovery";
+
   if (gate !== null) {
     validateGate(gate, findings);
-    compareGateIdentities(
-      gate,
-      repositoryRoot,
-      branch,
-      headSha,
-      targetSha,
-      findings,
-    );
-    validateRegisteredWorktree(repositoryRoot, branch, headSha, findings);
-    validateCleanWorktree(repositoryRoot, findings);
-    validateRemoteContext(repositoryRoot, gate, findings);
-    validateNoUnsecuredChanges(
-      repositoryRoot,
-      gate.pull_request,
-      headSha,
-      findings,
-    );
+    if (recovery) {
+      compareGateIdentities(
+        gate,
+        repositoryRoot,
+        null,
+        null,
+        null,
+        findings,
+        { recovery: true },
+      );
+      validateActiveRebase(repositoryRoot, gate, findings);
+    } else {
+      let branch = null;
+      let headSha = null;
+      try {
+        branch = runGit(invocation.targetDirectory, ["branch", "--show-current"]);
+        headSha = runGit(invocation.targetDirectory, [
+          "rev-parse",
+          "--verify",
+          "HEAD^{commit}",
+        ]);
+      } catch (error) {
+        const operationName =
+          error instanceof GitCommandError ? safeLabel(error.operation) : "identity";
+        addFinding(
+          findings,
+          `Git ${operationName} verification failed for the rebase worktree.`,
+          "verify-worktree and the current pull-request branch",
+        );
+      }
+
+      if (!isNonEmptyString(branch)) {
+        addFinding(
+          findings,
+          "The rebase worktree is detached or has no current branch.",
+          "check out the verified pull-request feature branch",
+        );
+      }
+      if (!isSha(headSha)) {
+        addFinding(
+          findings,
+          "The live Git HEAD is missing or malformed.",
+          "verify the pre-rebase commit identity",
+        );
+      }
+
+      compareGateIdentities(
+        gate,
+        repositoryRoot,
+        branch,
+        headSha,
+        operation?.kind === "start" ? operation.targetSha : null,
+        findings,
+      );
+      validateRegisteredWorktree(repositoryRoot, branch, headSha, findings);
+      validateCleanWorktree(repositoryRoot, findings);
+      validateRemoteContext(repositoryRoot, gate, findings);
+      validateNoUnsecuredChanges(
+        repositoryRoot,
+        gate.pull_request,
+        headSha,
+        findings,
+      );
+    }
   }
 
   return findings.length > 0 ? makeDeny(findings) : makeAllow();

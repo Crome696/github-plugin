@@ -1,6 +1,6 @@
 schema: PreRebaseGate
 version: 1
-description: Local, read-only snapshot binding one exact approved rebase to a verified pull-request branch, clean worktree, current remote context, and unique target base.
+description: Local, read-only snapshot binding one exact approved rebase start to a verified pull-request branch, clean worktree, current remote context, and unique target base; the same identity evidence may be reused for guarded recovery of that active operation.
 required:
   - workspace
   - pull_request
@@ -147,8 +147,9 @@ invariants:
   - pull_request has exactly one base_branch; when base_branch_candidates is present it contains only base_branch.
   - target_fetch.status is verified, target_fetch.branch_name equals pull_request.base_branch, and target_fetch.tracking_sha equals target_fetch.remote_sha.
   - The rebase target is the full target_fetch.tracking_sha, never an inferred branch name or another revision.
-  - The current worktree HEAD equals workspace.head_sha and pull_request.head_sha before the rebase.
-  - Live remote context must identify the configured remote default branch and prove that the checked-out pull-request head is not that default branch.
-  - The pre-rebase HEAD is backed by the configured remote feature-branch tracking ref; missing, divergent, or unknown upstream evidence is unsafe.
+  - The current worktree HEAD equals workspace.head_sha and pull_request.head_sha before a new rebase start.
+  - Live remote context must identify the configured remote default branch and prove that the checked-out pull-request head is not that default branch before a new start.
+  - The pre-rebase HEAD is backed by the configured remote feature-branch tracking ref before a new start; missing, divergent, or unknown upstream evidence is unsafe.
+  - Recovery reuses this existing gate without renewal or fabrication and requires exactly one active rebase administrative directory whose head-name, onto, and orig-head match the authorized feature branch, target SHA, and pre-rebase HEAD in the exact registered non-primary worktree.
   - authorization.approved, authorization.exact_target, and authorization.exact_operation are true and the source is explicit_user or repository_policy.
   - A missing, stale, contradictory, or unavailable gate condition blocks the rebase; the hook never repairs or replaces the gate.

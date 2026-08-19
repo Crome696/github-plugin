@@ -226,11 +226,15 @@ destructive history operations, default-branch writes, and uncertain merges
 outside routine autonomy. Secrets and confidential data may never be
 published.
 
-The host-specific `pre-rebase` Hook fails closed unless a current,
-identity-matched `PreRebaseGate` proves the exact pull-request branch, clean
-worktree, current target tracking SHA, secured pre-rebase HEAD, unique base,
-and exact rebase approval. The Hook never performs the rebase or repairs the
-gate.
+The host-specific `pre-rebase` Hook fails closed for a new start unless a
+current, identity-matched `PreRebaseGate` proves the exact pull-request branch,
+clean worktree, current target tracking SHA, secured pre-rebase HEAD, unique
+base, and exact rebase approval. If that authorized rebase is already active,
+the Hook separately permits only one standalone `git rebase --continue`,
+`--skip`, or `--abort` in the exact registered worktree when the active
+`head-name`, `onto`, and `orig-head` metadata still match the gate. Recovery
+does not create, renew, or broaden authorization. The Hook never performs the
+rebase or recovery and never repairs the gate.
 
 The host-specific `pre-pr-ready` Hook fails closed unless a current,
 identity-matched `PrePrReadyGate` proves the exact open Draft pull request,

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.108
+
+- Distinguished authorized rebase starts from recovery of an already active
+  rebase in the host-specific pre-rebase Hook.
+- Allowed only standalone `git rebase --continue`, `--skip`, and `--abort`
+  recovery commands when the existing `PreRebaseGate`, active Git metadata,
+  and exact registered worktree identity match; compound commands, wrappers,
+  ambiguous state, and mismatched metadata fail closed.
+- Added real merge-backend and apply-backend conflict-recovery coverage for
+  Cursor and Codex projections, corrected full remote-upstream identity
+  verification, and synchronized the plugin release metadata.
+
 ## 0.3.107
 
 - Bound Ready-for-Review and requested-reviewers mutations to two separate
