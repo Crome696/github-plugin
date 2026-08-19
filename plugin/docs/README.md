@@ -100,8 +100,9 @@ The plugin owns:
 - Working-tree inspection, exact-scope commit preparation, local commits, and
   verified non-force pushes.
 - Draft pull-request composition, issue linkage, publication, and verification.
-- Ready-for-Review of one verified Draft pull request after independent
-  authorization, including optional confirmed reviewer requests.
+- Ready-for-Review of one verified Draft pull request through one exact
+  standalone transition, followed only when authorized by one exact reviewer
+  `POST`; incomplete legacy gates and compound operations fail closed.
 - Pull-request diff, check, review, and discussion analysis.
 - Review finding composition and publication after the applicable decisions and
   authorization.

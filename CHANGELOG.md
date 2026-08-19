@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.107
+
+- Bound Ready-for-Review and requested-reviewers mutations to two separate
+  canonical operations with complete live pull-request and linked-issue
+  identity checks.
+- Added exact typed user/team payload validation, fail-closed legacy-gate and
+  compound-command handling, and native Cursor/Codex runtime coverage.
+- Updated the mark-pr-ready workflow, architecture documentation, manifests,
+  marketplaces, and synchronized plugin version metadata.
+
 ## 0.3.106
 
 - Hardened the local `PreCommitGate` to version 2 with exact commit-message

@@ -108,8 +108,12 @@ rebase, merge, optional-check reruns, or treating pending checks as pass.
 
 The explicitly invoked `/ready-pr` command establishes authorization only for
 the exact verified pull request, current head SHA, unique linked issue, and
-confirmed reviewer set. It does not authorize review publication, rebase,
-merge, or cleanup.
+confirmed typed reviewer set. Ready-for-Review and reviewer assignment remain
+two separate mutations: `gh pr ready <number> --repo <owner>/<repo>` is
+authorized and verified while the PR is Draft; only afterward may one exact
+`requested_reviewers` `POST` use the authorized set. Neither mutation inherits
+the other's authority. The command does not authorize review publication,
+rebase, merge, or cleanup.
 
 The explicitly invoked `/plan-product` command starts `product-planner-agent`
 and establishes orchestration authorization for exactly one verified parent
@@ -210,7 +214,7 @@ repair missing prerequisites or make a product judgment.
 | [`PreRebaseGate`](../../shared/schemas/PreRebaseGate.yaml) | local `git rebase` | Exact pull-request branch, clean worktree, selected target SHA, remote context, and rebase authorization. | Allow only the named bounded rebase; otherwise fail closed. |
 | [`PrePrCreateGate`](../../shared/schemas/PrePrCreateGate.yaml) | `gh pr create` | Verified commit and push, complete Draft body, unique issue link, passed validation, exact command. | Allow only the approved Draft PR creation. |
 | [`PreReviewSubmitGate`](../../shared/schemas/PreReviewSubmitGate.yaml) | canonical review API write | Current head, exact findings, valid locations, deduplication, confirmation, and publication authorization. | Allow only the exact review payload. |
-| [`PrePrReadyGate`](../../shared/schemas/PrePrReadyGate.yaml) | `gh pr ready` and authorized reviewer requests | Open Draft, unique linked issue, current head SHA, authorized reviewer set, and independent Ready-for-Review authorization. | Allow only the exact ready transition and authorized reviewer set. |
+| [`PrePrReadyGate`](../../shared/schemas/PrePrReadyGate.yaml) | one canonical `gh pr ready` followed, only when authorized, by one `requested_reviewers POST` | Complete version-1 gate, exact URL/branches/SHA, open Draft or post-ready phase, exactly one linked issue, and typed reviewer set. | Allow only the standalone phase-appropriate operation; reject legacy/incomplete gates, compound commands, identity drift, and payload mismatch. |
 | [`PreMergeGate`](../../shared/schemas/PreMergeGate.yaml) | merge API write | Current `MergeReadiness`, live freshness checks, approvals, checks, threads, issue link, strategy, and merge authorization. | Fail closed on any changed, missing, stale, or unavailable condition. |
 | [`PostMergeStatus`](../../shared/schemas/PostMergeStatus.yaml) | after merge | Completed command, PR state, merge commit, target branch, issue closure, and cleanup availability. | Return read-only status and open actions; never mutate cleanup state. |
 

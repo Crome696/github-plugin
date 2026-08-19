@@ -6,11 +6,12 @@ disable-model-invocation: true
 
 # Mark Pull Request Ready for Review
 
-Mark exactly one GitHub pull request Ready-for-Review through `gh pr ready`
-and return a version-1
+Mark exactly one GitHub pull request Ready-for-Review through the one canonical
+`gh pr ready` operation and return a version-1
 [`PullRequestReady`](../../shared/schemas/PullRequestReady.yaml) result.
-Optionally request only the authorized reviewer set after the ready
-transition. This Skill is explicitly invoked. Draft publication, review
+Only after that transition is verified may this Skill request the exact
+authorized reviewer set through one separate canonical `requested_reviewers`
+`POST`. This Skill is explicitly invoked. Draft publication, review
 publication, merge readiness, and routine delivery authorization never invoke
 or authorize this Skill.
 
@@ -25,6 +26,9 @@ or authorize this Skill.
 - An empty authorized reviewer set is valid and must not request reviewers.
 - An already non-Draft open pull request returns `already_ready` after identity
   verification and must not request additional reviewers.
+- Ready-for-Review and reviewer assignment are separate external mutations with
+  separate race and authorization boundaries; neither operation inherits
+  authority from the other.
 - Never use `gh pr edit`, `--reviewer` on `gh pr create`, auto-merge, merge,
   rebase, review publication, thread mutation, title or body edits, labels, or
   assignees.
@@ -58,6 +62,8 @@ is absent, malformed, stale, or inconsistent:
    `already_ready` without writing. If it is not a Draft and not already ready
    in a verifiable way, block.
 5. The live head SHA equals `expected_head_sha`.
+6. The live URL, base branch, head branch, and exactly one linked issue match
+   the gate immediately before each operation. Missing live evidence blocks.
 
 Read the applicable repository instructions, especially the target
 repository's `AGENTS.md`, before treating a repository-policy authorization as
@@ -109,16 +115,40 @@ Run only:
 gh pr ready <number> --repo <owner>/<repo>
 ```
 
-Do not add reviewers, assignees, labels, or body flags. After the command,
-reload the pull request and confirm `isDraft` is `false` at the same head SHA.
+The command must be one standalone operation with no URL target, `--undo`,
+wrapper, extra flag, redirect, or shell separator. Do not add reviewers,
+assignees, labels, or body flags. After the command, reload the pull request
+and confirm `state: OPEN`, `isDraft: false`, the exact URL/branches, the same
+head SHA, and exactly one matching linked issue.
 
 ## Optional reviewer requests
 
 When `reviewers.add` is non-empty and the ready transition succeeded, request
-only that exact set through the GitHub requested-reviewers API. Do not use
-`gh pr edit`. If the ready transition succeeded and the reviewer request fails,
-return `status: partial` with `failure.code: reviewer_request_failed` after
-recording that the pull request is already non-Draft.
+only that exact set through this canonical GitHub requested-reviewers API
+operation:
+
+```text
+gh api repos/<owner>/<repo>/pulls/<number>/requested_reviewers --method POST --input <payload-file>
+```
+
+The payload file must contain exactly two keys and no others:
+
+```json
+{
+  "reviewers": ["user-login"],
+  "team_reviewers": ["team-slug"]
+}
+```
+
+Gate entries with `kind: user` map to `reviewers`; entries with
+`kind: team` use the `<organization>/<team-slug>` form and map only the slug
+to `team_reviewers` after verifying that the organization matches the
+repository. Arrays are compared as normalized, duplicate-free typed sets.
+Do not use `gh pr edit`, a different HTTP method, a different endpoint,
+additional API writes, `--field`, or a compound command. If the ready
+transition succeeds and the reviewer request fails, return `status: partial`
+with `failure.code: reviewer_request_failed` after recording that the pull
+request is already non-Draft.
 
 ## Output
 

@@ -33,8 +33,9 @@ The plugin owns the following collaboration concerns:
   and open feedback, attaches the existing pull-request head worktree, and
   re-reviews each verified pushed head.
 - Composing, linking, publishing, and verifying one Draft pull request.
-- Marking one verified Draft pull request Ready-for-Review after independent
-  authorization, with optional confirmed reviewer requests.
+- Marking one verified Draft pull request Ready-for-Review through one exact
+  standalone transition, followed only when authorized by one exact typed
+  reviewer request after the PR is non-Draft.
 - Loading and analyzing pull-request diffs, checks, reviews, threads, and
   linked issues.
 - Composing and publishing an explicitly authorized review.
@@ -212,7 +213,7 @@ read-only.
 | `pre-rebase.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the exact target branch, clean workspace, target revision, and rebase authorization through `PreRebaseGate`. |
 | `pre-pr-create.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the commit, push, issue link, description, validation, and exact Draft command through `PrePrCreateGate`. |
 | `pre-review-submit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the current head, finding evidence, locations, deduplication, confirmation, and exact payload through `PreReviewSubmitGate`. |
-| `pre-pr-ready.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the exact open Draft, head SHA, unique issue, authorized reviewer set, and Ready-for-Review command through `PrePrReadyGate`. |
+| `pre-pr-ready.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies one exact standalone Ready-for-Review transition or phase-appropriate requested-reviewers POST, complete URL/branch/SHA identity, one linked issue, typed reviewer payload, and `PrePrReadyGate`; rejects incomplete legacy gates and compound commands. |
 | `pre-merge.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies current merge readiness, reviews, threads, approvals, checks, conflicts, base freshness, linkage, strategy, and authorization through `PreMergeGate`. |
 | `post-merge.mjs` | Cursor `afterShellExecution`; Codex `PostToolUse` for `Bash` | Observes the completed merge and returns `PostMergeStatus`; it never closes issues, deletes branches, or removes worktrees. |
 

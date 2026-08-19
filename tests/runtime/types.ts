@@ -29,7 +29,10 @@ export type RuntimeMode =
   | "cli-failure"
   | "cli-invalid-json"
   | "cli-auth-failure"
-  | "cli-delay";
+  | "cli-delay"
+  | "reviewer-allow"
+  | "reviewer-draft"
+  | "reviewer-live-drift";
 
 export interface RuntimeContext {
   repositoryRoot: string;

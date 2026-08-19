@@ -1,6 +1,6 @@
 ---
 name: ready-pr
-description: Mark one verified GitHub Draft pull request Ready-for-Review after independent authorization of that pull request, head SHA, unique linked issue, and optional reviewer set.
+description: Mark one verified GitHub Draft pull request Ready-for-Review after independent authorization of its exact identity, unique linked issue, and typed reviewer set, then request only that set through a separate exact POST.
 ---
 
 # Mark one Draft pull request Ready for Review
