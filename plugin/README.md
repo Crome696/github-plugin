@@ -899,9 +899,11 @@ AI review publication to structurally complete, deduplicated, explicitly
 confirmed, and current review evidence; it never grants publication authority or
 reanalyzes the pull-request diff.
 `PrePrReadyGate` is a local-only version-1 snapshot that binds one exact
-Ready-for-Review write to the current open Draft, unique linked issue, expected
-head SHA, authorized reviewer set, and independent authorization; it never
-marks the pull request ready by itself.
+standalone Ready-for-Review transition and, only after the live PR is
+non-Draft, one exact requested-reviewers `POST` to the complete pull-request
+URL/branch/SHA identity, unique linked issue, typed reviewer set, and
+independent authorization. It rejects incomplete legacy gates and compound
+commands and never marks the pull request ready or requests reviewers itself.
 `PreMergeGate` is a local-only version-1 snapshot that binds one exact
 approved pull-request merge to current `MergeReadiness` evidence and explicit
 merge authorization; it never grants merge authority or repairs a blocker.
@@ -1016,11 +1018,14 @@ The hook projections are host-specific and deliberately do not share a
   evidence, locations, deduplication, explicit confirmation, blocker
   support, and freshness without reanalyzing or rewriting the review.
 - `hooks/pre-pr-ready.mjs` is the host-neutral Node checker. It reads the
-  ignored `.cursor/hooks/state/pre-pr-ready.json` `PrePrReadyGate`, the exact
-  `gh pr ready` or requested-reviewers command, and the live pull-request
-  identity. It fails closed on missing Draft state, unique-issue evidence,
-  head mismatch, unauthorized reviewer sets, or stale gates, and never marks
-  the pull request ready or requests reviewers itself.
+  ignored `.cursor/hooks/state/pre-pr-ready.json` `PrePrReadyGate`, one exact
+  standalone `gh pr ready` or requested-reviewers POST command, the exact
+  payload file when applicable, and the live pull-request identity including
+  URL, branches, head SHA, and one linked issue. It fails closed on missing or
+  unsupported gate version, compound commands, phase mismatch, identity drift,
+  unauthorized typed reviewer sets, stale gates, and unavailable live
+  evidence, and never marks the pull request ready or requests reviewers
+  itself.
 - `hooks/pre-merge.mjs` is the host-neutral Node checker. It reads the ignored
   `.cursor/hooks/state/pre-merge.json` `PreMergeGate`, the exact GitHub merge
   command, current pull-request state, review threads, approval state, status

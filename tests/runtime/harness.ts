@@ -373,6 +373,10 @@ export const overwriteCommitMessage = (context: RuntimeContext, value: string) =
   writeFileSync(context.messagePath, value, "utf8");
 };
 
+export const writeReviewerPayload = (context: RuntimeContext, payload: unknown) => {
+  writeFileSync(context.reviewPayloadPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+};
+
 const cursorPayload = (command: string, cwd: string) => ({
   hook_event_name: "beforeShellExecution",
   command,
@@ -410,6 +414,9 @@ export const commandFor = (context: RuntimeContext, hook: HookName): string => {
       return `gh pr merge ${context.pullRequestNumber} --repo ${context.repository} --merge`;
   }
 };
+
+export const reviewerCommandFor = (context: RuntimeContext) =>
+  `gh api repos/${context.repository}/pulls/${context.pullRequestNumber}/requested_reviewers --method POST --input ${context.reviewPayloadPath}`;
 
 export const irrelevantCommandFor = (hook: HookName) => {
   if (hook === "pre-rebase") return "git status --short";
@@ -1025,15 +1032,28 @@ const preReviewLivePullRequest = (context: RuntimeContext) =>
     url: context.pullRequestUrl,
   });
 
-const prePrReadyLivePullRequest = (context: RuntimeContext) =>
+const prePrReadyLivePullRequest = (context: RuntimeContext, mode: RuntimeMode = "allow") =>
   JSON.stringify({
     number: context.pullRequestNumber,
-    url: context.pullRequestUrl,
-    isDraft: true,
+    url:
+      mode === "reviewer-live-drift"
+        ? `https://github.com/${context.repository}/pull/99`
+        : context.pullRequestUrl,
+    isDraft: mode !== "reviewer-allow",
     state: "OPEN",
-    baseRefName: context.baseBranch,
-    headRefName: context.branch,
-    headRefOid: context.headSha,
+    baseRefName: mode === "reviewer-live-drift" ? "other-base" : context.baseBranch,
+    headRefName: mode === "reviewer-live-drift" ? "other-head" : context.branch,
+    headRefOid: mode === "reviewer-live-drift" ? sha("d") : context.headSha,
+    closingIssuesReferences: [
+      {
+        number: mode === "reviewer-live-drift" ? context.issueNumber + 1 : context.issueNumber,
+        url:
+          mode === "reviewer-live-drift"
+            ? `https://github.com/${context.repository}/issues/${context.issueNumber + 1}`
+            : context.issueUrl,
+        repository: { nameWithOwner: context.repository },
+      },
+    ],
   });
 
 const preMergeLivePullRequest = (context: RuntimeContext) =>
@@ -1286,7 +1306,7 @@ const reviewLiveRule = (context: RuntimeContext) =>
     preReviewLivePullRequest(context),
   );
 
-const readyLiveRule = (context: RuntimeContext) =>
+const readyLiveRule = (context: RuntimeContext, mode: RuntimeMode) =>
   exact(
     "gh",
     [
@@ -1296,9 +1316,9 @@ const readyLiveRule = (context: RuntimeContext) =>
       "--repo",
       context.repository,
       "--json",
-      "number,url,isDraft,state,baseRefName,headRefName,headRefOid",
+      "number,url,state,isDraft,baseRefName,headRefName,headRefOid,closingIssuesReferences",
     ],
-    prePrReadyLivePullRequest(context),
+    prePrReadyLivePullRequest(context, mode),
   );
 
 const rulesFor = (
@@ -1326,7 +1346,7 @@ const rulesFor = (
     case "pre-rebase":
       return preRebaseRules(context, mode === "active-operation");
     case "pre-pr-ready":
-      return [...gitIdentityRules(context, false), readyLiveRule(context)];
+      return [...gitIdentityRules(context, false), readyLiveRule(context, mode)];
     case "pre-merge":
       return preMergeRules(context);
     case "post-merge":

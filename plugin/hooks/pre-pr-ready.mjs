@@ -13,6 +13,9 @@ const ALLOWED_AUTHORIZATION_SOURCES = new Set([
 const SAFE_BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 const SAFE_LOGIN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const SAFE_TEAM = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const SAFE_TEAM_SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const REVIEW_PAYLOAD_MAX_BYTES = 512 * 1024;
+const SHELL_SEPARATORS = new Set([";", "&&", "||", "|", "&", "(", ")"]);
 
 class CommandError extends Error {
   constructor(operation) {
@@ -251,23 +254,6 @@ function splitCommandSegments(tokens) {
   return segments;
 }
 
-function unwrapCommandWrappers(segment) {
-  let index = 0;
-  const wrappers = new Set(["sudo", "env", "command", "exec", "nohup"]);
-  while (index < segment.length) {
-    const name = segment[index]
-      ?.replaceAll("\\", "/")
-      .split("/")
-      .at(-1)
-      ?.toLowerCase();
-    if (!wrappers.has(name)) {
-      break;
-    }
-    index += 1;
-  }
-  return index;
-}
-
 function executableName(value) {
   return value?.replaceAll("\\", "/").split("/").at(-1)?.toLowerCase();
 }
@@ -278,57 +264,12 @@ function isGhCommand(segment, firstIndex) {
   );
 }
 
-function splitOption(token) {
-  const separatorIndex = token.indexOf("=");
-  if (separatorIndex < 0) {
-    return { name: token.toLowerCase(), inlineValue: null };
-  }
-  return {
-    name: token.slice(0, separatorIndex).toLowerCase(),
-    inlineValue: token.slice(separatorIndex + 1),
-  };
-}
-
-function parsePullRequestTarget(value) {
-  if (!isNonEmptyString(value)) {
-    return null;
-  }
-  if (/^[1-9]\d*$/.test(value)) {
-    return { number: Number(value), repository: null, url: null };
-  }
-  try {
-    const url = new URL(value);
-    const match = url.pathname.match(
-      /^\/([^/\s]+)\/([^/\s]+)\/pull\/([1-9]\d*)\/?$/i,
-    );
-    if (match === null) {
-      return null;
-    }
-    return {
-      number: Number(match[3]),
-      repository: `${match[1]}/${match[2]}`,
-      url: value,
-    };
-  } catch {
-    return null;
-  }
-}
-
 function parseReviewersEndpoint(value) {
   if (!isNonEmptyString(value)) {
     return null;
   }
-  let candidate = value;
-  try {
-    if (/^https?:\/\//i.test(value)) {
-      candidate = new URL(value).pathname;
-    }
-  } catch {
-    return null;
-  }
-  candidate = candidate.replace(/^\/+/, "").replace(/\/+$/, "");
-  const match = candidate.match(
-    /^repos\/([^/\s]+)\/([^/\s]+)\/pulls\/([1-9]\d*)\/requested_reviewers$/i,
+  const match = value.match(
+    /^repos\/([^/\s]+)\/([^/\s]+)\/pulls\/([1-9]\d*)\/requested_reviewers$/,
   );
   if (match === null) {
     return null;
@@ -339,34 +280,9 @@ function parseReviewersEndpoint(value) {
   };
 }
 
-function findReviewersEndpoint(args) {
-  for (const token of args) {
-    const endpoint = parseReviewersEndpoint(token);
-    if (endpoint !== null) {
-      return endpoint;
-    }
-  }
-  return null;
-}
-
-function identifyApiMethod(args) {
-  let method = null;
-  for (let index = 0; index < args.length; index += 1) {
-    const option = splitOption(args[index]);
-    if (option.name !== "--method" && option.name !== "-x" && option.name !== "-X") {
-      continue;
-    }
-    method = option.inlineValue ?? args[index + 1] ?? null;
-    if (option.inlineValue === null) {
-      index += 1;
-    }
-  }
-  return isNonEmptyString(method) ? method.toUpperCase() : null;
-}
-
 function likelyReadyCommand(command) {
   return /\bgh(?:\.exe|\.cmd|\.bat)?\b[\s\S]*\bpr\s+ready\b/i.test(command)
-    || /\/pulls\/[1-9]\d*\/requested_reviewers\b/i.test(command);
+    || /\brequested_reviewers\b/i.test(command);
 }
 
 function identifyReadyInvocations(command, initialDirectory) {
@@ -388,79 +304,80 @@ function identifyReadyInvocations(command, initialDirectory) {
   }
 
   const invocations = [];
+  const hasShellSeparator = tokens.some((token) => SHELL_SEPARATORS.has(token));
   for (const segment of splitCommandSegments(tokens)) {
     if (segment.length === 0) {
       continue;
     }
-    const firstIndex = unwrapCommandWrappers(segment);
-    if (!isGhCommand(segment, firstIndex)) {
+    if (!isGhCommand(segment, 0)) {
       continue;
     }
-    const commandName = segment[firstIndex + 1]?.toLowerCase();
-    const subcommand = segment[firstIndex + 2]?.toLowerCase();
+    const commandName = segment[1]?.toLowerCase();
+    const subcommand = segment[2]?.toLowerCase();
     if (commandName === "pr" && subcommand === "ready") {
       invocations.push({
         kind: "pr-ready",
         targetDirectory: resolve(initialDirectory),
-        args: segment.slice(firstIndex + 3),
+        args: segment.slice(3),
       });
       continue;
     }
     if (commandName === "api") {
-      const args = segment.slice(firstIndex + 2);
-      const endpoint = findReviewersEndpoint(args);
-      const method = identifyApiMethod(args);
-      const isWrite = method !== null && !["GET", "HEAD"].includes(method);
-      if (endpoint !== null && isWrite) {
+      const args = segment.slice(2);
+      if (args.some((argument) => /requested_reviewers/i.test(argument))) {
         invocations.push({
           kind: "api-reviewers",
           targetDirectory: resolve(initialDirectory),
           args,
-          endpoint,
-          method,
         });
       }
     }
   }
 
-  return { invocations, parseable: true, reason: null };
+  return { invocations, hasShellSeparator, parseable: true, reason: null };
 }
 
 function parseReadyArgs(args, findings) {
-  let repository = null;
-  let number = null;
-  const blockedFlags = [];
-  for (let index = 0; index < args.length; index += 1) {
-    const token = args[index];
-    const option = splitOption(token);
-    if (option.name === "--repo" || option.name === "-R") {
-      const value = option.inlineValue ?? args[index + 1];
-      if (option.inlineValue === null) {
-        index += 1;
-      }
-      repository = value;
-      continue;
-    }
-    if (token.startsWith("-")) {
-      blockedFlags.push(token);
-      continue;
-    }
-    const target = parsePullRequestTarget(token);
-    if (target !== null) {
-      number = target.number;
-      if (target.repository) {
-        repository = target.repository;
-      }
-    }
-  }
-  if (blockedFlags.length > 0) {
+  if (
+    args.length !== 3 ||
+    !/^[1-9]\d*$/.test(args[0] ?? "") ||
+    args[1] !== "--repo" ||
+    !validateRepositoryName(args[2])
+  ) {
     addFinding(
       findings,
-      `The Ready-for-Review command includes unsupported flags ${blockedFlags.join(", ")}.`,
-      "run only gh pr ready with --repo and the pull-request number",
+      "The Ready-for-Review command is not the exact canonical gh pr ready operation.",
+      "run exactly gh pr ready <number> --repo <owner>/<repo> with no URL, wrapper, or extra argument",
     );
+    return { repository: null, number: null };
   }
-  return { repository, number };
+  return { repository: args[2], number: Number(args[0]) };
+}
+
+function parseReviewerArgs(args, findings) {
+  const endpoint = parseReviewersEndpoint(args[0]);
+  if (
+    args.length !== 5 ||
+    endpoint === null ||
+    args[1] !== "--method" ||
+    args[2] !== "POST" ||
+    args[3] !== "--input" ||
+    !isNonEmptyString(args[4]) ||
+    args[4] === "-" ||
+    args[4].startsWith("-")
+  ) {
+    addFinding(
+      findings,
+      "The reviewer operation is not the exact canonical requested_reviewers POST operation.",
+      "run exactly gh api repos/<owner>/<repo>/pulls/<number>/requested_reviewers --method POST --input <payload-file>",
+    );
+    return {
+      repository: endpoint?.repository ?? null,
+      number: endpoint?.number ?? null,
+      payloadPath: null,
+    };
+  }
+  return { repository: endpoint.repository, number: endpoint.number, payloadPath: args[4] };
 }
 
 function readGate(repositoryRoot, findings) {
@@ -493,7 +410,7 @@ function reviewerKey(reviewer) {
   return `${String(reviewer.kind).toLowerCase()}:${String(reviewer.login).toLowerCase()}`;
 }
 
-function validateReviewers(reviewers, findings) {
+function validateReviewers(reviewers, repository, findings) {
   if (!isRecord(reviewers) || !Array.isArray(reviewers.add)) {
     addFinding(
       findings,
@@ -503,11 +420,14 @@ function validateReviewers(reviewers, findings) {
     return [];
   }
   const add = [];
+  const seen = new Set();
+  const repositoryOwner = repository.split("/")[0].toLowerCase();
   for (const entry of reviewers.add) {
     if (
       !isRecord(entry) ||
       (entry.kind !== "user" && entry.kind !== "team") ||
-      !isNonEmptyString(entry.login)
+      !isNonEmptyString(entry.login) ||
+      JSON.stringify(Object.keys(entry).sort()) !== JSON.stringify(["kind", "login"])
     ) {
       addFinding(
         findings,
@@ -520,11 +440,29 @@ function validateReviewers(reviewers, findings) {
     if (!pattern.test(entry.login)) {
       addFinding(
         findings,
-        `PrePrReadyGate reviewer login ${safeLabel(entry.login)} is not a safe identity.`,
+        "PrePrReadyGate.reviewers.add contains an unsafe reviewer identity.",
         "request only exact confirmed GitHub user or team logins",
       );
       continue;
     }
+    if (entry.kind === "team" && entry.login.split("/")[0].toLowerCase() !== repositoryOwner) {
+      addFinding(
+        findings,
+        "PrePrReadyGate.reviewers.add contains a team from a different organization.",
+        "use only a team belonging to the pull-request repository organization",
+      );
+      continue;
+    }
+    const key = reviewerKey(entry);
+    if (seen.has(key)) {
+      addFinding(
+        findings,
+        "PrePrReadyGate.reviewers.add contains a duplicate reviewer identity.",
+        "include each authorized user or team exactly once",
+      );
+      continue;
+    }
+    seen.add(key);
     add.push({ kind: entry.kind, login: entry.login });
   }
   return add;
@@ -539,14 +477,14 @@ function validateGate(gate, repositoryRoot, findings) {
     );
     return null;
   }
-  if (gate.schema !== undefined && gate.schema !== "PrePrReadyGate") {
+  if (gate.schema !== "PrePrReadyGate") {
     addFinding(
       findings,
       "The local snapshot is not a PrePrReadyGate.",
       "write the Ready-for-Review gate, not a different host gate",
     );
   }
-  if (gate.version !== undefined && gate.version !== 1) {
+  if (gate.version !== 1) {
     addFinding(
       findings,
       "PrePrReadyGate.version is not 1.",
@@ -598,6 +536,13 @@ function validateGate(gate, repositoryRoot, findings) {
     );
     return null;
   }
+  if (normalizeRepository(workspace?.repository) !== normalizeRepository(pullRequest.repository)) {
+    addFinding(
+      findings,
+      "PrePrReadyGate workspace and pull-request repositories differ.",
+      "write one gate for the exact repository and worktree",
+    );
+  }
   if (!isSha(gate.expected_head_sha)) {
     addFinding(
       findings,
@@ -643,17 +588,103 @@ function validateGate(gate, repositoryRoot, findings) {
       "record exact Ready-for-Review authorization for this pull request, head SHA, and reviewer set",
     );
   }
-  const reviewers = validateReviewers(gate.reviewers, findings);
+  const reviewers = validateReviewers(gate.reviewers, pullRequest.repository, findings);
   if (findings.length > 0) {
     return null;
   }
   return {
     repository: pullRequest.repository,
     pullRequest,
+    linkedIssue,
     expectedHeadSha: gate.expected_head_sha,
     reviewers,
     workspace,
   };
+}
+
+function normalizedIdentity(value) {
+  return value.toLowerCase();
+}
+
+function sameSet(left, right) {
+  return left.size === right.size && [...left].every((value) => right.has(value));
+}
+
+function readReviewerPayload(workingDirectory, payloadPath, findings) {
+  const absolutePayloadPath = isAbsolute(payloadPath)
+    ? payloadPath
+    : resolve(workingDirectory, payloadPath);
+  try {
+    const stats = statSync(absolutePayloadPath);
+    if (!stats.isFile() || stats.size > REVIEW_PAYLOAD_MAX_BYTES) {
+      throw new Error("invalid reviewer payload");
+    }
+    const payload = JSON.parse(readFileSync(absolutePayloadPath, "utf8"));
+    if (
+      !isRecord(payload) ||
+      JSON.stringify(Object.keys(payload).sort()) !==
+        JSON.stringify(["reviewers", "team_reviewers"]) ||
+      !Array.isArray(payload.reviewers) ||
+      !Array.isArray(payload.team_reviewers)
+    ) {
+      throw new Error("invalid reviewer payload shape");
+    }
+
+    const reviewers = payload.reviewers;
+    const teamReviewers = payload.team_reviewers;
+    const users = new Set();
+    const teams = new Set();
+    for (const reviewer of reviewers) {
+      if (typeof reviewer !== "string" || !SAFE_LOGIN.test(reviewer)) {
+        throw new Error("invalid reviewer identity");
+      }
+      const normalized = normalizedIdentity(reviewer);
+      if (users.has(normalized)) {
+        throw new Error("duplicate reviewer identity");
+      }
+      users.add(normalized);
+    }
+    for (const team of teamReviewers) {
+      if (typeof team !== "string" || !SAFE_TEAM_SLUG.test(team)) {
+        throw new Error("invalid team identity");
+      }
+      const normalized = normalizedIdentity(team);
+      if (teams.has(normalized)) {
+        throw new Error("duplicate team identity");
+      }
+      teams.add(normalized);
+    }
+    return { users, teams };
+  } catch {
+    addFinding(
+      findings,
+      "The reviewer payload is missing, unreadable, malformed, or contains duplicate or unsafe identities.",
+      "provide one regular JSON payload with exactly reviewers and team_reviewers arrays",
+    );
+    return null;
+  }
+}
+
+function compareReviewerPayload(payload, context, findings) {
+  if (payload === null) {
+    return;
+  }
+  const expectedUsers = new Set();
+  const expectedTeams = new Set();
+  for (const reviewer of context.reviewers) {
+    if (reviewer.kind === "user") {
+      expectedUsers.add(normalizedIdentity(reviewer.login));
+    } else {
+      expectedTeams.add(normalizedIdentity(reviewer.login.split("/")[1]));
+    }
+  }
+  if (!sameSet(payload.users, expectedUsers) || !sameSet(payload.teams, expectedTeams)) {
+    addFinding(
+      findings,
+      "The reviewer payload does not exactly match the authorized typed reviewer set.",
+      "send exactly the authorized users in reviewers and teams in team_reviewers",
+    );
+  }
 }
 
 function compareCommandToGate(spec, context, findings) {
@@ -678,13 +709,6 @@ function compareCommandToGate(spec, context, findings) {
       "mark the pull request ready without requesting reviewers",
     );
   }
-  if (spec.kind === "pr-ready" && spec.blocked) {
-    addFinding(
-      findings,
-      "The Ready-for-Review command is not a bounded gh pr ready invocation.",
-      "omit edit, reviewer, label, and assignee flags",
-    );
-  }
 }
 
 function readLivePullRequest(workingDirectory, repository, number, findings) {
@@ -696,7 +720,7 @@ function readLivePullRequest(workingDirectory, repository, number, findings) {
       "--repo",
       repository,
       "--json",
-      "number,url,isDraft,state,baseRefName,headRefName,headRefOid",
+      "number,url,state,isDraft,baseRefName,headRefName,headRefOid,closingIssuesReferences",
     ]);
     return JSON.parse(output);
   } catch {
@@ -711,13 +735,28 @@ function readLivePullRequest(workingDirectory, repository, number, findings) {
 
 function validateLivePullRequest(spec, context, livePullRequest, findings) {
   if (!isRecord(livePullRequest)) {
+    addFinding(
+      findings,
+      "The live pull-request response is missing or malformed.",
+      "reload the exact pull request with complete identity and linked-issue fields",
+    );
     return;
   }
-  if (livePullRequest.number !== context.pullRequest.number) {
+  if (
+    !Number.isInteger(livePullRequest.number) ||
+    livePullRequest.number !== context.pullRequest.number
+  ) {
     addFinding(
       findings,
       "The live pull-request identity differs from PrePrReadyGate.",
       "reload the exact authorized pull request",
+    );
+  }
+  if (!isHttpUrl(livePullRequest.url) || livePullRequest.url !== context.pullRequest.url) {
+    addFinding(
+      findings,
+      "The live pull-request URL differs from PrePrReadyGate.",
+      "reload the exact authorized pull request URL",
     );
   }
   if (String(livePullRequest.state ?? "").toLowerCase() !== "open") {
@@ -727,8 +766,22 @@ function validateLivePullRequest(spec, context, livePullRequest, findings) {
       "mark ready only the exact open Draft pull request",
     );
   }
+  if (!isSafeBranchName(livePullRequest.baseRefName) || livePullRequest.baseRefName !== context.pullRequest.base_branch) {
+    addFinding(
+      findings,
+      "The live pull-request base branch differs from PrePrReadyGate.",
+      "reload the pull request for the exact authorized base branch",
+    );
+  }
+  if (!isSafeBranchName(livePullRequest.headRefName) || livePullRequest.headRefName !== context.pullRequest.head_branch) {
+    addFinding(
+      findings,
+      "The live pull-request head branch differs from PrePrReadyGate.",
+      "reload the pull request for the exact authorized head branch",
+    );
+  }
   if (
-    isSha(livePullRequest.headRefOid) &&
+    !isSha(livePullRequest.headRefOid) ||
     livePullRequest.headRefOid.toLowerCase() !== context.expectedHeadSha.toLowerCase()
   ) {
     addFinding(
@@ -736,6 +789,42 @@ function validateLivePullRequest(spec, context, livePullRequest, findings) {
       "The live head SHA differs from PrePrReadyGate.expected_head_sha.",
       "refresh the authorized head SHA before marking the pull request ready",
     );
+  }
+  if (typeof livePullRequest.isDraft !== "boolean") {
+    addFinding(
+      findings,
+      "The live pull-request Draft phase is missing or malformed.",
+      "reload the exact pull request phase before writing",
+    );
+  }
+  const linkedIssues = livePullRequest.closingIssuesReferences;
+  if (!Array.isArray(linkedIssues) || linkedIssues.length !== 1) {
+    addFinding(
+      findings,
+      "The live pull request does not expose exactly one linked issue.",
+      "reload the pull request and preserve one unique authorized issue link",
+    );
+  } else {
+    const liveIssue = linkedIssues[0];
+    const liveIssueRepository =
+      isRecord(liveIssue) && isRecord(liveIssue.repository)
+        ? liveIssue.repository.nameWithOwner
+        : null;
+    if (
+      !isRecord(liveIssue) ||
+      !Number.isInteger(liveIssue.number) ||
+      !isHttpUrl(liveIssue.url) ||
+      !validateRepositoryName(liveIssueRepository) ||
+      liveIssue.number !== context.linkedIssue.number ||
+      liveIssue.url !== context.linkedIssue.url ||
+      normalizeRepository(liveIssueRepository) !== normalizeRepository(context.linkedIssue.repository)
+    ) {
+      addFinding(
+        findings,
+        "The live linked issue differs from the unique issue bound by PrePrReadyGate.",
+        "reload the exact pull-request issue relationship",
+      );
+    }
   }
   if (spec.kind === "pr-ready" && livePullRequest.isDraft !== true) {
     addFinding(
@@ -794,14 +883,14 @@ function evaluate(input) {
   const identified = identifyReadyInvocations(command, parserDirectory);
 
   if (identified.invocations.length === 0) {
-    if (!identified.parseable && likelyReadyCommand(command)) {
+    if (likelyReadyCommand(command)) {
       return makeDeny([
         {
           key: "parse",
           requirement:
             identified.reason ??
             "The command appears to contain a Ready-for-Review write that cannot be identified safely.",
-          nextStep: "run one direct, explicit, parseable gh pr ready command",
+          nextStep: "run one direct, explicit, canonical Ready-for-Review operation",
         },
       ]);
     }
@@ -814,6 +903,13 @@ function evaluate(input) {
       findings,
       "The shell command contains more than one Ready-for-Review or reviewer-request invocation.",
       "run exactly one authorized gh pr ready or requested_reviewers command",
+    );
+  }
+  if (identified.hasShellSeparator) {
+    addFinding(
+      findings,
+      "The shell command contains a compound or redirected operation.",
+      "run exactly one standalone Ready-for-Review operation without shell separators or redirection",
     );
   }
   if (initialDirectory === null) {
@@ -832,14 +928,14 @@ function evaluate(input) {
       kind: "pr-ready",
       repository: parsed.repository,
       number: parsed.number,
-      blocked: findings.length > 0,
     };
   } else {
+    const parsed = parseReviewerArgs(invocation.args, findings);
     spec = {
       kind: "api-reviewers",
-      repository: invocation.endpoint.repository,
-      number: invocation.endpoint.number,
-      blocked: false,
+      repository: parsed.repository,
+      number: parsed.number,
+      payloadPath: parsed.payloadPath,
     };
   }
   if (!validateRepositoryName(spec.repository) || !Number.isInteger(spec.number)) {
@@ -848,6 +944,9 @@ function evaluate(input) {
       "The Ready-for-Review command target identity is missing or malformed.",
       "use one exact owner/repository and positive pull-request number",
     );
+    return makeDeny(findings);
+  }
+  if (findings.length > 0) {
     return makeDeny(findings);
   }
 
@@ -872,6 +971,13 @@ function evaluate(input) {
     return makeDeny(findings);
   }
   compareCommandToGate(spec, context, findings);
+  const reviewerPayload =
+    spec.kind === "api-reviewers"
+      ? readReviewerPayload(invocation.targetDirectory, spec.payloadPath, findings)
+      : null;
+  if (spec.kind === "api-reviewers") {
+    compareReviewerPayload(reviewerPayload, context, findings);
+  }
   if (findings.length > 0) {
     return makeDeny(findings);
   }

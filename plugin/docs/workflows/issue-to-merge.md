@@ -239,15 +239,19 @@ verify repository
   -> propose optional reviewers
   -> authorize exact Ready-for-Review and reviewer set
   -> write PrePrReadyGate
-  -> mark the Draft ready
-  -> request only the authorized reviewers
-  -> verify non-Draft state
+  -> verify current open Draft identity
+  -> execute one standalone gh pr ready command
+  -> verify current open non-Draft identity and linked issue
+  -> request only the authorized reviewers through one exact POST, if non-empty
 ```
 
 The Command is independent of Draft publication and merge. Unique issue
 linkage is required. CODEOWNERS matches are optional suggestions, not merge
 policy. Pending CI does not block. An already non-Draft open pull request
 returns `already_ready` without requesting additional reviewers.
+The Ready transition and reviewer assignment are separate race and
+authorization boundaries; compound shell/API commands and incomplete legacy
+gates fail closed.
 This workflow cannot publish a review, rebase, merge, or clean up.
 
 ## Phase 5: pull-request review

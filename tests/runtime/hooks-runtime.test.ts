@@ -20,7 +20,9 @@ import {
   payloadFor,
   prepareRuntimeMode,
   redirectGeneratedRoute,
+  reviewerCommandFor,
   writeActiveGitMarker,
+  writeReviewerPayload,
 } from "./harness.js";
 import type { Host, HookName, RuntimeContext, RuntimeMode } from "./types.js";
 
@@ -153,6 +155,163 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
             : { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { cwd: context.repositoryRoot } },
         );
         assertRuntimeResponse(malformedPost, true, host === "cursor");
+      }
+    });
+  }, 30_000);
+
+  it("binds Ready-for-Review and requested-reviewers operations exactly on both hosts", () => {
+    withRuntimeRepository((context) => {
+      const canonicalReady = commandFor(context, "pre-pr-ready");
+      const canonicalReviewers = reviewerCommandFor(context);
+
+      for (const host of hosts) {
+        prepareRuntimeMode(context, "pre-pr-ready", "allow");
+        const ready = executeProjectedHook(
+          context,
+          host,
+          "pre-pr-ready",
+          "allow",
+          payloadFor(host, canonicalReady, context.repositoryRoot),
+        );
+        assertRuntimeResponse(ready, true);
+        assertNoUnexpectedFakeCommands(context);
+
+        for (const command of [
+          `gh pr ready ${context.pullRequestUrl} --repo ${context.repository}`,
+          `gh pr ready ${context.pullRequestNumber} --repo=${context.repository}`,
+          `gh pr ready ${context.pullRequestNumber} --repo ${context.repository} --undo`,
+          `env ${canonicalReady}`,
+          `${canonicalReady} && echo unsupported`,
+          `echo unsupported && ${canonicalReady}`,
+          `${canonicalReady} | echo unsupported`,
+        ]) {
+          prepareRuntimeMode(context, "pre-pr-ready", "allow");
+          const denied = executeProjectedHook(
+            context,
+            host,
+            "pre-pr-ready",
+            "allow",
+            payloadFor(host, command, context.repositoryRoot),
+          );
+          assertRuntimeResponse(denied, false);
+          assertNoUnexpectedFakeCommands(context);
+        }
+
+        prepareRuntimeMode(context, "pre-pr-ready", "reviewer-allow");
+        mutateGate(context, "pre-pr-ready", (gate) => {
+          gate.reviewers = {
+            add: [
+              { kind: "user", login: "octocat" },
+              { kind: "team", login: `${context.repository.split("/")[0]}/docs` },
+            ],
+          };
+        });
+        writeReviewerPayload(context, {
+          reviewers: ["octocat"],
+          team_reviewers: ["docs"],
+        });
+        const reviewerAllowed = executeProjectedHook(
+          context,
+          host,
+          "pre-pr-ready",
+          "reviewer-allow",
+          payloadFor(host, canonicalReviewers, context.repositoryRoot),
+        );
+        assertRuntimeResponse(reviewerAllowed, true);
+        assertNoUnexpectedFakeCommands(context);
+
+        for (const payload of [
+          { reviewers: [], team_reviewers: ["docs"] },
+          { reviewers: ["octocat", "octocat"], team_reviewers: ["docs"] },
+          { reviewers: ["octocat"], team_reviewers: ["other-team"] },
+          { reviewers: ["octocat"], team_reviewers: ["docs"], extra: true },
+        ]) {
+          prepareRuntimeMode(context, "pre-pr-ready", "reviewer-allow");
+          mutateGate(context, "pre-pr-ready", (gate) => {
+            gate.reviewers = {
+              add: [
+                { kind: "user", login: "octocat" },
+                { kind: "team", login: `${context.repository.split("/")[0]}/docs` },
+              ],
+            };
+          });
+          writeReviewerPayload(context, payload);
+          const denied = executeProjectedHook(
+            context,
+            host,
+            "pre-pr-ready",
+            "reviewer-allow",
+            payloadFor(host, canonicalReviewers, context.repositoryRoot),
+          );
+          assertRuntimeResponse(denied, false);
+          assertNoUnexpectedFakeCommands(context);
+        }
+
+        for (const command of [
+          `gh api repos/${context.repository}/pulls/${context.pullRequestNumber}/requested_reviewers --method DELETE --input ${context.reviewPayloadPath}`,
+          `gh api repos/${context.repository}/pulls/${context.pullRequestNumber}/requested_reviewers --method POST --field reviewers=octocat`,
+          `gh api /repos/${context.repository}/pulls/${context.pullRequestNumber}/requested_reviewers --method POST --input ${context.reviewPayloadPath}`,
+          `${canonicalReviewers} && echo unsupported`,
+        ]) {
+          prepareRuntimeMode(context, "pre-pr-ready", "reviewer-allow");
+          mutateGate(context, "pre-pr-ready", (gate) => {
+            gate.reviewers = { add: [{ kind: "user", login: "octocat" }] };
+          });
+          writeReviewerPayload(context, { reviewers: ["octocat"], team_reviewers: [] });
+          const denied = executeProjectedHook(
+            context,
+            host,
+            "pre-pr-ready",
+            "reviewer-allow",
+            payloadFor(host, command, context.repositoryRoot),
+          );
+          assertRuntimeResponse(denied, false);
+          assertNoUnexpectedFakeCommands(context);
+        }
+
+        prepareRuntimeMode(context, "pre-pr-ready", "reviewer-draft");
+        mutateGate(context, "pre-pr-ready", (gate) => {
+          gate.reviewers = { add: [{ kind: "user", login: "octocat" }] };
+        });
+        writeReviewerPayload(context, { reviewers: ["octocat"], team_reviewers: [] });
+        const draftReviewer = executeProjectedHook(
+          context,
+          host,
+          "pre-pr-ready",
+          "reviewer-draft",
+          payloadFor(host, canonicalReviewers, context.repositoryRoot),
+        );
+        assertRuntimeResponse(draftReviewer, false);
+        assertNoUnexpectedFakeCommands(context);
+
+        prepareRuntimeMode(context, "pre-pr-ready", "reviewer-live-drift");
+        mutateGate(context, "pre-pr-ready", (gate) => {
+          gate.reviewers = { add: [{ kind: "user", login: "octocat" }] };
+        });
+        writeReviewerPayload(context, { reviewers: ["octocat"], team_reviewers: [] });
+        const driftedReviewer = executeProjectedHook(
+          context,
+          host,
+          "pre-pr-ready",
+          "reviewer-live-drift",
+          payloadFor(host, canonicalReviewers, context.repositoryRoot),
+        );
+        assertRuntimeResponse(driftedReviewer, false);
+        assertNoUnexpectedFakeCommands(context);
+
+        prepareRuntimeMode(context, "pre-pr-ready", "allow");
+        mutateGate(context, "pre-pr-ready", (gate) => {
+          delete gate.schema;
+        });
+        const legacyGate = executeProjectedHook(
+          context,
+          host,
+          "pre-pr-ready",
+          "allow",
+          payloadFor(host, canonicalReady, context.repositoryRoot),
+        );
+        assertRuntimeResponse(legacyGate, false);
+        assertNoUnexpectedFakeCommands(context);
       }
     });
   }, 30_000);

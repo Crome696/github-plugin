@@ -121,7 +121,7 @@ The plugin currently defines 82 versioned contracts.
 | `PreRebaseGate` | Local snapshot binding one exact rebase to verified branch, target, worktree, and authorization. |
 | `PrePrCreateGate` | Local snapshot binding one exact Draft PR publication to commit, push, issue link, description, and validation. |
 | `PreReviewSubmitGate` | Local snapshot binding one exact review payload to current evidence, deduplication, confirmation, and authorization. |
-| `PrePrReadyGate` | Local snapshot binding one exact Ready-for-Review write to Draft state, unique issue, head SHA, reviewer set, and authorization. |
+| `PrePrReadyGate` | Version-1 local snapshot binding one standalone Ready-for-Review transition and, only when authorized after that transition, one exact requested-reviewers POST to complete Draft/URL/branch/SHA identity, unique issue, typed reviewer set, and authorization. |
 | `PreMergeGate` | Local snapshot binding one exact merge to current readiness and exact merge authorization. |
 | `PostMergeStatus` | Read-only post-merge PR, merge-commit, linked-issue, and cleanup status. |
 
