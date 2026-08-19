@@ -17,6 +17,7 @@ const expectedVersionTwo = new Set([
   "IssueDraft",
   "LinkedIssueClosure",
   "MergeReadiness",
+  "PreCommitGate",
   "ReviewThreadReply",
   "ReviewThreadResolution",
 ]);

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
@@ -5,7 +6,21 @@ import { isAbsolute, normalize, relative, resolve } from "node:path";
 import { readHookInput } from "./lib/read-hook-input.mjs";
 
 const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-commit.json";
+const PRE_COMMIT_GATE_VERSION = 2;
 const MAX_SCANNED_FILE_BYTES = 25 * 1024 * 1024;
+const STAGED_INDEX_FINGERPRINT_FORMAT =
+  "git-diff-cached-raw-z-no-renames-full-index-abbrev-40-v1";
+const STAGED_INDEX_FINGERPRINT_ARGS = [
+  "diff",
+  "--cached",
+  "--raw",
+  "-z",
+  "--no-renames",
+  "--full-index",
+  "--abbrev=40",
+  "--no-ext-diff",
+  "--no-textconv",
+];
 const ALLOWED_AUTHORIZATION_SOURCES = new Set([
   "explicit_user",
   "task_intent",
@@ -64,6 +79,14 @@ function isNonEmptyString(value) {
 
 function isSha(value) {
   return typeof value === "string" && /^[0-9a-f]{40,64}$/i.test(value);
+}
+
+function isSha256(value) {
+  return typeof value === "string" && /^[0-9a-f]{64}$/i.test(value);
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function isIsoTimestamp(value) {
@@ -224,7 +247,7 @@ function tokenizeCommand(command) {
       continue;
     }
 
-    if ([";", "|", "&", "(", ")"].includes(character)) {
+    if ([";", "|", "&", "(", ")", ">", "<"].includes(character)) {
       pushCurrent();
       tokens.push(character);
       continue;
@@ -244,7 +267,7 @@ function tokenizeCommand(command) {
 function splitCommandSegments(tokens) {
   const segments = [];
   let segment = [];
-  const separators = new Set([";", "&&", "||", "|", "&", "(", ")"]);
+  const separators = new Set([";", "&&", "||", "|", "&", "(", ")", ">", "<"]);
 
   for (const token of tokens) {
     if (separators.has(token)) {
@@ -302,11 +325,40 @@ function resolveCommandDirectory(currentDirectory, value) {
   return resolve(currentDirectory, cleaned);
 }
 
+function locateCommitSubcommand(segment) {
+  const firstIndex = unwrapCommandWrappers(segment);
+  const first = segment[firstIndex]?.toLowerCase();
+  const firstExecutable = first?.replaceAll("\\", "/").split("/").at(-1);
+  if (!["git", "git.exe", "git.cmd", "git.bat"].includes(firstExecutable)) {
+    return null;
+  }
+
+  let index = firstIndex + 1;
+  while (index < segment.length) {
+    const token = segment[index];
+    if (token === "-C" || token.startsWith("-C")) {
+      index += token === "-C" ? 2 : 1;
+      continue;
+    }
+    if (!token.startsWith("-")) {
+      return token.toLowerCase() === "commit"
+        ? { firstIndex, subcommandIndex: index }
+        : null;
+    }
+    index += 1;
+    if (["-c", "--config-env", "--exec-path", "--upload-pack"].includes(token)) {
+      index += 1;
+    }
+  }
+
+  return null;
+}
+
 function identifyCommitInvocation(command, initialDirectory) {
   const tokens = tokenizeCommand(command);
   if (tokens === null) {
     const possibleCommit =
-      /(?:^|[;&|]\s*)(?:(?:sudo|env|command|exec|nohup)\s+)*git(?:\.exe|\.cmd|\.bat)?\b[\s\S]*\bcommit\b/i.test(
+      /\bgit(?:\.exe|\.cmd|\.bat)?\b[\s\S]*\bcommit\b/i.test(
         command,
       );
     return {
@@ -317,127 +369,96 @@ function identifyCommitInvocation(command, initialDirectory) {
     };
   }
 
-  let currentDirectory = initialDirectory;
-  let parseError = null;
-  for (const segment of splitCommandSegments(tokens)) {
-    if (segment.length === 0) {
-      continue;
-    }
+  const segments = splitCommandSegments(tokens);
+  const hasShellSeparator = tokens.some((token) =>
+    [";", "&&", "||", "|", "&", "(", ")", ">", "<"].includes(token),
+  );
+  const shellExpansion = /`|\$\(|\$\{/.test(command);
+  const located = segments
+    .map((segment) => ({ segment, location: locateCommitSubcommand(segment) }))
+    .find((entry) => entry.location !== null);
 
-    const firstIndex = unwrapCommandWrappers(segment);
-    const first = segment[firstIndex]?.toLowerCase();
-    const firstExecutable = first?.replaceAll("\\", "/").split("/").at(-1);
-
-    if (first === "cd" || first === "pushd" || first === "set-location") {
-      const directoryIndex =
-        segment[firstIndex + 1]?.toLowerCase() === "/d"
-          ? firstIndex + 2
-          : firstIndex + 1;
-      const directoryArgument = segment[directoryIndex];
-      const resolvedDirectory = resolveCommandDirectory(currentDirectory, directoryArgument);
-      if (resolvedDirectory === null) {
-        parseError = "The commit target directory could not be resolved safely.";
-        continue;
-      }
-      currentDirectory = resolvedDirectory;
-      continue;
-    }
-
-    if (!["git", "git.exe", "git.cmd", "git.bat"].includes(firstExecutable)) {
-      continue;
-    }
-
-    let index = firstIndex + 1;
-    let targetDirectory = currentDirectory;
-    let unsupportedTarget = false;
-    let gitOptionParseError = null;
-
-    while (index < segment.length) {
-      const token = segment[index];
-      if (token === "-C") {
-        const directoryArgument = segment[index + 1];
-        const resolvedDirectory = resolveCommandDirectory(currentDirectory, directoryArgument);
-        if (resolvedDirectory === null) {
-          gitOptionParseError = "The Git -C target directory is missing or invalid.";
-          break;
-        }
-        targetDirectory = resolvedDirectory;
-        index += 2;
-        continue;
-      }
-
-      if (token.startsWith("-C") && token.length > 2) {
-        targetDirectory = resolveCommandDirectory(currentDirectory, token.slice(2));
-        if (targetDirectory === null) {
-          gitOptionParseError = "The Git -C target directory is invalid.";
-          break;
-        }
-        index += 1;
-        continue;
-      }
-
-      if (
-        token === "--git-dir" ||
-        token.startsWith("--git-dir=") ||
-        token === "--work-tree" ||
-        token.startsWith("--work-tree=")
-      ) {
-        unsupportedTarget = true;
-      }
-
-      if (!token.startsWith("-")) {
-        break;
-      }
-
-      index += 1;
-      if (["-c", "--config-env", "--exec-path", "--upload-pack"].includes(token)) {
-        index += 1;
-      }
-    }
-
-    if (gitOptionParseError) {
-      parseError = gitOptionParseError;
-      continue;
-    }
-
-    const subcommand = segment[index]?.toLowerCase();
-    if (subcommand !== "commit") {
-      continue;
-    }
-
-    if (parseError) {
-      return {
-        isCommit: true,
-        parseable: false,
-        targetDirectory,
-        reason: parseError,
-      };
-    }
-
-    const commitArguments = segment.slice(index + 1);
-    const bypassArgument = commitArguments.find((argument) => {
-      const lower = argument.toLowerCase();
-      return (
-        lower === "--no-verify" ||
-        lower.startsWith("--no-gpg-sign") ||
-        lower === "--amend" ||
-        lower === "-a" ||
-        lower === "--all" ||
-        lower.startsWith("--all=") ||
-        (lower.startsWith("-") && !lower.startsWith("--") && lower.includes("a"))
-      );
-    });
-
-    return {
-      isCommit: true,
-      parseable: true,
-      targetDirectory,
-      unsupportedTarget,
-      bypassArgument,
-    };
+  if (!located || !located.location) {
+    return { isCommit: false, parseable: true };
   }
 
-  return { isCommit: false, parseable: true };
+  const { segment, location } = located;
+  const { firstIndex, subcommandIndex } = location;
+  let index = firstIndex + 1;
+  let targetDirectory = initialDirectory;
+  let hasGitTarget = false;
+  let unsupportedTarget = false;
+  let parseError = null;
+
+  while (index < segment.length && index < subcommandIndex) {
+    const token = segment[index];
+    if (token === "-C") {
+      const directoryArgument = segment[index + 1];
+      const resolvedDirectory = resolveCommandDirectory(initialDirectory, directoryArgument);
+      if (resolvedDirectory === null) {
+        parseError = "The Git -C target directory is missing or invalid.";
+        break;
+      }
+      targetDirectory = resolvedDirectory;
+      hasGitTarget = true;
+      index += 2;
+      continue;
+    }
+
+    if (token.startsWith("-C") && token.length > 2) {
+      targetDirectory = resolveCommandDirectory(initialDirectory, token.slice(2));
+      if (targetDirectory === null) {
+        parseError = "The Git -C target directory is invalid.";
+        break;
+      }
+      hasGitTarget = true;
+      index += 1;
+      continue;
+    }
+
+    if (
+      token === "--git-dir" ||
+      token.startsWith("--git-dir=") ||
+      token === "--work-tree" ||
+      token.startsWith("--work-tree=")
+    ) {
+      unsupportedTarget = true;
+    }
+
+    index += 1;
+    if (["-c", "--config-env", "--exec-path", "--upload-pack"].includes(token)) {
+      index += 1;
+    }
+  }
+
+  const commitArguments = segment.slice(subcommandIndex + 1);
+  const bypassArgument = commitArguments.find((argument) => {
+    const lower = argument.toLowerCase();
+    return (
+      lower === "--no-verify" ||
+      lower.startsWith("--no-gpg-sign") ||
+      lower === "--amend" ||
+      lower === "-a" ||
+      lower === "--all" ||
+      lower.startsWith("--all=") ||
+      (lower.startsWith("-") && !lower.startsWith("--") && lower.includes("a"))
+    );
+  });
+
+  return {
+    isCommit: true,
+    parseable: parseError === null,
+    targetDirectory,
+    unsupportedTarget,
+    bypassArgument,
+    gitArguments: segment.slice(firstIndex + 1, subcommandIndex),
+    commitArguments,
+    wrapped: firstIndex !== 0,
+    compound: hasShellSeparator || segments.length !== 1,
+    shellExpansion,
+    hasGitTarget,
+    reason: parseError,
+  };
 }
 
 function parseStatus(output) {
@@ -757,8 +778,8 @@ function validateGate(gate) {
   if (!isRecord(gate)) {
     return "PreCommitGate is missing or malformed.";
   }
-  if (gate.schema !== "PreCommitGate" || gate.version !== 1) {
-    return "PreCommitGate has an unsupported schema version.";
+  if (gate.schema !== "PreCommitGate" || gate.version !== PRE_COMMIT_GATE_VERSION) {
+    return `PreCommitGate must use version ${PRE_COMMIT_GATE_VERSION}; older snapshots fail closed.`;
   }
   if (!isRecord(gate.workspace)) {
     return "PreCommitGate.workspace is missing.";
@@ -809,7 +830,178 @@ function validateGate(gate) {
     return "CommitProposal does not carry passed validation evidence.";
   }
 
-  return { paths: proposalError.paths };
+  const binding = gate.commit_binding;
+  if (!isRecord(binding) || !isRecord(binding.message_file) || !isRecord(binding.staged_index)) {
+    return "PreCommitGate.commit_binding is missing or malformed.";
+  }
+  if (
+    !isNonEmptyString(binding.message_file.path) ||
+    !isAbsolute(binding.message_file.path) ||
+    binding.message_file.path.includes("\0") ||
+    !isSha256(binding.message_file.sha256) ||
+    !Number.isSafeInteger(binding.message_file.byte_length) ||
+    binding.message_file.byte_length < 0
+  ) {
+    return "PreCommitGate.commit_binding.message_file is incomplete or malformed.";
+  }
+  if (
+    binding.staged_index.format !== STAGED_INDEX_FINGERPRINT_FORMAT ||
+    !isSha256(binding.staged_index.sha256) ||
+    !Number.isSafeInteger(binding.staged_index.byte_length) ||
+    binding.staged_index.byte_length < 0
+  ) {
+    return "PreCommitGate.commit_binding.staged_index is incomplete or malformed.";
+  }
+
+  return {
+    paths: proposalError.paths,
+    binding: {
+      messagePath: binding.message_file.path,
+      messageSha256: binding.message_file.sha256.toLowerCase(),
+      messageByteLength: binding.message_file.byte_length,
+      stagedIndexSha256: binding.staged_index.sha256.toLowerCase(),
+      stagedIndexByteLength: binding.staged_index.byte_length,
+    },
+  };
+}
+
+function canonicalCommitMessageBytes(proposal) {
+  const body = proposal.message.body;
+  const message = body.length > 0
+    ? `${proposal.message.subject}\n\n${body}`
+    : proposal.message.subject;
+  return Buffer.from(`${message}\n`, "utf8");
+}
+
+function validateCanonicalCommitInvocation(invocation) {
+  if (invocation.compound || invocation.shellExpansion) {
+    return "The commit command must be one standalone shell invocation without expansion or redirection.";
+  }
+  if (invocation.wrapped) {
+    return "The commit command must invoke Git directly without a shell wrapper.";
+  }
+  if (!invocation.hasGitTarget || !Array.isArray(invocation.gitArguments)) {
+    return "The commit command must use an explicit -C verified-worktree target.";
+  }
+  if (invocation.gitArguments.length !== 2 || invocation.gitArguments[0] !== "-C") {
+    return "The commit command must use only the canonical Git -C option.";
+  }
+  if (!Array.isArray(invocation.commitArguments) || invocation.commitArguments.length !== 2) {
+    return "The commit command must use only --cleanup=verbatim and --file=<approved-message-file>.";
+  }
+  if (invocation.commitArguments[0] !== "--cleanup=verbatim") {
+    return "The commit command must use --cleanup=verbatim exactly.";
+  }
+  const messageArgument = invocation.commitArguments[1];
+  if (
+    !messageArgument.startsWith("--file=") ||
+    !isAbsolute(messageArgument.slice("--file=".length))
+  ) {
+    return "The commit command must use the approved message file as --file=<path>.";
+  }
+  return { messagePath: messageArgument.slice("--file=".length) };
+}
+
+function parseStagedIndexDiff(output) {
+  const records = output.toString("utf8").split("\0").filter(Boolean);
+  const entries = [];
+
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index];
+    const tabIndex = record.indexOf("\t");
+    let header = tabIndex >= 0 ? record.slice(0, tabIndex) : record;
+    let pathValue = tabIndex >= 0 ? record.slice(tabIndex + 1) : records[++index];
+    if (typeof pathValue !== "string" || pathValue.length === 0) {
+      throw new Error("Staged index diff record is missing a path.");
+    }
+
+    const match = /^:(\d{6}) (\d{6}) ([0-9a-f]{40}) ([0-9a-f]{40}) ([A-Z])(?:\d+)?$/.exec(header);
+    if (!match) {
+      throw new Error("Staged index diff record is malformed.");
+    }
+    const normalizedPath = normalizeRelativePath(pathValue);
+    if (normalizedPath === null) {
+      throw new Error("Staged index diff contains an invalid repository path.");
+    }
+    if (!["A", "M", "D", "T"].includes(match[5])) {
+      throw new Error("Staged index diff contains an unsupported change type.");
+    }
+
+    entries.push({
+      path: normalizedPath,
+      status: match[5],
+      oldMode: match[1],
+      newMode: match[2],
+      oldSha: match[3],
+      newSha: match[4],
+    });
+  }
+
+  return entries;
+}
+
+function stagedIndexBinding(worktreePath) {
+  const bytes = runGitBuffer(worktreePath, STAGED_INDEX_FINGERPRINT_ARGS);
+  return {
+    bytes,
+    sha256: sha256(bytes),
+    byteLength: bytes.length,
+  };
+}
+
+function validateStagedIndex(entries, proposal) {
+  const expectedByPath = new Map();
+  for (const pathValue of proposal.files.added) expectedByPath.set(normalizeRelativePath(pathValue), "A");
+  for (const pathValue of proposal.files.modified) expectedByPath.set(normalizeRelativePath(pathValue), "M");
+  for (const pathValue of proposal.files.deleted) expectedByPath.set(normalizeRelativePath(pathValue), "D");
+
+  if (entries.length !== expectedByPath.size) {
+    return "The staged index does not contain exactly the approved file set.";
+  }
+
+  const seen = new Set();
+  for (const entry of entries) {
+    const expectedStatus = expectedByPath.get(entry.path);
+    if (!expectedStatus || seen.has(entry.path)) {
+      return "The staged index does not contain exactly the approved file set.";
+    }
+    if (
+      (expectedStatus === "A" && entry.status !== "A") ||
+      (expectedStatus === "D" && entry.status !== "D") ||
+      (expectedStatus === "M" && !["M", "T"].includes(entry.status))
+    ) {
+      return "The staged index change type does not match the approved file category.";
+    }
+    seen.add(entry.path);
+  }
+
+  return seen.size === expectedByPath.size
+    ? null
+    : "The staged index does not contain exactly the approved file set.";
+}
+
+function validateMessageFileBinding(messagePath, binding, proposal) {
+  if (normalizeAbsolutePath(messagePath) !== normalizeAbsolutePath(binding.messagePath)) {
+    return "The commit message file does not match the approved message binding.";
+  }
+
+  let bytes;
+  try {
+    bytes = readFileSync(binding.messagePath);
+  } catch {
+    return "The approved commit message file is missing or unreadable.";
+  }
+
+  const expected = canonicalCommitMessageBytes(proposal);
+  if (
+    bytes.length !== binding.messageByteLength ||
+    sha256(bytes) !== binding.messageSha256 ||
+    !bytes.equals(expected)
+  ) {
+    return "The commit message bytes do not match the approved binding.";
+  }
+
+  return null;
 }
 
 function parseInProgressOperations(worktreePath) {
@@ -966,6 +1158,10 @@ function evaluate(input) {
   if (!invocation.parseable) {
     return makeDeny(invocation.reason, "create-commit without shell-command indirection");
   }
+  const commandError = validateCanonicalCommitInvocation(invocation);
+  if (typeof commandError === "string") {
+    return makeDeny(commandError, "create-commit with the exact canonical command");
+  }
   if (invocation.unsupportedTarget) {
     return makeDeny(
       "The commit uses --git-dir or --work-tree, so the target worktree cannot be verified safely",
@@ -1040,6 +1236,44 @@ function evaluate(input) {
     return makeDeny("CommitProposal branch does not match the live branch", "verify-worktree");
   }
 
+  if (normalizeAbsolutePath(invocation.targetDirectory) !== normalizeAbsolutePath(repositoryRoot)) {
+    return makeDeny("The commit -C target does not match the live Git root", "verify-worktree");
+  }
+  if (!isAbsolute(invocation.gitArguments[1])) {
+    return makeDeny("The commit -C target must be an absolute verified worktree path", "verify-worktree");
+  }
+  if (normalizeAbsolutePath(invocation.gitArguments[1]) !== normalizeAbsolutePath(repositoryRoot)) {
+    return makeDeny("The commit -C target does not match the live Git root", "verify-worktree");
+  }
+
+  const messageBindingError = validateMessageFileBinding(
+    commandError.messagePath,
+    gateError.binding,
+    gate.commit_proposal,
+  );
+  if (messageBindingError) {
+    return makeDeny(messageBindingError, "create-commit with the approved message bytes");
+  }
+
+  let stagedBinding;
+  let stagedEntries;
+  try {
+    stagedBinding = stagedIndexBinding(repositoryRoot);
+    stagedEntries = parseStagedIndexDiff(stagedBinding.bytes);
+  } catch {
+    return makeDeny("The staged index fingerprint could not be captured safely", "inspect-working-tree");
+  }
+  if (
+    stagedBinding.byteLength !== gateError.binding.stagedIndexByteLength ||
+    stagedBinding.sha256 !== gateError.binding.stagedIndexSha256
+  ) {
+    return makeDeny("The staged index changed after approval", "inspect-working-tree and create a fresh PreCommitGate");
+  }
+  const stagedIndexError = validateStagedIndex(stagedEntries, gate.commit_proposal);
+  if (stagedIndexError) {
+    return makeDeny(stagedIndexError, "inspect-working-tree and create a fresh PreCommitGate");
+  }
+
   let operationError;
   try {
     operationError = parseInProgressOperations(repositoryRoot);
@@ -1106,20 +1340,12 @@ function evaluate(input) {
     .concat(gate.commit_proposal.files.modified, gate.commit_proposal.files.deleted)
     .map(normalizeRelativePath));
   const extraPaths = [...observedPaths].filter((pathValue) => !approvedPaths.has(pathValue));
-  const missingPaths = [...approvedPaths].filter((pathValue) => !observedPaths.has(pathValue));
   if (extraPaths.length > 0) {
     return makeDeny(
       `Working-tree scope contains unexpected paths: ${formatPathList(extraPaths)}`,
       "inspect-working-tree",
     );
   }
-  if (missingPaths.length > 0) {
-    return makeDeny(
-      `Approved paths are absent from the current status: ${formatPathList(missingPaths)}`,
-      "inspect-working-tree",
-    );
-  }
-
   const secretFinding = scanApprovedFiles(repositoryRoot, [...approvedPaths], statusEntries);
   if (secretFinding) {
     return makeDeny(

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.106
+
+- Hardened the local `PreCommitGate` to version 2 with exact commit-message
+  bytes and cached staged-index fingerprints.
+- Restricted AI-driven commits to one canonical standalone Git command and
+  added adversarial runtime coverage for message, path, mode, blob, deletion,
+  and shell-wrapper drift across Cursor and Codex.
+- Regenerated plugin documentation, manifests, marketplaces, and contract
+  fixtures for the synchronized plugin version.
+
 ## 0.3.105
 
 - Added an executable cross-host runtime oracle for all generated Cursor and

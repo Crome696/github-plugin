@@ -1,5 +1,5 @@
 schema: PreCommitGate
-version: 1
+version: 2
 workspace:
   repository: octo-org/widgets
   path: path-value
@@ -58,4 +58,13 @@ commit_proposal:
   authorization:
     exact_scope_approved: false
     commit_authorized: false
+commit_binding:
+  message_file:
+    path: path-value
+    sha256: sha256-value
+    byte_length: 1
+  staged_index:
+    format: git-diff-cached-raw-z-no-renames-full-index-abbrev-40-v1
+    sha256: sha256-value
+    byte_length: 1
 written_at: '2026-01-01T00:00:00.000Z'

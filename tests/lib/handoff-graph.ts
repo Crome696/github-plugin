@@ -309,7 +309,7 @@ export const skillHandoffs: SkillHandoff[] = [
       contract("ValidationResult", 1),
       contract("BranchWorkspace", 1),
     ],
-    produces: [contract("CommitProposal", 1), contract("PreCommitGate", 1)],
+    produces: [contract("CommitProposal", 1), contract("PreCommitGate", 2)],
   },
   {
     name: "create-draft-pr",

@@ -60,7 +60,7 @@ version changes.
 | `ChangeClassification` | Version 1 read-only classification of worktree changes by purpose, component, issue or implementation-plan relationship, and evidence-backed scope alignment for commit planning. |
 | `UnrelatedChangeDetection` | Version 1 read-only detection of unrelated or uncertain changes, necessary technical side effects, evidence and confidence, and commit or pull-request scope gates. |
 | `ValidationResult` | Version 1 evidence-backed implementation-result validation combining plan completion, working-tree inspection, change classification, scope gates, required checks, blockers, warnings, and diagnostic commit or draft-pull-request readiness. |
-| `PreCommitGate` | Version 1 local-only snapshot binding one AI commit to a verified worktree, exact approved scope, complete `ValidationResult` evidence, and task-scoped authorization before the final commit command. |
+| `PreCommitGate` | Version 2 local-only snapshot binding one AI commit to a verified worktree, exact approved scope, complete `ValidationResult` evidence, task-scoped authorization, exact message-file bytes, and a cached staged-index fingerprint before the canonical final commit command. |
 | `PreRebaseGate` | Version 1 local-only snapshot binding one exact authorized rebase to a verified pull-request branch, clean worktree, current remote context, unique target base, and full `TargetBranchFetch` evidence before the rebase command. |
 | `PrePrCreateGate` | Version 1 local-only snapshot binding one exact Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed validation before `gh pr create`. |
 | `PreReviewSubmitGate` | Version 1 local-only snapshot binding one exact AI pull-request review publication to structurally complete, deduplicated, explicitly confirmed, and current review evidence before the review write. |
@@ -426,12 +426,16 @@ flowchart LR
   validations, and unmet completion criteria. Its commit and draft
   pull-request readiness flags are diagnostic only and never invent
   task-scoped authorization.
-- `PreCommitGate` is a local-only, version-1 snapshot written after
+- `PreCommitGate` is a local-only, version-2 snapshot written after
   validation and before the final commit status check. It binds the exact
-  `CommitProposal`, complete `ValidationResult`, worktree path, branch, and
-  pre-commit `HEAD` for the deterministic host hook. The hook reads the
-  snapshot and current Git state only; it never repairs, stages, or changes
-  the workspace. The ignored state path must never be staged.
+  `CommitProposal`, complete `ValidationResult`, worktree path, branch,
+  pre-commit `HEAD`, approved message-file bytes, and cached staged-index
+  fingerprint for the deterministic host hook. The only permitted command is
+  one standalone direct `git -C <verified-worktree> commit
+  --cleanup=verbatim --file=<approved-message-file>` invocation. The hook
+  reads the snapshot and current Git state only; it never repairs, stages, or
+  changes the workspace. The ignored state path must never be staged. Version-1
+  snapshots fail closed.
 - `PrePrCreateGate` is a local-only, version-1 snapshot written immediately
   before `gh pr create`. It binds the exact `PullRequestDraft`,
   `PullRequestIssueLink`, created `CommitProposal`, verified `BranchPush`,

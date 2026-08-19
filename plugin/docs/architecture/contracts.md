@@ -117,7 +117,7 @@ The plugin currently defines 82 versioned contracts.
 | `ProductPlannerRun` | Interactive parent-issue product-planning record through analysis, interview, mapping, decomposition, atomicity, dependencies, prioritization, sub-issue drafting, and publication handoff only after exact user approval. |
 | `ProductSubIssuePublication` | Exact-set publication result mapping approved product-plan unit IDs to GitHub issue numbers and URLs, with parent and hard-dependency relationship outcomes and failed operations. |
 | `CleanupResult` | Authorized branch/worktree cleanup results, preserved unsafe targets, and local/remote outcomes. |
-| `PreCommitGate` | Local snapshot binding one exact commit to validated scope, worktree identity, and authorization. |
+| `PreCommitGate` | Version-2 local snapshot binding one exact canonical commit to validated scope, worktree identity, authorization, exact message bytes, and cached staged-index contents. |
 | `PreRebaseGate` | Local snapshot binding one exact rebase to verified branch, target, worktree, and authorization. |
 | `PrePrCreateGate` | Local snapshot binding one exact Draft PR publication to commit, push, issue link, description, and validation. |
 | `PreReviewSubmitGate` | Local snapshot binding one exact review payload to current evidence, deduplication, confirmation, and authorization. |

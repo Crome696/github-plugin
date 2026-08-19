@@ -880,9 +880,11 @@ response, direct approval or scoped feedback-mode authorization, publication,
 and verification handoff for one review-thread reply without thread resolution.
 `ReviewThreadResolution` uses the same version-2 scoped authorization model for
 one exact validated thread resolution.
-`PreCommitGate` is a local-only version-1 snapshot that binds one approved
+`PreCommitGate` is a local-only version-2 snapshot that binds one approved
 commit proposal and complete validation result to the verified worktree, branch,
-scope, and pre-commit `HEAD`; it never authorizes a commit by itself.
+scope, and pre-commit `HEAD`, plus the exact approved message-file bytes and
+cached staged-index fingerprint; it never authorizes a commit by itself. A
+version-1 snapshot fails closed and must be regenerated.
 `PreRebaseGate` is a local-only version-1 snapshot that binds one exact
 authorized local rebase to the verified pull-request head branch and SHA, clean
 worktree, current remote context, unique base branch, and complete
@@ -973,7 +975,7 @@ npm test
 
 | Hook | Hosts | Purpose |
 | --- | --- | --- |
-| `pre-commit` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-commit commands and fail closed before AI-driven `git commit` commands unless the current worktree, branch, exact scope, secret scan, required validations, and version-1 `ValidationResult` are all verified. |
+| `pre-commit` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-commit commands and fail closed before AI-driven commits unless the current worktree, branch, exact scope, secret scan, required validations, version-2 `PreCommitGate`, exact message bytes, staged-index fingerprint, and canonical standalone command are all verified. |
 | `pre-rebase` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-rebase commands and fail closed before an identified local `git rebase` unless the exact pull-request branch, clean worktree, current target tracking ref, unique base branch, secured pre-rebase HEAD, exact target SHA, and exact user or repository-policy authorization are verified. |
 | `pre-pr-create` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-PR commands and fail closed before `gh pr create` unless the exact command, created commit, pushed branch, unique issue link, complete description, passed validation, and absence of known blockers are verified. |
 | `pre-review-submit` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-review commands and fail closed before AI review publication unless the exact canonical `gh api` command, authorized payload, finding evidence, valid locations, deduplication, recorded confirmation, blocker support, and current pull-request head are verified. |

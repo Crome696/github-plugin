@@ -206,7 +206,7 @@ repair missing prerequisites or make a product judgment.
 
 | Contract | Before | Required evidence | Hook result |
 | --- | --- | --- | --- |
-| [`PreCommitGate`](../../shared/schemas/PreCommitGate.yaml) | `git commit` | Exact path union, passed validation, clean identity, secret check, commit authorization, current `HEAD`. | Allow only the exact approved commit; otherwise fail closed. |
+| [`PreCommitGate`](../../shared/schemas/PreCommitGate.yaml) | canonical `git -C <verified-worktree> commit --cleanup=verbatim --file=<approved-message-file>` | Exact path union, passed validation, clean identity, secret check, commit authorization, current `HEAD`, exact message-file bytes, and cached staged-index fingerprint. | Allow only the exact standalone approved commit; wrappers, extra segments, alternate message sources, pathspecs, options, or index drift fail closed. |
 | [`PreRebaseGate`](../../shared/schemas/PreRebaseGate.yaml) | local `git rebase` | Exact pull-request branch, clean worktree, selected target SHA, remote context, and rebase authorization. | Allow only the named bounded rebase; otherwise fail closed. |
 | [`PrePrCreateGate`](../../shared/schemas/PrePrCreateGate.yaml) | `gh pr create` | Verified commit and push, complete Draft body, unique issue link, passed validation, exact command. | Allow only the approved Draft PR creation. |
 | [`PreReviewSubmitGate`](../../shared/schemas/PreReviewSubmitGate.yaml) | canonical review API write | Current head, exact findings, valid locations, deduplication, confirmation, and publication authorization. | Allow only the exact review payload. |
