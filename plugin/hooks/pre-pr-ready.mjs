@@ -890,11 +890,38 @@ function evaluate(input) {
 }
 
 function writeResponse(input, result) {
-  const payload = {
-    permission: result.decision === "allow" ? "allow" : "deny",
-    ...result,
-  };
-  process.stdout.write(`${JSON.stringify(payload)}\n`);
+  const isCodex =
+    input?.hook_event_name === "PreToolUse" ||
+    typeof input?.tool_name === "string" ||
+    isRecord(input?.tool_input);
+
+  if (isCodex) {
+    process.stdout.write(
+      JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: result.decision === "deny" ? "deny" : "allow",
+          ...(result.decision === "deny"
+            ? { permissionDecisionReason: result.message }
+            : {}),
+        },
+      }) + "\n",
+    );
+    return;
+  }
+
+  if (result.decision === "deny") {
+    process.stdout.write(
+      JSON.stringify({
+        permission: "deny",
+        user_message: result.message,
+        agent_message: result.message,
+      }) + "\n",
+    );
+    return;
+  }
+
+  process.stdout.write(JSON.stringify({ permission: "allow" }) + "\n");
 }
 
 function main() {
