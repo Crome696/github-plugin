@@ -952,7 +952,13 @@ function evaluate(input) {
   }
 
   const initialDirectory =
-    typeof input.cwd === "string" && input.cwd.trim().length > 0 ? resolve(input.cwd) : null;
+    typeof input.cwd === "string" && input.cwd.trim().length > 0
+      ? resolve(input.cwd)
+      : isRecord(input.tool_input) &&
+          typeof input.tool_input.cwd === "string" &&
+          input.tool_input.cwd.trim().length > 0
+        ? resolve(input.tool_input.cwd)
+        : null;
   const invocation = identifyCommitInvocation(command, initialDirectory ?? process.cwd());
   if (!invocation.isCommit) {
     return makeAllow();

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.105
+
+- Added an executable cross-host runtime oracle for all generated Cursor and
+  Codex project hooks, including isolated fake Git/GitHub execution and
+  non-default pull-request base coverage.
+- Corrected the Codex Ready-for-Review hook response to use the native
+  `PreToolUse` permission envelope.
+
 ## 0.3.104
 
 - Migrated the complete non-test GitHub workflow plugin from the verified
