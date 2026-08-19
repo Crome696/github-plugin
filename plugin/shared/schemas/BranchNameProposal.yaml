@@ -1,0 +1,196 @@
+schema: BranchNameProposal
+version: 1
+description: Evidence-based Git branch name proposal derived from one issue or task and applicable repository conventions.
+required:
+  - status
+  - source
+  - focus
+  - proposal
+  - alternatives
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [proposed, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - task_or_issue
+      - issue
+      - loaded_issue_version
+      - issue_analysis_version
+      - repository_context_version
+      - repository_conventions_version
+      - references
+      - unavailable_inputs
+    fields:
+      task_or_issue:
+        type: string | null
+      issue:
+        type: object | null
+        required: [repository, number, title, url]
+        fields:
+          repository:
+            type: string | null
+            format: owner/repository
+          number:
+            type: integer | null
+            minimum: 1
+          title:
+            type: string | null
+          url:
+            type: string | null
+            format: uri
+      loaded_issue_version:
+        type: integer | null
+      issue_analysis_version:
+        type: integer | null
+      repository_context_version:
+        type: integer | null
+      repository_conventions_version:
+        type: integer | null
+      references:
+        type: list
+        items: string
+      unavailable_inputs:
+        type: list
+        items: string
+  focus:
+    type: object | null
+    required:
+      - summary
+      - keywords
+      - issue_number
+      - paths_of_interest
+    fields:
+      summary:
+        type: string
+      keywords:
+        type: list
+        items: string
+      issue_number:
+        type: integer | null
+        minimum: 1
+      paths_of_interest:
+        type: list
+        items: string
+  proposal:
+    type: object | null
+    required:
+      - branch_name
+      - rationale
+      - applied_convention
+      - issue_number_included
+      - separator
+      - pattern_source
+      - keywords
+      - normalization
+    fields:
+      branch_name:
+        type: string
+      rationale:
+        type: string
+      applied_convention:
+        type: object
+        required:
+          - description
+          - authority
+          - confidence
+          - evidence
+        fields:
+          description:
+            type: string
+          authority:
+            type: enum
+            values: [mandatory, observed, fallback]
+          confidence:
+            type: enum
+            values: [evidenced, inferred, uncertain]
+          evidence:
+            type: list
+            items: string
+      issue_number_included:
+        type: boolean
+      issue_number:
+        type: integer | null
+        minimum: 1
+      separator:
+        type: string | null
+      pattern_source:
+        type: enum
+        values:
+          - repository_convention
+          - repository_history
+          - supplied_context
+          - generic_fallback
+      keywords:
+        type: list
+        items: string
+      normalization:
+        type: list
+        items: string
+  alternatives:
+    type: list
+    items:
+      type: object
+      required:
+        - branch_name
+        - rationale
+        - applied_convention
+      fields:
+        branch_name:
+          type: string
+        rationale:
+          type: string
+        applied_convention:
+          type: object
+          required:
+            - description
+            - authority
+            - confidence
+            - evidence
+          fields:
+            description:
+              type: string
+            authority:
+              type: enum
+              values: [mandatory, observed, fallback]
+            confidence:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+            evidence:
+              type: list
+              items: string
+  recommended_next_skill:
+    type: string | null
+  failure:
+    type: object | null
+    required: [code, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - insufficient_context
+          - conflicting_conventions
+          - invalid_candidate
+          - analysis_failure
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - A proposal is derived only from the supplied issue or task and verified repository evidence.
+  - Explicit mandatory branching instructions take precedence over observed patterns and generic fallback rules.
+  - An issue number is included only when its value is explicitly verified and the applied pattern supports it.
+  - Missing branch conventions never justify inventing a prefix, identifier, separator, or repository-specific rule.
+  - Generic fallback normalization uses a concise lowercase, filesystem-safe name with meaningful task keywords.
+  - Alternatives are returned only when each alternative follows a distinct evidence-based pattern that is valid for the same source.
+  - Producing this contract never creates, checks out, renames, deletes, switches, or modifies a branch or worktree.
+  - A proposed branch name is not evidence that the branch exists or has been authorized.

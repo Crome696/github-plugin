@@ -1,0 +1,216 @@
+schema: ProductInterview
+version: 1
+description: Structured record of an adaptive product interview based on one ProductAssessment, capturing confirmed decisions, assumptions, and open questions for later decomposition without creating sub-issues.
+required:
+  - status
+  - source
+  - coverage
+  - confirmed_decisions
+  - assumptions
+  - open_questions
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [complete, needs_clarification, blocked]
+  source:
+    type: object | null
+    required:
+      - repository
+      - number
+      - url
+      - product_assessment_version
+      - product_assessment_status
+      - unavailable_fields
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      product_assessment_version:
+        type: integer
+      product_assessment_status:
+        type: enum
+        values: [analyzed, partial, blocked]
+      unavailable_fields:
+        type: list
+        items: string
+  coverage:
+    type: object
+    required:
+      - problem
+      - outcome
+      - actors
+      - user_journeys
+      - behavior
+      - variants
+      - business_rules
+      - edge_cases
+      - priorities
+      - dependencies
+      - constraints
+      - non_goals
+    fields:
+      problem:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      outcome:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      actors:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      user_journeys:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      behavior:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      variants:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      business_rules:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      edge_cases:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      priorities:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      dependencies:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      constraints:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+      non_goals:
+        type: enum
+        values: [confirmed, skipped_evidenced, open, challenged]
+  confirmed_decisions:
+    type: list
+    items:
+      type: object
+      required: [topic, text, evidence, origin]
+      fields:
+        topic:
+          type: enum
+          values:
+            - problem
+            - outcome
+            - actors
+            - user_journeys
+            - behavior
+            - variants
+            - business_rules
+            - edge_cases
+            - priorities
+            - dependencies
+            - constraints
+            - non_goals
+        text:
+          type: string
+        evidence:
+          type: string
+        origin:
+          type: enum
+          values: [user_confirmed, assessment_evidenced, assumed]
+  assumptions:
+    type: list
+    items:
+      type: object
+      required: [topic, text, evidence, origin]
+      fields:
+        topic:
+          type: enum
+          values:
+            - problem
+            - outcome
+            - actors
+            - user_journeys
+            - behavior
+            - variants
+            - business_rules
+            - edge_cases
+            - priorities
+            - dependencies
+            - constraints
+            - non_goals
+        text:
+          type: string
+        evidence:
+          type: string
+        origin:
+          type: enum
+          values: [user_confirmed, assessment_evidenced, assumed]
+  open_questions:
+    type: list
+    items:
+      type: object
+      required: [topic, text, evidence, origin]
+      fields:
+        topic:
+          type: enum
+          values:
+            - problem
+            - outcome
+            - actors
+            - user_journeys
+            - behavior
+            - variants
+            - business_rules
+            - edge_cases
+            - priorities
+            - dependencies
+            - constraints
+            - non_goals
+        text:
+          type: string
+        evidence:
+          type: string
+        origin:
+          type: enum
+          values: [user_confirmed, assessment_evidenced, assumed]
+  recommended_next_skill:
+    type: enum
+    values:
+      - identify-product-capabilities
+      - rewrite-github-issue
+      - structure-issue
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - interview_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - source preserves the ProductAssessment issue identity, contract version, status, and unavailable fields without inventing replacements.
+  - complete status requires a valid ProductAssessment version 1 and remaining uncertainties that are either resolved or explicitly accepted as documented open points.
+  - needs_clarification status means a material product topic remains uncovered or unaccepted; failure identifies the remaining interview gap.
+  - blocked status means the ProductAssessment is missing, invalid, unsupported, or blocked; coverage and inventories contain no fabricated product decisions.
+  - user_journeys maps from ProductAssessment.topics.use_cases; mixed features remain diagnosis only and never create GitHub sub-issues.
+  - confirmed_decisions contain only user_confirmed or assessment_evidenced items; inferred ProductAssessment items are never recorded as confirmed.
+  - assumptions and open_questions remain unconfirmed until the user confirms them or explicitly accepts them as residual risk.
+  - coverage marks each interview topic confirmed, skipped_evidenced, open, or challenged; skipped_evidenced topics are not re-asked.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for complete results and non-null for needs_clarification or blocked results.

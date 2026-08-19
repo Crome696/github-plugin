@@ -1,0 +1,248 @@
+schema: BranchRebase
+version: 1
+description: Explicitly authorized local rebase result for one verified feature branch onto one verified target branch.
+required:
+  - status
+  - repository
+  - worktree
+  - branch
+  - target
+  - authorization
+  - preflight
+  - rebase
+  - verification
+  - failure
+  - recommended_next_skill
+fields:
+  status:
+    type: enum
+    values: [draft, approved, rebased, conflicted, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  worktree:
+    type: object
+    required: [path, branch, head_sha]
+    fields:
+      path:
+        type: string
+        format: absolute-path
+      branch:
+        type: string
+      head_sha:
+        type: string | null
+        format: full git commit SHA
+      branch_workspace_status:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  branch:
+    type: object
+    required: [name, pre_rebase_head_sha, post_rebase_head_sha]
+    fields:
+      name:
+        type: string
+      pre_rebase_head_sha:
+        type: string | null
+        format: full git commit SHA
+      post_rebase_head_sha:
+        type: string | null
+        format: full git commit SHA
+      upstream_ref:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  pull_request:
+    type: object
+    description: Verified pull-request identity supplied by the integration workflow for the rebase target.
+    required: [number, url, base_branch, head_branch, head_sha]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      base_branch:
+        type: string
+      head_branch:
+        type: string
+      head_sha:
+        type: string
+        format: full git commit SHA
+  target:
+    type: object
+    required: [remote_name, branch_name, remote_ref, tracking_ref, tracking_sha]
+    fields:
+      remote_name:
+        type: string
+      branch_name:
+        type: string
+      remote_ref:
+        type: string
+        value: refs/heads/<branch_name>
+      tracking_ref:
+        type: string
+        value: refs/remotes/<remote_name>/<branch_name>
+      remote_sha:
+        type: string | null
+        format: full git commit SHA
+      tracking_sha:
+        type: string | null
+        format: full git commit SHA
+      target_fetch_status:
+        type: enum
+        values: [verified, partial, blocked, null]
+      evidence:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required: [approved, exact_target, exact_operation, source, evidence]
+    fields:
+      approved:
+        type: boolean
+      exact_target:
+        type: boolean
+      exact_operation:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, repository_policy, null]
+      evidence:
+        type: string | null
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+  preflight:
+    type: object
+    required:
+      - repository_match
+      - worktree_registered
+      - branch_match
+      - target_fetch_verified
+      - target_reachable
+      - clean
+      - no_active_operation
+      - base_revision_match
+    fields:
+      repository_match:
+        type: enum
+        values: [pass, fail, unknown]
+      worktree_registered:
+        type: enum
+        values: [pass, fail, unknown]
+      branch_match:
+        type: enum
+        values: [pass, fail, unknown]
+      target_fetch_verified:
+        type: enum
+        values: [pass, fail, unknown]
+      target_reachable:
+        type: enum
+        values: [pass, fail, unknown]
+      clean:
+        type: enum
+        values: [pass, fail, unknown]
+      no_active_operation:
+        type: enum
+        values: [pass, fail, unknown]
+      base_revision_match:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  rebase:
+    type: object
+    required: [attempted, target_revision, result, command, completed_at, evidence]
+    fields:
+      attempted:
+        type: boolean
+      target_revision:
+        type: string | null
+        format: full git commit SHA
+      result:
+        type: enum
+        values: [success, conflicted, failed, not_run]
+      command:
+        type: string | null
+      completed_at:
+        type: string | null
+        format: iso-8601
+      active_operation_after:
+        type: boolean | null
+      evidence:
+        type: list
+        items: string
+  verification:
+    type: object
+    required:
+      - repository_match
+      - branch_match
+      - target_ancestor
+      - active_operation_absent
+      - current_head_available
+    fields:
+      repository_match:
+        type: enum
+        values: [pass, fail, unknown]
+      branch_match:
+        type: enum
+        values: [pass, fail, unknown]
+      target_ancestor:
+        type: enum
+        values: [pass, fail, unknown]
+      active_operation_absent:
+        type: enum
+        values: [pass, fail, unknown]
+      current_head_available:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - repository_mismatch
+          - worktree_mismatch
+          - branch_mismatch
+          - target_mismatch
+          - base_revision_mismatch
+          - dirty_worktree
+          - unsafe_state
+          - approval_missing
+          - rebase_failed
+          - conflict_detected
+          - verification_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  recommended_next_skill:
+    type: string | null
+invariants:
+  - The rebase uses only the verified worktree, branch, and target tracking SHA; it never silently substitutes another target.
+  - When pull_request is supplied, its head branch and head SHA match the verified worktree and its base branch matches target.branch_name.
+  - A rebase requires exact authorization from the user or a matching repository policy for the exact repository, worktree, branch, target branch, target SHA, and rebase operation.
+  - The workflow never pushes, force-pushes, merges, commits, stages, resets, cleans, checks out, switches, or changes remote configuration.
+  - A conflicted rebase remains stopped for a separate resolution workflow; this result never authorizes continue, skip, abort, or conflict edits.
+  - A successful result requires no active Git operation, a reachable target ancestor, a matching branch, and an available current head.
+  - A partial or blocked result preserves failed or unavailable preflight and verification evidence and never claims the rebase passed.

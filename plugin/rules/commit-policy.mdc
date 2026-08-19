@@ -1,0 +1,66 @@
+---
+description: Require validated, scope-focused, secret-free Git commits with documented authorization and verification.
+alwaysApply: true
+---
+
+# Commit Policy
+
+## Purpose
+
+Keep every commit reviewable, reproducible, and limited to the verified task
+scope. `interactive-approval.mdc` owns routine authorization and hard gates;
+`github-safety.mdc` owns global safety, secret, and history boundaries. This
+rule adds only commit-specific checks.
+
+## Required checks
+
+MUST:
+
+- Create a commit only from one approved version-1 `CommitProposal` whose
+  `files` union exactly matches the inspected and validated change scope.
+- Verify the expected repository, branch, worktree, current status, and
+  unmerged state immediately before staging. Stage only the proposal's
+  explicit repository-relative paths; never use `git add .`, `git add -A`,
+  `git add --all`, `git commit -a`, or wildcard pathspecs.
+- Require `ValidationResult.result_status: passed` with non-empty evidence.
+  Readiness flags, a plan, or successful prior work do not replace validation.
+- Require explicit, recorded authorization with both
+  `authorization.exact_scope_approved: true` and
+  `authorization.commit_authorized: true`, plus a verifiable source and
+  evidence for the same task, repository, branch, worktree, and path scope.
+  A task-scoped authorization may suppress a redundant prompt only when the
+  applicable repository policy permits it; it must still be recorded.
+- Use an English, concise, traceable message that explains the purpose of the
+  actual change. Add an issue reference only when the issue identity is
+  verified and the repository's commit convention requires or prescribes it.
+- Record the validation evidence and the exact committed path scope in the
+  commit handoff. Do not claim checks passed when they were skipped, waived,
+  unavailable, or unsuccessful.
+- Before the final commit status check, create one local version-1
+  `PreCommitGate` snapshot at `.cursor/hooks/state/pre-commit.json` containing
+  the exact approved `CommitProposal`, complete `ValidationResult`, verified
+  worktree identity, and pre-commit `HEAD`. The deterministic plugin hook must
+  accept only that current, identity-matched snapshot; the ignored state path
+  must never be staged or committed.
+- Apply the global confidential-data boundary from `github-safety.mdc`; a
+  commit must never contain secrets or other confidential data.
+
+## Stop conditions
+
+Stop before staging or committing when any staged, unstaged, deleted, renamed,
+or untracked path is outside the approved scope; when the workspace identity
+or branch is uncertain; or when the index has unmerged entries or conflicts.
+Do not reset, restore, clean, or remove foreign changes to force the scope to
+match.
+
+Stop when validation or a required hook/check is failed, partial, blocked,
+unknown, missing, or lacks reproducible evidence. Stop when authorization or
+the message is missing, stale, contradictory, or unsupported. Stop when a
+required issue reference is missing or unsupported. Stop when the
+`PreCommitGate` is missing, malformed, stale, or mismatched with the live
+worktree, branch, `HEAD`, scope, or validation. Never bypass a hook with
+`--no-verify` or equivalent.
+
+History rewrites and other hard Git operations remain governed by
+`github-safety.mdc` and `interactive-approval.mdc`; ordinary commit
+authorization, validation readiness, or task continuity never implies them.

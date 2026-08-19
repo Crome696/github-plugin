@@ -1,0 +1,228 @@
+schema: ContextCapabilities
+version: 1
+description: Evidence-based resolution of relevant skills, rules, agents, tools, and domain capabilities for one implementation context.
+required:
+  - status
+  - source
+  - focus
+  - capabilities
+  - missing_capabilities
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [resolved, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - task_or_issue
+      - issue
+      - loaded_issue_version
+      - issue_analysis_version
+      - affected_areas_version
+      - implementation_evaluation_version
+      - repository_context_version
+      - repository_conventions_version
+      - references
+      - unavailable_inputs
+    fields:
+      task_or_issue:
+        type: string | null
+      issue:
+        type: object | null
+        required: [repository, number, title, url]
+        fields:
+          repository:
+            type: string | null
+            format: owner/repository
+          number:
+            type: integer | null
+            minimum: 1
+          title:
+            type: string | null
+          url:
+            type: string | null
+            format: uri
+      loaded_issue_version:
+        type: integer | null
+      issue_analysis_version:
+        type: integer | null
+      affected_areas_version:
+        type: integer | null
+      implementation_evaluation_version:
+        type: integer | null
+      repository_context_version:
+        type: integer | null
+      repository_conventions_version:
+        type: integer | null
+      references:
+        type: list
+        items:
+          type: string
+      unavailable_inputs:
+        type: list
+        items:
+          type: string
+  focus:
+    type: object | null
+    required:
+      - summary
+      - technologies
+      - architecture_signals
+      - risks
+      - planned_work
+      - paths_of_interest
+    fields:
+      summary:
+        type: string
+      technologies:
+        type: list
+        items:
+          type: string
+      architecture_signals:
+        type: list
+        items:
+          type: string
+      risks:
+        type: list
+        items:
+          type: string
+      planned_work:
+        type: list
+        items:
+          type: string
+      paths_of_interest:
+        type: list
+        items:
+          type: string
+  capabilities:
+    type: list
+    items:
+      type: object
+      required:
+        - capability
+        - type
+        - relevance
+        - priority
+        - rationale
+        - intended_usage
+        - scope_boundary
+        - availability
+        - evidence
+        - confidence
+      fields:
+        capability:
+          type: string
+        type:
+          type: enum
+          values: [skill, rule, agent, tool, domain]
+        relevance:
+          type: enum
+          values: [required, optional]
+        priority:
+          type: enum
+          values: [high, medium, low]
+        rationale:
+          type: string
+        intended_usage:
+          type: string
+        scope_boundary:
+          type: string
+        availability:
+          type: enum
+          values: [available, missing, unavailable]
+        evidence:
+          type: list
+          items:
+            type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  missing_capabilities:
+    type: list
+    items:
+      type: object
+      required:
+        - capability
+        - type
+        - relevance
+        - priority
+        - rationale
+        - intended_usage
+        - availability
+        - impact
+        - evidence
+        - confidence
+      fields:
+        capability:
+          type: string
+        type:
+          type: enum
+          values: [skill, rule, agent, tool, domain]
+        relevance:
+          type: enum
+          values: [required, optional]
+        priority:
+          type: enum
+          values: [high, medium, low]
+        rationale:
+          type: string
+        intended_usage:
+          type: string
+        availability:
+          type: enum
+          values: [missing, unavailable]
+        impact:
+          type: enum
+          values: [blocking, weakening]
+        evidence:
+          type: list
+          items:
+            type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  recommended_next_skill:
+    type: enum
+    values:
+      - load-github-issue
+      - load-linked-issue
+      - analyze-issue
+      - inspect-repository
+      - detect-repository-conventions
+      - identify-affected-areas
+      - evaluate-implementation
+      - build-implementation-plan
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - insufficient_context
+          - conflicting_evidence
+          - analysis_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The result represents exactly one issue or implementation request and one repository context.
+  - Every capability is grounded in the task, supplied handoff, repository context, host-session inventory, or explicit domain evidence.
+  - "availability: available is reserved for a capability verified in the current host session; a repository path, generic technology name, or capability description alone does not prove availability."
+  - "availability: unavailable identifies a known capability that cannot be used in the current host session; availability: missing identifies a required or useful capability for which no known capability was found."
+  - Required and optional relevance remain distinct from high, medium, and low priority; neither field is used as a substitute for the other.
+  - Each capability states its own scope boundary so that overlapping capabilities are not assigned duplicate responsibilities.
+  - Every missing_capabilities entry corresponds to one capabilities entry with availability missing or unavailable and records whether the gap is blocking or weakening.
+  - Missing capabilities are reported as gaps and are never invented, executed, installed, or silently substituted.
+  - The result resolves applicability only; it does not execute a Skill, Rule, Agent, Tool, or domain capability and does not replace the task-authorized ImplementationPlan.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for resolved results and non-null for partial or blocked results.

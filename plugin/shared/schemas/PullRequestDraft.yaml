@@ -1,0 +1,137 @@
+schema: PullRequestDraft
+version: 1
+description: Draft pull-request payload, evidence-backed English description, branch identity, authorization, and verification evidence for composition and publication workflows.
+required:
+  - status
+  - repository
+  - title
+  - body
+  - base_branch
+  - head_branch
+  - draft
+  - authorization
+fields:
+  status:
+    type: enum
+    values: [draft, created, verified, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  number:
+    type: integer | null
+    minimum: 1
+  url:
+    type: string | null
+    format: uri
+  title:
+    type: string
+    constraints:
+      - English and outcome-focused.
+  body:
+    type: string
+    constraints:
+      - English.
+      - Must identify the implementation scope, validation evidence, and review context.
+      - Must include problem context, solution summary, key changes, tests or
+        validations, known limitations, risks, and issue linkage from supplied
+        evidence.
+      - Must not claim tests or validations that are absent from the supplied
+        validation result.
+  base_branch:
+    type: string
+  head_branch:
+    type: string
+  head_sha:
+    type: string | null
+  draft:
+    type: boolean
+  linked_issues:
+    type: list
+    items:
+      type: object
+      required: [repository, number]
+      fields:
+        repository:
+          type: string
+          format: owner/repository
+        number:
+          type: integer
+          minimum: 1
+  validation:
+    type: object
+    fields:
+      result_status:
+        type: enum
+        values: [passed, failed, partial, blocked, unknown]
+      evidence:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required: [push_authorized, draft_pull_request_authorized]
+    fields:
+      push_authorized:
+        type: boolean
+      draft_pull_request_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, task_intent, plan_build, repository_policy, session_continuity, null]
+      task_scope:
+        type: string | null
+      evidence:
+        type: string | null
+  verification:
+    type: object
+    fields:
+      repository_match:
+        type: enum
+        values: [pass, fail, unknown]
+      base_branch_match:
+        type: enum
+        values: [pass, fail, unknown]
+      head_branch_match:
+        type: enum
+        values: [pass, fail, unknown]
+      head_sha_match:
+        type: enum
+        values: [pass, fail, unknown]
+      draft_state_match:
+        type: enum
+        values: [pass, fail, unknown]
+      title_match:
+        type: enum
+        values: [pass, fail, unknown]
+      body_match:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  created_at:
+    type: string | null
+    format: iso-8601
+  rationale:
+    type: string | null
+    constraints:
+      - English.
+      - Records composition evidence, template selection, issue-link choice,
+        and material limitations without granting authorization.
+invariants:
+  - A composition-only draft may be produced before the head branch is pushed;
+    it sets number, url, and created_at to null. It preserves an existing
+    task-scoped routine authorization and does not invent one from readiness.
+  - A composition-only draft is not a created pull request and never claims a
+    GitHub number or URL.
+  - The head branch is pushed without force before the draft pull request is created.
+  - The create-draft-pr Skill accepts only an explicitly authorized draft
+    payload with an already pushed head branch, checks for an existing open
+    head-to-base pull request, and uses the exact approved title and body.
+  - A created pull request must remain in draft state.
+  - The target repository, base branch, head branch, and head SHA are verified after creation.
+  - The create-draft-pr Skill populates number, url, created_at, and
+    publication verification fields only from GitHub evidence after the
+    existing or newly created draft pull request is read.
+  - An existing matching pull request is never duplicated, edited, marked
+    ready, or used to request review by this workflow.
+  - A pull-request URL or number is never fabricated from a failed or ambiguous command.

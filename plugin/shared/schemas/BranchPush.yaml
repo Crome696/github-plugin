@@ -1,0 +1,200 @@
+schema: BranchPush
+version: 1
+description: Verified branch-push result with repository identity, remote and upstream state, local status, authorization, and post-push evidence.
+required:
+  - status
+  - repository
+  - branch_name
+  - worktree_path
+  - remote
+  - upstream
+  - local
+  - push
+  - authorization
+  - verification
+fields:
+  status:
+    type: enum
+    values: [pushed, verified, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  branch_name:
+    type: string
+  worktree_path:
+    type: string
+    format: absolute-path
+  remote:
+    type: object
+    required: [name, owner_repository, url_sanitized]
+    fields:
+      name:
+        type: string
+      owner_repository:
+        type: string
+        format: owner/repository
+      url_sanitized:
+        type: string | null
+        constraints:
+          - Must not contain credentials, tokens, query parameters, or fragments.
+      ref:
+        type: string | null
+  upstream:
+    type: object
+    required: [exists, ref, ahead, behind]
+    fields:
+      exists:
+        type: boolean
+      ref:
+        type: string | null
+      ahead:
+        type: integer | null
+        minimum: 0
+      behind:
+        type: integer | null
+        minimum: 0
+      evidence:
+        type: list
+        items: string
+  local:
+    type: object
+    required:
+      - head_sha
+      - branch_match
+      - detached
+      - in_progress_operation
+      - dirty
+    fields:
+      head_sha:
+        type: string | null
+      branch_match:
+        type: boolean
+      detached:
+        type: boolean
+      in_progress_operation:
+        type: string | null
+      dirty:
+        type: boolean | null
+      worktree_registered:
+        type: boolean | null
+      evidence:
+        type: list
+        items: string
+  push:
+    type: object
+    required:
+      - attempted
+      - forced
+      - set_upstream
+      - remote_ref
+      - remote_sha
+      - result
+    fields:
+      attempted:
+        type: boolean
+      forced:
+        type: boolean
+      force_mode:
+        type: enum
+        values: [none, force-with-lease, null]
+      set_upstream:
+        type: boolean
+      remote_ref:
+        type: string | null
+      remote_sha:
+        type: string | null
+      result:
+        type: enum
+        values: [success, up_to_date, failed, not_run]
+      completed_at:
+        type: string | null
+        format: iso-8601
+      evidence:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required: [push_authorized, force_push_authorized]
+    fields:
+      push_authorized:
+        type: boolean
+      force_push_authorized:
+        type: boolean
+      evidence:
+        type: string | null
+      source:
+        type: enum
+        values: [explicit_user, task_intent, repository_policy, plan_build, session_continuity, null]
+      task_scope:
+        type: string | null
+  verification:
+    type: object
+    required:
+      - repository_match
+      - branch_match
+      - remote_branch_exists
+      - sha_match
+      - upstream_configured
+    fields:
+      repository_match:
+        type: enum
+        values: [pass, fail, unknown]
+      branch_match:
+        type: enum
+        values: [pass, fail, unknown]
+      remote_branch_exists:
+        type: enum
+        values: [pass, fail, unknown]
+      sha_match:
+        type: enum
+        values: [pass, fail, unknown]
+      upstream_configured:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - repository_mismatch
+          - branch_mismatch
+          - detached_head
+          - remote_missing
+          - remote_mismatch
+          - upstream_mismatch
+          - unsafe_state
+          - approval_missing
+          - force_push_required
+          - force_push_denied
+          - push_failed
+          - verification_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  recommended_next_skill:
+    type: string | null
+invariants:
+  - The push uses the verified repository, remote name, and recorded branch_name; it never silently substitutes another target.
+  - A normal push never uses --force, --force-with-lease, --force-if-includes, or an equivalent force option.
+  - "A force push requires force_push_authorized: true and separate authorization evidence for the exact remote branch and force operation."
+  - Routine non-force delivery may use task_intent, plan_build, repository_policy, or session_continuity authorization; force-push authorization is never inherited from those routine sources.
+  - When force is separately authorized, --force-with-lease uses the observed remote SHA and never overwrites an unobserved remote update.
+  - A divergent remote branch is blocked rather than force-updated when separate force authorization is absent.
+  - Remote branch names, remote SHAs, upstream state, and push results are reported only from Git evidence; no value is fabricated after an ambiguous command.
+  - "status: verified is valid only when the remote branch and expected local head SHA match after the operation or when the branch was already up to date."
+  - "status: partial is used when Git may have changed the remote but required verification is incomplete or contradictory."
+  - This workflow never creates, publishes, updates, or verifies a pull request.

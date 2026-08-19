@@ -1,0 +1,99 @@
+---
+description: Require current evidence and separate user or repository-policy authorization before merging a pull request.
+alwaysApply: true
+---
+
+# Merge Policy
+
+Merge is a separately authorized operation. A positive readiness assessment is
+diagnostic evidence, never merge authorization.
+
+## Required merge conditions
+
+Before the merge write, reload the exact pull request and verify all of the
+following against the current head SHA:
+
+- The pull request is open and not a Draft.
+- No unresolved merge conflicts remain.
+- No open, blocking `REQUEST_CHANGES` review remains.
+- All repository-required approvals are satisfied.
+- All checks required by current branch protection or applicable rulesets have
+  completed successfully. Optional checks must not be treated as required, and
+  missing or unavailable policy evidence is not a pass.
+- Exactly one issue is linked, with the relationship supported by explicit
+  issue or pull-request evidence; OR the unique-link requirement is waived
+  by an exact exception recorded in `MergeReadiness.issue_coverage` for
+  the exact repository, pull request, and current head SHA, with complete
+  waiver evidence (reason, waiver source, and recorded justification).
+- No scope blocker, unexpected change, or clarification remains unresolved.
+
+The merge is blocked when any condition is failed, stale, unavailable, or
+ambiguous. Recheck branch protection, applicable rulesets, required reviews,
+required checks, mergeability, and base-branch state immediately before the
+write.
+
+## Deterministic pre-merge gate
+
+Immediately before the GitHub merge write, `merge-pull-request` MUST write a
+current local version-1 `PreMergeGate` containing the exact pull-request
+identity, expected head and base SHAs, selected strategy, branch-deletion
+effect, complete current `MergeReadiness`, and explicit merge authorization.
+The host-specific `pre-merge` Hook MUST fail closed unless the local gate and
+live read-only evidence agree for:
+
+- open, non-Draft status;
+- active reviews and change requests;
+- open blocking review threads;
+- required approvals and their current policy source;
+- every required status check;
+- mergeability and absence of conflicts;
+- current base branch SHA;
+- exactly one linked issue relationship OR a waived unique-link condition;
+  and
+- the exact user or repository-policy merge authorization and selected strategy.
+
+The Hook must stop when any identity, readiness, authorization, review,
+thread, approval, check, conflict, base, or issue condition changes or is
+unavailable. It may report the missing evidence and a safe next step, but it
+must never resolve a blocker, rerun a check, mutate GitHub, rewrite the gate,
+or perform the merge.
+
+## Repository strategy and authorization
+
+Use only a merge strategy currently allowed by the repository and GitHub.
+When more than one strategy is allowed, the exact user authorization or an
+applicable repository policy must select one; never infer a default. The exact
+authorization must identify the repository, pull request, head and base
+revisions, selected strategy, commit metadata, and any branch-deletion effect.
+
+Rebase and merge are independent operations with independent authorizations.
+Authorization for one never authorizes the other. After an authorized rebase,
+invalidate prior readiness and validation evidence, then revalidate the new
+head's identity, history, diff scope, tests, checks, reviews, issue linkage,
+conflicts, and merge readiness before requesting or performing a merge.
+
+## Post-merge boundary
+
+Verify the merge state, merge commit, target branch, and actual strategy before
+starting any follow-up workflow. Issue-closure verification and issue closure
+are separate steps and may begin only after a verified merge; when
+`MergeReadiness.issue_coverage.status` is `waived`, issue-closure
+verification is skipped. After
+`verify-linked-issue-closure` returns `status: not-closed` with
+`closure.expected: true`, `close-linked-issue` may perform the single exact
+fallback close using the validated close-on-merge intent as its authorization
+source. This exception does not authorize neutral `Refs` relationships,
+additional issues, comments, or any other mutation. Branch deletion and local
+or remote worktree cleanup are separate, independently authorized operations
+and must never begin before that verification. A clear, scope-matched
+target-repository `AGENTS.md` policy may supply those separate authorizations;
+otherwise their owning workflows retain their user-approval gates.
+
+The host-specific `post-merge` Hook is a read-only observer after an identified
+GitHub merge command. It may inspect the current pull request, merge commit,
+target-branch containment, expected issue closure, and local or remote cleanup
+availability, then return a version-1 `PostMergeStatus` with open actions and
+deviations. It must never close an issue, delete a branch, remove a worktree,
+write hook state, or infer cleanup authorization. Every cleanup action remains
+blocked until its owning workflow receives separate exact user or
+repository-policy authorization.

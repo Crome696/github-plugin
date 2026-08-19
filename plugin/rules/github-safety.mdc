@@ -1,0 +1,96 @@
+---
+description: Preserve GitHub and Git safety during autonomous routine delivery while keeping destructive and ambiguous operations explicitly gated.
+alwaysApply: true
+---
+
+# GitHub Safety Contract
+
+## Purpose
+
+Autonomous delivery removes redundant approval prompts for routine,
+scope-verified operations; it does not remove repository, identity, scope,
+verification, concurrency, hook, or secret checks. This rule protects
+repositories, branches, history, and published collaboration artifacts from
+irreversible or unauthorized changes.
+
+## Repository instruction overrides
+
+Before applying a safety stop or approval requirement, read the applicable
+repository-scoped durable instructions, especially `AGENTS.md`, for the target
+repository. A repository instruction may explicitly authorize or waive the
+default approval and stop conditions for named operations, including
+force-pushes, history rewrites, branch or tag deletion, default-branch
+changes, merges, pull-request state changes, and continuation after a named
+verification or authorization failure. Natural-language instructions are
+supported; no machine-readable override format or fixed keyword list is
+required.
+
+Apply an override only when it clearly identifies the operation, target,
+scope, and authorization or continuation condition. Record the source path and
+a concise quote or paraphrase in the workflow handoff. If instructions
+conflict, are ambiguous, or do not identify the concrete operation and scope,
+retain the default safety requirement.
+
+An override changes whether the workflow must ask or stop; it does not turn an
+unobserved result into evidence. Continue to inspect available output, record
+the actual effect and any waived check, and never claim that an unmet safety
+condition passed.
+
+## Autonomous delivery boundary
+
+The routine delivery authorization covers only the verified task's ordinary
+issue publication/update, dedicated workspace creation or reuse, local commit,
+non-force push, and draft pull request. It does not authorize:
+
+- force-pushes or history rewrites;
+- merges, rebases, change requests, or branch/worktree deletion;
+- Ready-for-Review transitions or reviewer requests;
+- check reruns outside the exact `/auto-ci-fix-pr` required-check names;
+- writes to the default branch;
+- destructive cleanup or uncertain merge decisions; or
+- any publication of secrets or confidential information.
+
+These operations require their own explicit approval or a clear,
+scope-matched repository-policy authorization. A general implementation
+request, a completed validation, or a routine delivery record never replaces
+that hard gate.
+
+## Required behavior
+
+MUST:
+
+- Obtain explicit approval before any hard operation, including destructive
+  actions such as hard resets, history rewrites, repository or tag deletion,
+  and irreversible cleanup, unless an applicable repository instruction
+  explicitly authorizes that exact operation and scope.
+- Before every routine write, verify the exact repository, branch, worktree,
+  target, scope, and current safe state. Announcing the operation is not a
+  request for another routine approval.
+- Never force-push without explicit permission for that specific force-push or
+  an applicable repository instruction that explicitly authorizes it.
+- Never delete a branch before its changes have merged successfully unless an
+  applicable repository instruction explicitly authorizes the named deletion
+  and target.
+- Treat the default branch as read-only unless the user explicitly authorizes
+  the requested change to that branch or an applicable repository instruction
+  explicitly authorizes the named operation and target.
+- Inspect output and context before making a merge decision; when readiness,
+  authorization, or impact is uncertain, stop and ask instead of merging,
+  marking a pull request ready, or accepting the change, unless an applicable
+  repository instruction explicitly authorizes proceeding despite the named
+  uncertainty.
+
+MUST NOT:
+
+- Publish secrets, tokens, credentials, private keys, personal data, or other
+  confidential information in issues, pull requests, commits, branches, logs,
+  or other shared artifacts. This prohibition cannot be waived by
+  `AGENTS.md`, user instructions, or any other repository content.
+- Infer approval for destructive actions, force-pushes, default-branch changes,
+  branch deletion, merges, or Ready-for-Review from routine delivery
+  authorization or general implementation instructions. Only a clear,
+  applicable repository instruction can replace the default gate.
+- Proceed with an operation after an authorization, safety, or verification
+  check fails unless the concrete failure and continuation scope are
+  explicitly covered by a repository instruction. Preserve the failure and
+  waiver evidence; do not report the failed check as passed.

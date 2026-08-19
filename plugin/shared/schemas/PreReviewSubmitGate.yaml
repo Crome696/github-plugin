@@ -1,0 +1,292 @@
+schema: PreReviewSubmitGate
+version: 1
+description: Local, read-only snapshot binding one exact AI pull-request review publication to structurally complete, deduplicated, explicitly confirmed, and current review evidence.
+required:
+  - workspace
+  - review_decision
+  - classified_findings
+  - deduplicated_findings
+  - confirmation
+  - freshness
+  - written_at
+fields:
+  workspace:
+    type: object
+    required: [repository, path]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      path:
+        type: string
+        format: absolute-path
+      branch:
+        type: string | null
+  review_decision:
+    type: object
+    description: Complete version-1 ReviewDecision approved for one exact pull-request review publication.
+    required:
+      - schema
+      - version
+      - status
+      - repository
+      - pull_request
+      - head_sha
+      - proposed_event
+      - summary
+      - findings
+      - inline_comments
+      - approval
+    fields:
+      schema:
+        type: string
+        const: ReviewDecision
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [approved]
+      repository:
+        type: string
+        format: owner/repository
+      pull_request:
+        type: object
+        required: [number, url]
+      head_sha:
+        type: string
+      proposed_event:
+        type: enum
+        values: [COMMENT, REQUEST_CHANGES, APPROVE]
+      summary:
+        type: string
+      findings:
+        type: list
+        items:
+          type: object
+          required: [id, included]
+      inline_comments:
+        type: list
+        items:
+          type: object
+          required: [finding_id, path, line, side, body]
+      approval:
+        type: object
+        required: [exact_payload, explicit_event_authorization]
+        fields:
+          exact_payload:
+            type: boolean
+          explicit_event_authorization:
+            type: boolean
+          approved_by:
+            type: string | null
+          approved_at:
+            type: string | null
+            format: iso-8601
+          evidence:
+            type: string | null
+          confirmation_source:
+            type: string | null
+  classified_findings:
+    type: object
+    description: Complete version-1 ClassifiedReviewFindings handoff supplying the active finding details used by the approved ReviewDecision.
+    required:
+      - schema
+      - version
+      - status
+      - repository
+      - pull_request
+      - head_sha
+      - findings
+    fields:
+      schema:
+        type: string
+        const: ClassifiedReviewFindings
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [classified, partial]
+      repository:
+        type: string
+        format: owner/repository
+      pull_request:
+        type: object
+        required: [number, url]
+        fields:
+          number:
+            type: integer
+            minimum: 1
+          url:
+            type: string
+            format: uri
+      head_sha:
+        type: string | null
+      findings:
+        type: list
+        items:
+          type: object
+          required:
+            - id
+            - status
+            - severity
+            - confidence
+            - needs_discussion
+            - location
+            - evidence
+            - impact
+            - recommendation
+            - verification
+            - classification_rationale
+            - sources
+            - merged_from
+            - related_threads
+  deduplicated_findings:
+    type: object
+    description: Complete version-1 DeduplicatedReviewFindings handoff used to prove that included findings were not suppressed as duplicates.
+    required:
+      - schema
+      - version
+      - status
+      - repository
+      - pull_request
+      - head_sha
+      - findings
+      - suppressed
+    fields:
+      schema:
+        type: string
+        const: DeduplicatedReviewFindings
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [deduplicated, partial]
+      repository:
+        type: string
+        format: owner/repository
+      pull_request:
+        type: object
+        required: [number, url]
+        fields:
+          number:
+            type: integer
+            minimum: 1
+          url:
+            type: string
+            format: uri
+      head_sha:
+        type: string | null
+      findings:
+        type: list
+        items:
+          type: object
+          required: [id, merged_from, location]
+      suppressed:
+        type: list
+        items:
+          type: object
+          required: [id, disposition, merged_into]
+  confirmation:
+    type: object
+    required:
+      - repository
+      - pull_request_number
+      - head_sha
+      - confirmed_at
+      - entries
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      pull_request_number:
+        type: integer
+        minimum: 1
+      head_sha:
+        type: string
+      confirmed_at:
+        type: string
+        format: iso-8601
+      entries:
+        type: list
+        items:
+          type: object
+          required: [finding_id, decision, confirmed]
+          fields:
+            finding_id:
+              type: string
+            decision:
+              type: enum
+              values: [change_request, suggestion, modify]
+            confirmed:
+              type: boolean
+            modification_evidence:
+              type: string | null
+  freshness:
+    type: object
+    description: Read-only freshness evidence produced by submit-pr-review after its live pull-request and diff-location preflight.
+    required:
+      - head_sha
+      - pull_request_state
+      - verified_at
+      - findings
+      - inline_comments
+    fields:
+      head_sha:
+        type: string
+      pull_request_state:
+        type: enum
+        values: [open, closed, merged, unknown]
+      verified_at:
+        type: string
+        format: iso-8601
+      findings:
+        type: list
+        items:
+          type: object
+          required: [finding_id, head_sha, valid]
+          fields:
+            finding_id:
+              type: string
+            head_sha:
+              type: string
+            valid:
+              type: boolean
+            evidence:
+              type: string | null
+      inline_comments:
+        type: list
+        items:
+          type: object
+          required: [finding_id, path, line, side, head_sha, valid]
+          fields:
+            finding_id:
+              type: string
+            path:
+              type: string
+            line:
+              type: integer
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT]
+            head_sha:
+              type: string
+            valid:
+              type: boolean
+            evidence:
+              type: string | null
+  written_at:
+    type: string
+    format: iso-8601
+invariants:
+  - The gate is local, read-only input to the host hook and never grants review-publication authority by itself.
+  - The ReviewDecision is approved for exactly one repository, pull request, head SHA, event, summary, finding set, and inline-comment set; both exact-payload and event-authorization flags are true.
+  - Every included finding is present exactly once in ClassifiedReviewFindings with non-empty evidence, impact, recommendation, and verification, a valid location, a supported severity and confidence, and needs_discussion set to false.
+  - Every included finding is explicitly confirmed by the user for the exact repository, pull request, and head SHA.
+  - An included finding must not appear in the deduplicated suppressed list or in another included finding's merged_from list.
+  - An included blocker with low confidence, unresolved discussion, or missing evidence is never publishable.
+  - Freshness evidence is tied to the same head SHA and open pull request; stale, invalid, or unavailable findings and inline locations block publication.
+  - The host hook performs deterministic structural and identity checks only. It does not reanalyze the pull-request diff, recompute severity, deduplicate problem cores, rewrite content, or relocate a finding.

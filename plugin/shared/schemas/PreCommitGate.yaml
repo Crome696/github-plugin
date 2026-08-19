@@ -1,0 +1,340 @@
+schema: PreCommitGate
+version: 1
+description: Local, read-only pre-commit gate snapshot binding one AI commit to a verified worktree, exact approved scope, complete validation evidence, and task-scoped authorization.
+required:
+  - workspace
+  - validation
+  - commit_proposal
+  - written_at
+fields:
+  workspace:
+    type: object
+    required: [repository, path, branch, head_sha]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      path:
+        type: string
+      branch:
+        type: string
+      head_sha:
+        type: string
+  validation:
+    type: object
+    description: Complete version-1 ValidationResult handoff captured immediately before commit preparation.
+    required:
+      - schema
+      - version
+      - status
+      - workspace
+      - source
+      - checks
+      - required_checks_passed
+      - evaluation
+      - blockers
+      - warnings
+      - readiness
+      - failure
+      - recommended_next_skill
+    fields:
+      schema:
+        type: string
+        const: ValidationResult
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [passed, failed, partial, blocked]
+      workspace:
+        type: object
+        required: [path, branch, head_sha]
+        fields:
+          path:
+            type: string
+          branch:
+            type: string
+          head_sha:
+            type: string
+      checks:
+        type: list
+        items:
+          type: object
+          required: [id, command, result, required, evidence]
+          fields:
+            id:
+              type: string
+            command:
+              type: string
+            result:
+              type: enum
+              values: [pass, fail, skipped, not_run]
+            required:
+              type: boolean
+            evidence:
+              type: string
+            exit_code:
+              type: integer | null
+            duration_ms:
+              type: integer | null
+            failure_summary:
+              type: string | null
+      required_checks_passed:
+        type: boolean
+      evaluation:
+        type: object
+        required:
+          - scope
+          - acceptance_criteria
+          - completion_criteria
+          - planned_steps
+          - unexpected_changes
+          - documented_deviations
+        fields:
+          scope:
+            type: object
+            required: [status, evidence]
+            fields:
+              status:
+                type: enum
+                values: [aligned, drift, unknown]
+              evidence:
+                type: list
+                items: string
+          acceptance_criteria:
+            type: list
+            items:
+              type: object
+              required: [criterion, status, evidence]
+              fields:
+                criterion:
+                  type: string
+                status:
+                  type: enum
+                  values: [pass, fail, unverified]
+                evidence:
+                  type: list
+                  items: string
+          completion_criteria:
+            type: list
+            items:
+              type: object
+              required: [criterion, status, evidence]
+              fields:
+                criterion:
+                  type: string
+                status:
+                  type: enum
+                  values: [pass, fail, unverified]
+                evidence:
+                  type: list
+                  items: string
+          planned_steps:
+            type: list
+            items:
+              type: object
+              required: [id, status, evidence]
+              fields:
+                id:
+                  type: string
+                status:
+                  type: enum
+                  values: [completed, partial, missing, unexpected]
+                evidence:
+                  type: list
+                  items: string
+          unexpected_changes:
+            type: list
+            items:
+              type: object
+              required: [path, reason, evidence]
+              fields:
+                path:
+                  type: string
+                reason:
+                  type: string
+                evidence:
+                  type: list
+                  items: string
+          documented_deviations:
+            type: list
+            items:
+              type: object
+              required: [path, description, documented, evidence]
+              fields:
+                path:
+                  type: string
+                description:
+                  type: string
+                documented:
+                  type: boolean
+                evidence:
+                  type: list
+                  items:
+                    type: string
+      blockers:
+        type: list
+        items:
+          type: object
+          required: [id, description, evidence]
+          fields:
+            id:
+              type: string
+            description:
+              type: string
+            evidence:
+              type: list
+              items:
+                type: string
+      warnings:
+        type: list
+        items:
+          type: object
+          required: [id, description, evidence]
+          fields:
+            id:
+              type: string
+            description:
+              type: string
+            evidence:
+              type: list
+              items:
+                type: string
+      readiness:
+        type: object
+        required: [commit_preparation_allowed, draft_pr_preparation_allowed, reasons]
+        fields:
+          commit_preparation_allowed:
+            type: boolean
+          draft_pr_preparation_allowed:
+            type: boolean
+          reasons:
+            type: list
+            items: string
+      failure:
+        type: object | null
+      source:
+        type: object
+        required:
+          - implementation_plan_version
+          - working_tree_inspection_version
+          - change_classification_version
+          - unrelated_change_detection_version
+          - loaded_issue_version
+          - issue_analysis_version
+          - branch_workspace_version
+          - references
+          - unavailable_inputs
+        fields:
+          implementation_plan_version:
+            type: integer | null
+          working_tree_inspection_version:
+            type: integer | null
+          change_classification_version:
+            type: integer | null
+          unrelated_change_detection_version:
+            type: integer | null
+          loaded_issue_version:
+            type: integer | null
+          issue_analysis_version:
+            type: integer | null
+          branch_workspace_version:
+            type: integer | null
+          references:
+            type: list
+            items: string
+          unavailable_inputs:
+            type: list
+            items: string
+      skipped_checks:
+        type: list
+      changed_files_reviewed:
+        type: list
+      generated_artifacts:
+        type: list
+      validated_at:
+        type: string | null
+        format: iso-8601
+      recommended_next_skill:
+        type: string | null
+  commit_proposal:
+    type: object
+    description: Exact version-1 CommitProposal captured before staging; commit result fields must remain empty.
+    required: [schema, version, status, repository, branch, files, message, authorization]
+    fields:
+      schema:
+        type: string
+        const: CommitProposal
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [draft, approved, created, partial, blocked]
+      repository:
+        type: string
+        format: owner/repository
+      branch:
+        type: string
+      base_sha:
+        type: string | null
+      files:
+        type: object
+        required: [added, modified, deleted]
+        fields:
+          added:
+            type: list
+            items: string
+          modified:
+            type: list
+            items: string
+          deleted:
+            type: list
+            items: string
+      message:
+        type: object
+        required: [subject, body]
+        fields:
+          subject:
+            type: string
+          body:
+            type: string
+      validation:
+        type: object
+        fields:
+          result_status:
+            type: enum
+            values: [passed, failed, partial, blocked, unknown]
+          evidence:
+            type: list
+            items: string
+      authorization:
+        type: object
+        required: [exact_scope_approved, commit_authorized]
+        fields:
+          exact_scope_approved:
+            type: boolean
+          commit_authorized:
+            type: boolean
+          source:
+            type: enum
+            values: [explicit_user, task_intent, plan_build, repository_policy, session_continuity, null]
+          task_scope:
+            type: string | null
+          evidence:
+            type: string | null
+      commit:
+        type: object
+  written_at:
+    type: string
+    format: iso-8601
+invariants:
+  - The snapshot is written only after read-only validation and before the final status check.
+  - workspace and validation.workspace identify the same repository, absolute worktree, branch, and pre-commit HEAD.
+  - commit_proposal is status approved, has exact scope and commit authorization, and has no verified commit result.
+  - The approved file union is non-empty, repository-relative, duplicate-free, and free of path traversal or NUL characters.
+  - Validation status passed requires aligned scope, no unexpected changes, no blockers, no unreviewed deviations, passed completion and acceptance criteria, passed required checks, and a true commit-preparation readiness flag.
+  - The hook reads this snapshot and Git state only; it never creates, edits, stages, restores, resets, cleans, or deletes anything.
+  - Hook state is local-only and must never enter the commit scope.
+  - Evidence and hook output must not contain secrets, tokens, private keys, or credential-bearing values.

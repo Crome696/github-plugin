@@ -1,0 +1,256 @@
+schema: IssueUpdate
+version: 1
+description: Task-authorized partial update payload, preview, applied effects, and verification for one existing GitHub issue.
+required:
+  - status
+  - issue
+  - patch
+  - approval
+fields:
+  status:
+    type: enum
+    values: [draft, approved, completed, partial, blocked]
+  issue:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+        constraints:
+          - Input must supply this with number, or supply one issue URL instead.
+          - A completed or partial result must contain the verified repository.
+      number:
+        type: integer | null
+        minimum: 1
+        constraints:
+          - Input must supply this with repository, or supply one issue URL instead.
+          - A completed or partial result must contain the verified issue number.
+      url:
+        type: string | null
+        format: uri
+        constraints:
+          - If supplied, this URL must identify the same repository and issue number.
+          - A completed or partial result must contain the verified issue URL.
+  patch:
+    type: object
+    constraints:
+      - At least one supported field must be present.
+      - An absent field means preserve the live value.
+      - Unsupported fields are rejected.
+    fields:
+      title:
+        type: string
+        constraints:
+          - A present value is the exact approved replacement title.
+          - An empty title is invalid.
+      body:
+        type: string
+        constraints:
+          - A present value is the exact approved replacement body.
+          - An empty string is valid and clears the body.
+      labels:
+        type: object
+        required: [add, remove]
+        fields:
+          add:
+            type: list
+            items: string
+          remove:
+            type: list
+            items: string
+        constraints:
+          - Lists contain unique names and do not overlap.
+          - The final labels preserve every live label not explicitly removed.
+      assignees:
+        type: object
+        required: [add, remove, set]
+        fields:
+          add:
+            type: list
+            items: string
+          remove:
+            type: list
+            items: string
+          set:
+            type: list | null
+            items: string
+        constraints:
+          - Delta mode uses add/remove with set null.
+          - Set mode uses a non-null set with empty add/remove lists.
+          - Lists contain unique logins and add/remove do not overlap.
+      milestone:
+        type: string | null
+        constraints:
+          - A string selects the exact milestone title.
+          - Null explicitly clears the milestone.
+      state:
+        type: enum
+        values: [open, closed]
+        constraints:
+          - State changes use the matching close or reopen operation.
+  approval:
+    type: object
+    required: [exact_payload, update_authorized]
+    fields:
+      exact_payload:
+        type: boolean
+      update_authorized:
+        type: boolean
+      interactive_gate:
+        type: boolean | null
+        constraints:
+          - Null or absent before the task-scoped authorization and preview.
+          - True after autonomous routine authorization or affirmative Updating
+            an existing issue approval.
+      source:
+        type: enum
+        values: [explicit_user, task_intent, plan_build, repository_policy, session_continuity, null]
+      task_scope:
+        type: string | null
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+      evidence:
+        type: string | null
+    constraints:
+      - Both boolean gates must be true before an external write, and source/evidence must cover the exact target and patch.
+      - Approval covers the exact target and patch, not a summary or direction.
+  baseline:
+    type: object
+    required: [title, body, state, labels, assignees, milestone, updated_at]
+    fields:
+      title:
+        type: string
+      body:
+        type: string
+      state:
+        type: enum
+        values: [open, closed]
+      labels:
+        type: list
+        items: string
+      assignees:
+        type: list
+        items: string
+      milestone:
+        type: string | null
+      updated_at:
+        type: string
+        format: iso-8601
+    constraints:
+      - Values come from gh issue view for the exact target.
+      - updated_at is the concurrency baseline for the preview and write gate.
+  preview:
+    type: object
+    required: [status, fields, preserved_fields]
+    fields:
+      status:
+        type: enum
+        values: [shown, no_op, unavailable]
+      fields:
+        type: list
+        items:
+          type: object
+          required: [field, before, after]
+          fields:
+            field:
+              type: string
+            before:
+              type: scalar | list | null
+            after:
+              type: scalar | list | null
+      preserved_fields:
+        type: list
+        items: string
+    constraints:
+      - The preview contains only requested fields and their final values.
+      - A no_op preview does not authorize or perform a write.
+  operation:
+    type: enum
+    values: [not_started, no_op, updated, partial]
+  applied_changes:
+    type: list
+    items:
+      type: object
+      required: [field, before, after, effect]
+      fields:
+        field:
+          type: string
+        before:
+          type: scalar | list | null
+        after:
+          type: scalar | list | null
+        effect:
+          type: string
+    constraints:
+      - Include only effects confirmed to have occurred externally.
+  preserved_fields:
+    type: list
+    items: string
+    constraints:
+      - Include fields not present in the patch and their preservation result.
+  warnings:
+    type: list
+    items: string
+  verification:
+    type: object
+    required: [target_identity, requested_fields, preserved_fields, state_and_metadata, evidence]
+    fields:
+      target_identity:
+        type: enum
+        values: [pass, fail, unknown]
+      requested_fields:
+        type: enum
+        values: [pass, fail, unknown]
+      preserved_fields:
+        type: enum
+        values: [pass, fail, unknown]
+      state_and_metadata:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - issue_not_found
+          - auth_unavailable
+          - permission_denied
+          - validation_failed
+          - empty_patch
+          - approval_missing
+          - interactive_approval_missing
+          - edit_conflict
+          - api_failure
+      phase:
+        type: enum
+        values: [input, authentication, read, preview, approval, conflict_check, write, verification]
+      message:
+        type: string
+      external_write:
+        type: boolean
+      retryable:
+        type: boolean
+    constraints:
+      - Null means no failure was recorded.
+      - A partial result must state whether an external write occurred.
+invariants:
+  - Exactly one existing issue is targeted; identity, number, URL, comments, event history, and unrelated metadata remain preserved.
+  - Only title, body, labels, assignees, milestone, and state may appear in patch.
+  - Every absent patch field receives no CLI flag and remains unchanged.
+  - Labels are computed from the live baseline as current minus removals plus additions.
+  - Assignees use either delta operations or an exact set, never both.
+  - State is changed only through the matching close or reopen operation.
+  - The live issue is re-read after the authorization and preview phase; a changed updated_at produces edit_conflict and no write.
+  - completed requires successful writes and passing verification for requested and preserved fields.
+  - partial means an external write occurred but a later operation or verification was incomplete.
+  - blocked means no external write occurred.
+  - An external write requires exact_payload, update_authorized, interactive_gate, and a verified authorization source. Routine task_intent, plan_build, repository_policy, or session_continuity authorization may satisfy the gate unless a repository policy explicitly requires a conversational update gate.

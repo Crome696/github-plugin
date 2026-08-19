@@ -1,0 +1,222 @@
+schema: WorkingTreeInspection
+version: 1
+description: Read-only Git working-tree inventory for one expected worktree, including identity checks, changed paths, diff statistics, and unexpected-state markers for downstream scope and commit review.
+required:
+  - status
+  - repository
+  - branch_name
+  - worktree_path
+  - identity
+  - working_tree
+  - files
+  - entries
+  - diff
+  - unexpected_states
+fields:
+  status:
+    type: enum
+    values: [inspected, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  branch_name:
+    type: string
+  worktree_path:
+    type: string
+  base_branch:
+    type: string | null
+  base_sha:
+    type: string | null
+  current_head_sha:
+    type: string | null
+  identity:
+    type: object
+    required:
+      - branch_matches_expected
+      - worktree_registered
+      - is_primary_checkout
+    fields:
+      expected_branch:
+        type: string | null
+      observed_branch:
+        type: string | null
+      expected_worktree_path:
+        type: string | null
+      observed_worktree_path:
+        type: string | null
+      branch_matches_expected:
+        type: boolean
+      worktree_registered:
+        type: boolean
+      is_primary_checkout:
+        type: boolean
+  working_tree:
+    type: object
+    required: [clean, has_staged, has_unstaged, has_untracked]
+    fields:
+      clean:
+        type: boolean
+      has_staged:
+        type: boolean
+      has_unstaged:
+        type: boolean
+      has_untracked:
+        type: boolean
+  files:
+    type: object
+    required: [added, modified, deleted, renamed, untracked, unmerged]
+    fields:
+      added:
+        type: list
+        items: string
+      modified:
+        type: list
+        items: string
+      deleted:
+        type: list
+        items: string
+      renamed:
+        type: list
+        items:
+          type: object
+          required: [from, to]
+          fields:
+            from:
+              type: string
+            to:
+              type: string
+      untracked:
+        type: list
+        items: string
+      unmerged:
+        type: list
+        items: string
+  entries:
+    type: list
+    items:
+      type: object
+      required: [path, index_status, worktree_status, stages]
+      fields:
+        path:
+          type: string
+        previous_path:
+          type: string | null
+        index_status:
+          type: string
+        worktree_status:
+          type: string
+        stages:
+          type: list
+          items:
+            type: enum
+            values: [staged, unstaged, untracked]
+  diff:
+    type: object
+    required: [against, shortstat, numstat]
+    fields:
+      against:
+        type: enum
+        values: [HEAD, index]
+      shortstat:
+        type: object
+        required: [files_changed, insertions, deletions]
+        fields:
+          files_changed:
+            type: integer
+          insertions:
+            type: integer
+          deletions:
+            type: integer
+      staged_shortstat:
+        type: object | null
+        required: [files_changed, insertions, deletions]
+        fields:
+          files_changed:
+            type: integer
+          insertions:
+            type: integer
+          deletions:
+            type: integer
+      unstaged_shortstat:
+        type: object | null
+        required: [files_changed, insertions, deletions]
+        fields:
+          files_changed:
+            type: integer
+          insertions:
+            type: integer
+          deletions:
+            type: integer
+      numstat:
+        type: list
+        items:
+          type: object
+          required: [path, insertions, deletions]
+          fields:
+            path:
+              type: string
+            insertions:
+              type: integer | null
+            deletions:
+              type: integer | null
+  unexpected_states:
+    type: list
+    items:
+      type: object
+      required: [code, message, evidence]
+      fields:
+        code:
+          type: enum
+          values:
+            - conflicts
+            - in_progress_operation
+            - detached_head
+            - branch_mismatch
+            - worktree_unregistered
+            - path_mismatch
+            - primary_checkout_unexpected
+            - status_unavailable
+            - diff_unavailable
+            - other
+        message:
+          type: string
+        evidence:
+          type: list
+          items: string
+  evidence:
+    type: list
+    items: string
+  recommended_next_skill:
+    type: string | null
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - worktree_missing
+          - repository_mismatch
+          - branch_mismatch
+          - inspection_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - Inspection is read-only and never edits files, the index, branches, worktrees, or Git administrative state.
+  - A successful inspection uses status inspected, preserves known identity evidence, and sets failure null.
+  - An empty clean working tree is a valid inspected result with empty file lists and zero shortstat counts.
+  - files.added, files.modified, and files.deleted use repository-relative paths compatible with CommitProposal.files.
+  - unexpected_states marks conflicts, in-progress operations, identity mismatches, and unavailable evidence without inventing paths.
+  - status blocked is required when identity cannot be trusted or commit scope cannot be derived safely; status partial is used when useful inventory exists but evidence is incomplete.
+  - recommended_next_skill identifies at most one follow-up and never authorizes or invokes it.
+  - Evidence must not contain secrets, tokens, private keys, or credential-bearing remote URLs.

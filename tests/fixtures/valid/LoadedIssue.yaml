@@ -1,0 +1,24 @@
+schema: LoadedIssue
+version: 1
+status: loaded
+issue:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+title: title-value
+body: body-value
+state: open
+author:
+  login: login-value
+labels: []
+assignees: []
+milestone: {}
+linked_pull_requests: []
+comments: []
+metadata: {}
+unavailable_fields: []
+failure:
+  code: missing_identity
+  message: message-value
+  operation: operation-value
+  retryable: false

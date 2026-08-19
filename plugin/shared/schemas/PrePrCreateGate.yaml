@@ -1,0 +1,264 @@
+schema: PrePrCreateGate
+version: 1
+description: Local, read-only snapshot binding one authorized Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed implementation validation.
+required:
+  - workspace
+  - validation
+  - commit_proposal
+  - branch_push
+  - pull_request_draft
+  - issue_link
+  - written_at
+fields:
+  workspace:
+    type: object
+    required: [repository, path, branch, head_sha]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      path:
+        type: string
+        format: absolute-path
+      branch:
+        type: string
+      head_sha:
+        type: string
+  validation:
+    type: object
+    description: Complete version-1 ValidationResult handoff captured for Draft pull-request preparation.
+    required:
+      - schema
+      - version
+      - status
+      - workspace
+      - source
+      - checks
+      - required_checks_passed
+      - evaluation
+      - blockers
+      - warnings
+      - readiness
+      - failure
+      - recommended_next_skill
+    fields:
+      schema:
+        type: string
+        const: ValidationResult
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [passed, failed, partial, blocked]
+      workspace:
+        type: object
+        required: [path, branch, head_sha]
+      source:
+        type: object
+      checks:
+        type: list
+      required_checks_passed:
+        type: boolean
+      evaluation:
+        type: object
+      blockers:
+        type: list
+      warnings:
+        type: list
+      readiness:
+        type: object
+        required: [commit_preparation_allowed, draft_pr_preparation_allowed, reasons]
+      failure:
+        type: object | null
+      recommended_next_skill:
+        type: string | null
+  commit_proposal:
+    type: object
+    description: Verified version-1 CommitProposal containing the commit that is being published.
+    required: [schema, version, status, repository, branch, files, message, authorization, commit]
+    fields:
+      schema:
+        type: string
+        const: CommitProposal
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [created]
+      repository:
+        type: string
+        format: owner/repository
+      branch:
+        type: string
+      files:
+        type: object
+      message:
+        type: object
+      authorization:
+        type: object
+      commit:
+        type: object
+        required: [sha, created_at, files_committed]
+        fields:
+          sha:
+            type: string
+          created_at:
+            type: string
+            format: iso-8601
+          files_committed:
+            type: list
+  branch_push:
+    type: object
+    description: Verified version-1 BranchPush handoff proving a non-force remote branch at the expected commit.
+    required: [status, repository, branch_name, worktree_path, remote, upstream, local, push, authorization, verification]
+    fields:
+      status:
+        type: enum
+        values: [verified]
+      repository:
+        type: string
+        format: owner/repository
+      branch_name:
+        type: string
+      worktree_path:
+        type: string
+        format: absolute-path
+      remote:
+        type: object
+      upstream:
+        type: object
+      local:
+        type: object
+      push:
+        type: object
+        required: [attempted, forced, remote_ref, remote_sha, result]
+      authorization:
+        type: object
+      verification:
+        type: object
+        required: [repository_match, branch_match, remote_branch_exists, sha_match, upstream_configured]
+  pull_request_draft:
+    type: object
+    description: Exact version-1 Draft pull-request payload. Publication fields remain empty before gh pr create.
+    required:
+      - schema
+      - version
+      - status
+      - repository
+      - title
+      - body
+      - base_branch
+      - head_branch
+      - head_sha
+      - draft
+      - linked_issues
+      - validation
+      - authorization
+    fields:
+      schema:
+        type: string
+        const: PullRequestDraft
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [draft]
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer | null
+      url:
+        type: string | null
+      title:
+        type: string
+      body:
+        type: string
+      base_branch:
+        type: string
+      head_branch:
+        type: string
+      head_sha:
+        type: string
+      draft:
+        type: boolean
+      linked_issues:
+        type: list
+      validation:
+        type: object
+      authorization:
+        type: object
+  issue_link:
+    type: object
+    description: Version-1 read-only relationship proving exactly one issue is linked to the Draft pull request.
+    required:
+      - schema
+      - version
+      - status
+      - repository
+      - issue
+      - pull_request
+      - linkage_kind
+      - closes_issue_on_merge
+      - keyword_text
+      - linked_issues
+      - evidence
+      - rationale
+      - blockers
+      - ambiguous_candidates
+      - recommended_next_skill
+      - failure
+    fields:
+      schema:
+        type: string
+        const: PullRequestIssueLink
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [linked]
+      repository:
+        type: string
+        format: owner/repository
+      issue:
+        type: object
+      pull_request:
+        type: object
+      linkage_kind:
+        type: enum | null
+        values: [refs, fixes, closes, resolves]
+      closes_issue_on_merge:
+        type: boolean | null
+      keyword_text:
+        type: string | null
+      linked_issues:
+        type: list
+      evidence:
+        type: list
+      rationale:
+        type: string
+      blockers:
+        type: list
+      ambiguous_candidates:
+        type: list
+      recommended_next_skill:
+        type: string | null
+      failure:
+        type: object | null
+  written_at:
+    type: string
+    format: iso-8601
+invariants:
+  - The snapshot is local-only and is written before one exact gh pr create command; it never represents a created pull request.
+  - The hook reads this snapshot and live Git state only; it never plans, edits, stages, commits, pushes, publishes, or rewrites any content.
+  - workspace, validation.workspace, commit_proposal, branch_push, pull_request_draft, and issue_link identify the same repository, worktree, branch, and head SHA.
+  - commit_proposal.status is created and its verified commit SHA equals the live HEAD and pull_request_draft.head_sha.
+  - branch_push.status is verified, its push is non-force, and its verified remote SHA equals the live HEAD.
+  - pull_request_draft.status is draft, draft is true, number, url, and created_at are null, and its body contains every required description section from supplied evidence.
+  - issue_link.status is linked and both issue_link.linked_issues and pull_request_draft.linked_issues contain exactly one identical issue in the target repository.
+  - validation.status is passed, all required checks pass, all acceptance and completion criteria pass, scope is aligned, no blocker or unexpected change remains, and draft_pr_preparation_allowed is true.
+  - Hook output reports missing prerequisites without exposing secrets and never invents or changes a title, body, issue link, branch, SHA, or authorization.

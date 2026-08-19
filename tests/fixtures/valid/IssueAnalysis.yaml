@@ -1,0 +1,26 @@
+schema: IssueAnalysis
+version: 1
+status: analyzed
+source:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  loaded_issue_version: 1
+  loaded_issue_status: loaded
+  unavailable_fields: []
+implementation_ready: false
+overall_readiness: ready
+inventories:
+  explicit_requirements: []
+  implicit_assumptions: []
+  acceptance_criteria: []
+  affected_areas: []
+  open_questions: []
+  potential_blockers: []
+findings: []
+recommended_next_skill: structure-issue
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false

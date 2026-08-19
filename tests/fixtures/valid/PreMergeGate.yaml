@@ -1,0 +1,48 @@
+schema: PreMergeGate
+version: 1
+workspace:
+  repository: octo-org/widgets
+  path: C:/workspace/github
+pull_request:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  base_branch: base_branch-value
+  head_branch: head_branch-value
+expected_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+expected_base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+merge:
+  method: merge
+  delete_branch: false
+authorization:
+  exact_target: false
+  exact_merge_operation: false
+  merge_authorized: false
+  delete_branch_authorized: false
+  source: explicit_user
+  evidence: evidence-value
+readiness:
+  schema: MergeReadiness
+  version: 2
+  status: ready
+  repository: octo-org/widgets
+  pull_request:
+    number: null
+    url: null
+  head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  base_branch: base_branch-value
+  mergeability: mergeable
+  blockers: []
+  checks: []
+  review_state:
+    approval_count: null
+    change_request_count: null
+    evidence_status: null
+  issue_coverage:
+    status: null
+    evidence: null
+  evidence:
+    head_sha: null
+    status: null
+    sources: null
+written_at: '2026-01-01T00:00:00.000Z'

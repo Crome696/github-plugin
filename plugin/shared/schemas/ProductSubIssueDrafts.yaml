@@ -1,0 +1,347 @@
+schema: ProductSubIssueDrafts
+version: 1
+description: >-
+  Read-only composition of complete English GitHub sub-issue drafts from
+  confirmed atomic product units, preserving parent-issue, capability, and
+  requirement traceability without creating or publishing sub-issues.
+required:
+  - status
+  - source
+  - drafts
+  - omitted_units
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [composed, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - repository
+      - number
+      - url
+      - loaded_issue_version
+      - loaded_issue_status
+      - product_capability_decomposition_version
+      - product_capability_decomposition_status
+      - product_issue_prioritization_version
+      - product_issue_prioritization_status
+      - product_dependency_graph_version
+      - product_dependency_graph_status
+      - product_interview_version
+      - product_interview_status
+      - unavailable_fields
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      loaded_issue_version:
+        type: integer | null
+      loaded_issue_status:
+        type: enum | null
+        values: [loaded, partial, blocked]
+      product_capability_decomposition_version:
+        type: integer
+      product_capability_decomposition_status:
+        type: enum
+        values: [decomposed, partial, blocked]
+      product_issue_prioritization_version:
+        type: integer
+      product_issue_prioritization_status:
+        type: enum
+        values: [prioritized, partial, blocked]
+      product_dependency_graph_version:
+        type: integer | null
+      product_dependency_graph_status:
+        type: enum | null
+        values: [graphed, partial, blocked]
+      product_interview_version:
+        type: integer | null
+      product_interview_status:
+        type: enum | null
+        values: [complete, needs_clarification, blocked]
+      unavailable_fields:
+        type: list
+        items: string
+  drafts:
+    type: list
+    items:
+      type: object
+      required:
+        - unit_id
+        - title
+        - body
+        - sections
+        - evidence
+      fields:
+        unit_id:
+          type: string
+        title:
+          type: string
+          constraints:
+            - English and outcome-focused.
+            - Identifies one independently valuable product outcome.
+        body:
+          type: string
+          constraints:
+            - English and complete without requiring the parent issue for interpretation.
+            - Contains all required issue sections represented by sections.
+        sections:
+          type: object
+          required:
+            - parent_reference
+            - problem_outcome
+            - scope
+            - behavior
+            - acceptance_criteria
+            - dependencies
+            - priority
+            - constraints
+            - traceability
+          fields:
+            parent_reference:
+              type: object
+              required: [repository, number, url, relationship]
+              fields:
+                repository:
+                  type: string
+                  format: owner/repository
+                number:
+                  type: integer
+                  minimum: 1
+                url:
+                  type: string
+                  format: uri
+                relationship:
+                  type: enum
+                  values: [sub_issue_of]
+            problem_outcome:
+              type: object
+              required: [problem, outcome]
+              fields:
+                problem:
+                  type: string
+                outcome:
+                  type: string
+            scope:
+              type: object
+              required: [in_scope, out_of_scope]
+              fields:
+                in_scope:
+                  type: list
+                  items: string
+                out_of_scope:
+                  type: list
+                  items: string
+            behavior:
+              type: object
+              required:
+                - actor
+                - current_behavior
+                - desired_behavior
+                - business_rules
+                - variants
+                - edge_cases
+              fields:
+                actor:
+                  type: string
+                current_behavior:
+                  type: string
+                desired_behavior:
+                  type: string
+                business_rules:
+                  type: list
+                  items: string
+                variants:
+                  type: list
+                  items: string
+                edge_cases:
+                  type: list
+                  items: string
+            acceptance_criteria:
+              type: list
+              items: string
+            dependencies:
+              type: object
+              required:
+                - independence
+                - hard_predecessors
+                - hard_successors
+                - contextual_relations
+                - evidence
+              fields:
+                independence:
+                  type: enum
+                  values: [independent, constrained]
+                hard_predecessors:
+                  type: list
+                  items:
+                    type: object
+                    required: [unit_id, relation, rationale, evidence]
+                    fields:
+                      unit_id:
+                        type: string
+                      relation:
+                        type: enum
+                        values: [blocks, requires, hard_predecessor]
+                      rationale:
+                        type: string
+                      evidence:
+                        type: string
+                hard_successors:
+                  type: list
+                  items:
+                    type: object
+                    required: [unit_id, relation, rationale, evidence]
+                    fields:
+                      unit_id:
+                        type: string
+                      relation:
+                        type: enum
+                        values: [blocks, requires, hard_successor]
+                      rationale:
+                        type: string
+                      evidence:
+                        type: string
+                contextual_relations:
+                  type: list
+                  items:
+                    type: object
+                    required: [unit_id, relation, rationale, evidence]
+                    fields:
+                      unit_id:
+                        type: string
+                      relation:
+                        type: enum
+                        values: [enables, related]
+                      rationale:
+                        type: string
+                      evidence:
+                        type: string
+                evidence:
+                  type: string
+            priority:
+              type: object
+              required: [class, rationale, evidence]
+              fields:
+                class:
+                  type: enum
+                  values: [must, should, could, later]
+                rationale:
+                  type: string
+                evidence:
+                  type: string
+            constraints:
+              type: list
+              items:
+                type: object
+                required: [text, evidence]
+                fields:
+                  text:
+                    type: string
+                  evidence:
+                    type: string
+            traceability:
+              type: object
+              required:
+                - parent_issue
+                - parent_capability
+                - requirement_ids
+                - evidence
+              fields:
+                parent_issue:
+                  type: object
+                  required: [repository, number, url]
+                  fields:
+                    repository:
+                      type: string
+                      format: owner/repository
+                    number:
+                      type: integer
+                      minimum: 1
+                    url:
+                      type: string
+                      format: uri
+                parent_capability:
+                  type: object
+                  required: [id, name]
+                  fields:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                requirement_ids:
+                  type: list
+                  items: string
+                evidence:
+                  type: list
+                  items: string
+        evidence:
+          type: string
+  omitted_units:
+    type: list
+    items:
+      type: object
+      required: [unit_id, name, classification, reason, evidence]
+      fields:
+        unit_id:
+          type: string
+        name:
+          type: string
+        classification:
+          type: enum
+          values: [too-large, atomic-enough, over-fragmented]
+        reason:
+          type: string
+        evidence:
+          type: string
+  recommended_next_skill:
+    type: enum
+    values:
+      - prioritize-product-issues
+      - assess-issue-atomicity
+      - decompose-product-capabilities
+      - define-acceptance-criteria
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - identity_mismatch
+          - unconfirmed_ranking
+          - composition_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - source preserves the parent issue identity and the supplied decomposition, prioritization, dependency graph, interview, and optional loaded-issue versions, statuses, and unavailable fields without inventing replacements.
+  - composed status requires valid version-1 decomposition and prioritization handoffs, one draft for every eligible atomic-enough unit with a confirmed class, complete required issue sections, and failure null.
+  - partial status means confirmed drafts can be composed but one or more units, source fields, dependencies, constraints, or acceptance conditions remain incomplete; failure identifies the remaining gap.
+  - blocked status means a required handoff is missing, invalid, unsupported, blocked, unconfirmed, or identity-mismatched; drafts contain no fabricated product decisions.
+  - A draft is emitted only for an atomic-enough unit whose ProductIssuePrioritization candidate has a confirmed_class. recommended_class alone never creates a draft.
+  - too-large, over-fragmented, and unconfirmed candidates are preserved in omitted_units with their classification, reason, and evidence.
+  - Every body is independently understandable and contains parent reference, problem and outcome, scope, observable behavior, acceptance criteria, dependencies, confirmed priority, relevant constraints, and traceability to exactly one parent capability and the original requirement IDs.
+  - No draft invents APIs, files, layers, technical components, implementation-plan steps, test suites, or other implementation details absent from the supplied evidence.
+  - Hard dependencies come only from evidenced blocks or requires relations and contextual enables or related relations never become hard ordering constraints.
+  - Constraints and acceptance criteria come only from supplied evidence or confirmed decisions; ProductInterview assumptions and open_questions are not requirements.
+  - This handoff is a draft-only result and never creates, proposes as a write, or publishes GitHub sub-issues, IssueDraft payloads, or GitHub metadata.
+  - recommended_next_skill is advisory, names at most one listed follow-up, and never authorizes or invokes it.
+  - failure is null for composed results and non-null for partial or blocked results.

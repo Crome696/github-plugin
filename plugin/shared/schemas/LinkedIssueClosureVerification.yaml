@@ -1,0 +1,251 @@
+schema: LinkedIssueClosureVerification
+version: 1
+description: Read-only verification that one uniquely linked GitHub issue reached its expected closure state after one verified pull-request merge.
+required:
+  - status
+  - repository
+  - pull_request
+  - merge
+  - linkage
+  - issue
+  - closure
+  - blockers
+  - uncertainties
+  - evidence
+  - rationale
+  - failure
+fields:
+  status:
+    type: enum
+    values: [verified, not-closed, not-applicable, inconclusive, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, state, base_branch, head_sha]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      state:
+        type: enum
+        values: [merged, closed, open, unknown]
+      base_branch:
+        type: string | null
+      head_sha:
+        type: string | null
+  merge:
+    type: object
+    required: [status, merged_at, merge_commit_sha, target_is_default_branch, evidence]
+    fields:
+      status:
+        type: enum
+        values: [verified, partial, unverified]
+      merged_at:
+        type: string | null
+        format: iso-8601
+      merge_commit_sha:
+        type: string | null
+      target_is_default_branch:
+        type: boolean | null
+      evidence:
+        type: list
+        items: string
+  linkage:
+    type: object
+    required: [status, primary_issue, candidates, closing_relationship, evidence]
+    fields:
+      status:
+        type: enum
+        values: [linked, mentioned, ambiguous, unresolved, unavailable]
+      primary_issue:
+        type: object | null
+        fields:
+          repository:
+            type: string
+            format: owner/repository
+          number:
+            type: integer
+            minimum: 1
+          url:
+            type: string | null
+            format: uri
+          title:
+            type: string | null
+      candidates:
+        type: list
+        items:
+          type: object
+          required: [repository, number, classification, evidence]
+          fields:
+            repository:
+              type: string
+              format: owner/repository
+            number:
+              type: integer
+              minimum: 1
+            classification:
+              type: enum
+              values: [linked, mentioned]
+            evidence:
+              type: list
+              items: string
+      closing_relationship:
+        type: object
+        required: [status, expected_to_close, keyword_evidence, github_evidence, evidence]
+        fields:
+          status:
+            type: enum
+            values: [confirmed, keyword-only, conflicting, absent, unavailable]
+          expected_to_close:
+            type: boolean | null
+          keyword_evidence:
+            type: list
+            items: string
+          github_evidence:
+            type: list
+            items: string
+          evidence:
+            type: list
+            items: string
+      evidence:
+        type: list
+        items: string
+  issue:
+    type: object
+    required: [status, repository, number, url, title, state, state_reason, closed_at, updated_at, evidence]
+    fields:
+      status:
+        type: enum
+        values: [loaded, partial, unavailable]
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      title:
+        type: string | null
+      state:
+        type: enum
+        values: [open, closed, unknown]
+      state_reason:
+        type: string | null
+      closed_at:
+        type: string | null
+        format: iso-8601
+      updated_at:
+        type: string | null
+        format: iso-8601
+      evidence:
+        type: list
+        items: string
+  closure:
+    type: object
+    required: [expected, observed, attribution, temporal_consistency, cause, safe_next_step, evidence]
+    fields:
+      expected:
+        type: boolean | null
+      observed:
+        type: enum
+        values: [closed, open, unknown]
+      attribution:
+        type: enum
+        values: [verified, supported, unsupported, conflicting, unavailable, not-applicable]
+      temporal_consistency:
+        type: enum
+        values: [consistent, inconsistent, unavailable, not-applicable]
+      cause:
+        type: string | null
+      safe_next_step:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, description, impact, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        impact:
+          type: string
+        evidence:
+          type: list
+          items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required: [id, description, verification, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        verification:
+          type: string
+        evidence:
+          type: list
+          items: string
+  evidence:
+    type: object
+    required: [status, sources]
+    fields:
+      status:
+        type: enum
+        values: [complete, partial, unavailable]
+      sources:
+        type: list
+        items:
+          type: object
+          required: [name, status, evidence]
+          fields:
+            name:
+              type: string
+            status:
+              type: enum
+              values: [loaded, empty, partial, unavailable]
+            evidence:
+              type: list
+              items: string
+            unavailable_reason:
+              type: string | null
+  rationale:
+    type: string
+  recommended_next_skill:
+    type: string | null
+  verified_at:
+    type: string | null
+    format: iso-8601
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_identity, invalid_pull_request_number, pull_request_not_found, merge_not_verified, stale_merge_evidence, issue_not_found, inaccessible, auth_unavailable, api_failure]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The exact repository, pull-request number, head SHA, base branch, merge timestamp, and merge-commit SHA are verified before a positive closure result.
+  - A primary issue is selected only from exactly one linked candidate established by a supported closing keyword or explicit GitHub relationship; mentioned-only and ambiguous candidates are never promoted.
+  - Closing intent, GitHub closing relationship, target branch, live issue state, closure timestamp, and closure attribution remain separate evidence.
+  - A closed issue and temporal proximity alone never prove that this pull request closed the issue.
+  - An open issue after an expected closing merge is a successful diagnostic result with status not-closed and failure null unless an operational read failed.
+  - The verification is read-only and never closes, reopens, edits, labels, comments on, or otherwise mutates an issue, pull request, Git repository, worktree, or local file.

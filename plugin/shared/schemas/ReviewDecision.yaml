@@ -1,0 +1,144 @@
+schema: ReviewDecision
+version: 1
+description: Exact, composition-only or authorization-gated GitHub pull-request review payload and publication result.
+required:
+  - status
+  - repository
+  - pull_request
+  - head_sha
+  - proposed_event
+  - summary
+  - approval
+fields:
+  status:
+    type: enum
+    values: [draft, approved, published, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+  head_sha:
+    type: string
+  proposed_event:
+    type: enum
+    values: [COMMENT, REQUEST_CHANGES, APPROVE]
+  summary:
+    type: string
+    constraints:
+      - Exact English review body presented for authorization.
+  findings:
+    type: list
+    items:
+      type: object
+      required: [id, included]
+      fields:
+        id:
+          type: string
+        included:
+          type: boolean
+  inline_comments:
+    type: list
+    items:
+      type: object
+      required: [finding_id, path, line, body]
+      fields:
+        finding_id:
+          type: string
+        path:
+          type: string
+        line:
+          type: integer
+          minimum: 1
+        side:
+          type: enum
+          values: [LEFT, RIGHT]
+        body:
+          type: string
+        suggestion:
+          type: string | null
+  approval:
+    type: object
+    required: [exact_payload, explicit_event_authorization]
+    fields:
+      exact_payload:
+        type: boolean
+      explicit_event_authorization:
+        type: boolean
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+      evidence:
+        type: string | null
+      confirmation_source:
+        type: string | null
+        constraints:
+          - Records the evidence for the exact explicitly confirmed finding set used during draft composition, from the user or a matching repository policy.
+  publication:
+    type: object
+    fields:
+      review_id:
+        type: string | null
+      review_url:
+        type: string | null
+        format: uri
+      published_event:
+        type: enum
+        values: [COMMENT, REQUEST_CHANGES, APPROVE, unknown]
+      published_head_sha:
+        type: string | null
+      published_at:
+        type: string | null
+        format: iso-8601
+  verification:
+    type: object
+    fields:
+      target_match:
+        type: enum
+        values: [pass, fail, unknown]
+      event_match:
+        type: enum
+        values: [pass, fail, unknown]
+      summary_match:
+        type: enum
+        values: [pass, fail, unknown]
+      inline_comments_match:
+        type: enum
+        values: [pass, fail, unknown]
+      head_sha_match:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: string
+      message:
+        type: string
+      evidence:
+        type: list
+        items: string
+invariants:
+  - A draft ReviewDecision contains only explicitly confirmed findings; unconfirmed, rejected, dismissed, suppressed, or discussion-only findings are excluded.
+  - Draft composition groups blockers, required changes, and optional suggestions in the summary and includes evidence and an expected correction for every included change request.
+  - Draft composition sets exact_payload and explicit_event_authorization to false and does not publish or authorize a review event.
+  - A review is published only when exact_payload and explicit_event_authorization are true.
+  - The event, summary, inline comments, target, and head SHA are authorized as one payload.
+  - A timeout or ambiguous publication result is checked once before any further action.
+  - Submission rechecks the live pull-request identity, open state, head SHA, and every inline location immediately before publication.
+  - A stale, moved, deleted, ambiguous, or unavailable inline location blocks publication; it is never relocated or silently converted to a general comment.
+  - Submission preserves the approved event, summary, findings, and inline comments exactly; it never derives or changes the event during publication.
+  - A failed verification produces partial status and never claims completed publication.

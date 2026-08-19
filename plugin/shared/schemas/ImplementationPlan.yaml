@@ -1,0 +1,296 @@
+schema: ImplementationPlan
+version: 1
+description: Normalized, task-authorized implementation contract for one scoped change.
+required:
+  - status
+  - issue
+  - objective
+  - assumptions
+  - prerequisites
+  - blockers
+  - unresolved_questions
+  - affected_areas
+  - implementation_steps
+  - validation
+  - capabilities
+  - workspace
+  - risks
+fields:
+  status:
+    type: enum
+    values: [draft, approved, in_progress, completed, partial, blocked]
+  issue:
+    type: object
+    required: [number, title]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      title:
+        type: string
+      url:
+        type: string | null
+        format: uri
+  objective:
+    type: string
+  current_behavior:
+    type: string | null
+  desired_behavior:
+    type: string | null
+  assumptions:
+    type: list
+    items: string
+  prerequisites:
+    type: list
+    items:
+      type: object
+      required: [description, status, evidence]
+      fields:
+        description:
+          type: string
+        status:
+          type: enum
+          values: [verified, required, unresolved]
+        evidence:
+          type: list
+          items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [description, resolution_needed, evidence]
+      fields:
+        description:
+          type: string
+        resolution_needed:
+          type: string
+        evidence:
+          type: list
+          items: string
+  unresolved_questions:
+    type: list
+    items:
+      type: object
+      required: [question, impact, blocking]
+      fields:
+        question:
+          type: string
+        impact:
+          type: string
+        blocking:
+          type: boolean
+  affected_areas:
+    type: list
+    items:
+      type: object
+      required: [path, reason]
+      fields:
+        path:
+          type: string
+        reason:
+          type: string
+  in_scope:
+    type: list
+    items: string
+  out_of_scope:
+    type: list
+    items: string
+  acceptance_criteria:
+    type: list
+    items: string
+  implementation_steps:
+    type: list
+    items:
+      type: object
+      required: [id, description, dependencies]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        dependencies:
+          type: list
+          items: string
+        paths:
+          type: list
+          items: string
+        expected_outcome:
+          type: string
+  validation:
+    type: object
+    required: [required_tests, required_checks]
+    fields:
+      required_tests:
+        type: list
+        items: string
+      required_checks:
+        type: list
+        items: string
+      success_criteria:
+        type: list
+        items: string
+  capabilities:
+    type: object
+    required: [required_skills, applicable_rules]
+    fields:
+      required_skills:
+        type: list
+        items:
+          type: string
+          constraints:
+            - Repository-local paths must remain within plugin/; external host-session skills use session:skill:<name>.
+      applicable_rules:
+        type: list
+        items:
+          type: string
+          constraints:
+            - Repository-local paths must remain within plugin/; external host-session rules use session:rule:<name>.
+  workspace:
+    type: object
+    required: [base_branch, branch_name, worktree_path]
+    fields:
+      base_branch:
+        type: string
+      base_sha:
+        type: string | null
+        format: full git commit SHA
+      branch_name:
+        type: string
+      worktree_path:
+        type: string
+      fallback_authorized:
+        type: boolean
+  source:
+    type: object | null
+    required:
+      - task_or_issue
+      - issue
+      - loaded_issue_version
+      - issue_analysis_version
+      - issue_assessment_version
+      - affected_areas_version
+      - implementation_evaluation_version
+      - context_capabilities_version
+      - repository_context_version
+      - repository_conventions_version
+      - branch_workspace_version
+      - references
+      - unavailable_inputs
+    fields:
+      task_or_issue:
+        type: string | null
+      issue:
+        type: object | null
+        required: [repository, number, title, url]
+        fields:
+          repository:
+            type: string | null
+            format: owner/repository
+          number:
+            type: integer | null
+            minimum: 1
+          title:
+            type: string | null
+          url:
+            type: string | null
+            format: uri
+      loaded_issue_version:
+        type: integer | null
+      issue_analysis_version:
+        type: integer | null
+      issue_assessment_version:
+        type: integer | null
+      affected_areas_version:
+        type: integer | null
+      implementation_evaluation_version:
+        type: integer | null
+      context_capabilities_version:
+        type: integer | null
+      repository_context_version:
+        type: integer | null
+      repository_conventions_version:
+        type: integer | null
+      branch_workspace_version:
+        type: integer | null
+      target_branch_fetch_version:
+        type: integer | null
+      references:
+        type: list
+        items: string
+      unavailable_inputs:
+        type: list
+        items: string
+  authorization:
+    type: object
+    fields:
+      implementation_authorized:
+        type: boolean
+      push_authorized:
+        type: boolean
+      draft_pull_request_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, task_intent, plan_build, repository_policy, session_continuity, null]
+      task_scope:
+        type: string | null
+      evidence:
+        type: string | null
+  recommended_next_skill:
+    type: enum
+    values:
+      - load-github-issue
+      - load-linked-issue
+      - analyze-issue
+      - inspect-repository
+      - detect-repository-conventions
+      - identify-affected-areas
+      - evaluate-implementation
+      - resolve-context-capabilities
+      - none
+  risks:
+    type: list
+    items:
+      type: object
+      required: [severity, description]
+      fields:
+        severity:
+          type: enum
+          values: [low, medium, high]
+        description:
+          type: string
+        mitigation:
+          type: string | null
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - insufficient_context
+          - conflicting_evidence
+          - analysis_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The plan represents exactly one implementation request.
+  - Material assumptions are recorded and are not silently converted into requirements.
+  - Prerequisites, blockers, and unresolved questions remain distinct; a blocker records the resolution needed before implementation can proceed.
+  - Every affected area has a reason and every implementation step has an identifier.
+  - Every implementation step is ordered, has explicit dependencies, and records relevant paths and an expected outcome when evidence supports them.
+  - Validation commands and acceptance criteria are explicit before implementation begins.
+  - Required skills and applicable rules are resolved from evidence and remain within plugin/.
+  - Workspace values describe a proposed or supplied implementation workspace; the plan does not create it.
+  - failure is null for draft, approved, in_progress, completed, or partial plans only when no failure is being reported, and non-null for blocked plans.
+  - Routine task_intent, plan_build, repository_policy, or session_continuity authorization may cover implementation, non-force push, and draft pull-request delivery for the same task scope; force-push, merge, rebase, deletion, and destructive operations remain separate hard gates.

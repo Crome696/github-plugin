@@ -1,0 +1,33 @@
+schema: ContextCapabilities
+version: 1
+status: resolved
+source:
+  task_or_issue: task_or_issue-value
+  issue:
+    repository: octo-org/widgets
+    number: 1
+    title: title-value
+    url: https://github.com/octo-org/widgets
+  loaded_issue_version: 1
+  issue_analysis_version: 1
+  affected_areas_version: 1
+  implementation_evaluation_version: 1
+  repository_context_version: 1
+  repository_conventions_version: 1
+  references: []
+  unavailable_inputs: []
+focus:
+  summary: summary-value
+  technologies: []
+  architecture_signals: []
+  risks: []
+  planned_work: []
+  paths_of_interest: []
+capabilities: []
+missing_capabilities: []
+recommended_next_skill: load-github-issue
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false

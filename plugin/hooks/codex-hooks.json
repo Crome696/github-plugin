@@ -1,0 +1,92 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/pre-commit.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\pre-commit.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Checking AI commit scope and validation"
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/pre-pr-create.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\pre-pr-create.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Checking Draft PR publication prerequisites"
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/pre-review-submit.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\pre-review-submit.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Checking AI review publication prerequisites"
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/pre-rebase.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\pre-rebase.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Checking approved rebase prerequisites"
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/pre-pr-ready.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\pre-pr-ready.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Checking Ready-for-Review prerequisites"
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/pre-merge.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\pre-merge.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Checking approved merge prerequisites"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/post-merge.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\post-merge.mjs\"",
+            "timeout": 45,
+            "statusMessage": "Checking post-merge status and cleanup inventory"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,42 @@
+schema: OpenIssueRanking
+version: 1
+status: recommended
+repository: octo-org/widgets
+source:
+  open_issue_inventory_version: 1
+  open_issue_inventory_status: loaded
+  issue_numbers: [11, 12]
+  retrieved_at: '2026-01-01T00:00:00.000Z'
+ranks:
+  - number: 11
+    url: https://github.com/octo-org/widgets/issues/11
+    current_title: Export current-month invoices as CSV
+    remainder_title: Export current-month invoices as CSV
+    proposed_title: 'P1 Export current-month invoices as CSV'
+    recommended_rank: 1
+    confirmed_rank: null
+    rationale: Existing title has no P-prefix; invoice export is the current commitment.
+    decision:
+      source: recommended
+      summary: Recommended as P1 pending user confirmation.
+  - number: 12
+    url: https://github.com/octo-org/widgets/issues/12
+    current_title: 'P4 Save a payment method'
+    remainder_title: Save a payment method
+    proposed_title: 'P2 Save a payment method'
+    recommended_rank: 2
+    confirmed_rank: null
+    rationale: Previous P4 prefix is stale relative to the current open set.
+    decision:
+      source: recommended
+      summary: Recommended as P2 pending user confirmation.
+authorization:
+  ranking_confirmed: false
+  exact_payload: false
+  exact_set: false
+  source: unconfirmed
+  task_scope: octo-org/widgets open-issue reprioritization
+  evidence: []
+evidence:
+  - OpenIssueInventory issues 11 and 12
+failure: null

@@ -1,0 +1,103 @@
+schema: IssueAssessment
+version: 1
+description: Clarification record for deciding whether one GitHub issue is ready for implementation.
+required:
+  - status
+  - issue
+  - locked_requirements
+  - explicit_non_goals
+  - assumptions
+  - open_questions
+  - implementation_ready
+fields:
+  status:
+    type: enum
+    values: [draft, needs_clarification, ready, blocked]
+  issue:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      current_title:
+        type: string
+      current_body:
+        type: string
+      current_labels:
+        type: list
+        items: string
+      current_state:
+        type: enum
+        values: [open, closed, unknown]
+  desired_outcome:
+    type: string
+  affected_user_or_problem:
+    type: string
+  current_behavior:
+    type: string
+  target_behavior:
+    type: string
+  locked_requirements:
+    type: list
+    items: string
+  future_context:
+    type: list
+    items: string
+  explicit_non_goals:
+    type: list
+    items: string
+  assumptions:
+    type: list
+    items: string
+  open_questions:
+    type: list
+    items: string
+  platforms_and_integrations:
+    type: list
+    items: string
+  technical_constraints:
+    type: list
+    items: string
+  acceptance_criteria:
+    type: list
+    items: string
+  verification_approach:
+    type: list
+    items: string
+  proposed_labels:
+    type: object
+    required: [add, remove, preserve]
+    fields:
+      add:
+        type: list
+        items: string
+      remove:
+        type: list
+        items: string
+      preserve:
+        type: list
+        items: string
+  implementation_ready:
+    type: boolean
+  publication_authorization:
+    type: object
+    fields:
+      exact_draft_approved:
+        type: boolean
+      publication_authorized:
+        type: boolean
+      evidence:
+        type: string | null
+invariants:
+  - The live issue is read before material clarification questions are asked.
+  - Locked requirements are user-confirmed or directly evidenced by the issue and repository.
+  - Future context and explicit non-goals are not implementation requirements.
+  - implementation_ready is false when open_questions contains a material product or scope decision.
+  - A ready assessment does not authorize publication; publication_authorization is separate.

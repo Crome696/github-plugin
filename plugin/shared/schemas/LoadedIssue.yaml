@@ -1,0 +1,207 @@
+schema: LoadedIssue
+version: 1
+description: Read-only GitHub issue snapshot for downstream AI workflows.
+required:
+  - status
+  - issue
+  - title
+  - body
+  - state
+  - author
+  - labels
+  - assignees
+  - milestone
+  - linked_pull_requests
+  - comments
+  - metadata
+  - unavailable_fields
+  - failure
+fields:
+  status:
+    type: enum
+    values: [loaded, partial, blocked]
+  issue:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  title:
+    type: string | null
+    constraints:
+      - Preserve the exact title returned by GitHub.
+  body:
+    type: string | null
+    constraints:
+      - Preserve the exact body returned by GitHub, including empty strings.
+  state:
+    type: enum | null
+    values: [open, closed]
+  author:
+    type: object | null
+    required: [login]
+    fields:
+      login:
+        type: string
+      name:
+        type: string | null
+      url:
+        type: string | null
+  labels:
+    type: list | null
+    items:
+      type: object
+      required: [name]
+      fields:
+        name:
+          type: string
+        color:
+          type: string | null
+        description:
+          type: string | null
+        url:
+          type: string | null
+  assignees:
+    type: list | null
+    items:
+      type: object
+      required: [login]
+      fields:
+        login:
+          type: string
+        name:
+          type: string | null
+        url:
+          type: string | null
+  milestone:
+    type: object | null
+    fields:
+      number:
+        type: integer | null
+      title:
+        type: string | null
+      state:
+        type: enum | null
+        values: [open, closed]
+      description:
+        type: string | null
+      due_on:
+        type: string | null
+        format: iso-8601
+      url:
+        type: string | null
+  linked_pull_requests:
+    type: list | null
+    items:
+      type: object
+      required: [repository, number, url, title, state]
+      fields:
+        repository:
+          type: string
+          format: owner/repository
+        number:
+          type: integer
+          minimum: 1
+        url:
+          type: string
+          format: uri
+        title:
+          type: string | null
+        state:
+          type: enum | null
+          values: [open, closed, merged]
+        author:
+          type: object | null
+        is_draft:
+          type: boolean | null
+        relationship:
+          type: enum | null
+          values: [referenced, cross_referenced, closed_by, connected]
+  comments:
+    type: list | null
+    items:
+      type: object
+      required: [body]
+      fields:
+        id:
+          type: string | null
+        author:
+          type: object | null
+        body:
+          type: string
+          constraints:
+            - Preserve the exact comment body returned by GitHub.
+        created_at:
+          type: string | null
+          format: iso-8601
+        updated_at:
+          type: string | null
+          format: iso-8601
+        url:
+          type: string | null
+          format: uri
+        is_minimized:
+          type: boolean | null
+  metadata:
+    type: object | null
+    fields:
+      node_id:
+        type: string | null
+      created_at:
+        type: string | null
+        format: iso-8601
+      updated_at:
+        type: string | null
+        format: iso-8601
+      closed_at:
+        type: string | null
+        format: iso-8601
+      state_reason:
+        type: string | null
+      is_pinned:
+        type: boolean | null
+      retrieved_at:
+        type: string | null
+        format: iso-8601
+  unavailable_fields:
+    type: list
+    items: string
+    constraints:
+      - Use dot paths such as linked_pull_requests or comments.
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - invalid_issue_number
+          - repository_not_found
+          - issue_not_found
+          - inaccessible
+          - auth_unavailable
+          - api_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - Loaded status requires the primary issue payload and all requested fields to be retrieved.
+  - Partial status means the primary issue payload was retrieved but one or more requested fields are listed in unavailable_fields; failure describes the failed enrichment when an operation failed.
+  - Blocked status means the primary issue payload could not be retrieved; unavailable payload fields are null and failure is non-null.
+  - A populated field is a retrieved fact, never an inferred value or a rewritten issue field.
+  - The title, body, and comment bodies preserve GitHub's returned text exactly, including whitespace and empty strings.
+  - An empty list means the field was retrieved and contains no entries; null means it was unavailable or not produced.
+  - Every unavailable field is listed in unavailable_fields using its output field path.
+  - failure is null for a complete loaded result and contains the mapped failure code for a partial enrichment failure or blocked primary load.
+  - Linked pull requests are returned only when GitHub link evidence was retrieved; no pull request is inferred from issue text alone.

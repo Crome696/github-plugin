@@ -1,0 +1,259 @@
+schema: LinkedIssueClosure
+version: 2
+description: Explicitly authorized closure of one uniquely linked GitHub issue after a verified pull-request merge when automatic closure did not occur, including a validated close-on-merge fallback authorization.
+required:
+  - status
+  - repository
+  - pull_request
+  - issue
+  - verification
+  - authorization
+  - preflight
+  - mutation
+  - post_verification
+  - blockers
+  - warnings
+  - evidence
+  - rationale
+  - failure
+fields:
+  status:
+    type: enum
+    values: [draft, approved, closed, closed-with-comment, no-op, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, head_sha, base_branch, merge_commit_sha]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      head_sha:
+        type: string
+        format: full git commit SHA
+      base_branch:
+        type: string
+      merge_commit_sha:
+        type: string
+        format: full git commit SHA
+  issue:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+  verification:
+    type: object
+    required: [schema, version, status, expected_closure, linkage_status, evidence]
+    fields:
+      schema:
+        type: string
+        value: LinkedIssueClosureVerification
+      version:
+        type: integer
+        value: 1
+      status:
+        type: enum
+        values: [not-closed]
+      expected_closure:
+        type: boolean
+        value: true
+      linkage_status:
+        type: enum
+        values: [linked]
+      evidence:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required: [exact_target, exact_close_operation, close_authorized, comment_requested, comment_authorized, source, evidence]
+    fields:
+      exact_target:
+        type: boolean
+      exact_close_operation:
+        type: boolean
+      close_authorized:
+        type: boolean
+      comment_requested:
+        type: boolean
+      comment_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, repository_policy, close_on_merge_intent]
+      evidence:
+        type: string
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+      comment_text:
+        type: string | null
+  preflight:
+    type: object
+    required: [checked_at, pull_request_match, merge_match, linkage_match, issue_match, issue_open, verification_fresh, evidence]
+    fields:
+      checked_at:
+        type: string | null
+        format: iso-8601
+      pull_request_match:
+        type: enum
+        values: [pass, fail, unknown]
+      merge_match:
+        type: enum
+        values: [pass, fail, unknown]
+      linkage_match:
+        type: enum
+        values: [pass, fail, unknown]
+      issue_match:
+        type: enum
+        values: [pass, fail, unknown]
+      issue_open:
+        type: enum
+        values: [pass, fail, unknown]
+      verification_fresh:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  mutation:
+    type: object
+    required: [close_operation, comment_operation]
+    fields:
+      close_operation:
+        type: object
+        required: [attempted, operation, result, evidence]
+        fields:
+          attempted:
+            type: boolean
+          operation:
+            type: string
+            value: gh issue close
+          result:
+            type: enum
+            values: [closed, not-attempted, failed, unknown]
+          evidence:
+            type: list
+            items: string
+      comment_operation:
+        type: object
+        required: [requested, authorized, attempted, result, evidence]
+        fields:
+          requested:
+            type: boolean
+          authorized:
+            type: boolean
+          attempted:
+            type: boolean
+          result:
+            type: enum
+            values: [published, not-requested, not-authorized, failed, unknown]
+          evidence:
+            type: list
+            items: string
+  post_verification:
+    type: object
+    required: [checked_at, target_match, issue_closed, fields_preserved, comment_verified, evidence]
+    fields:
+      checked_at:
+        type: string | null
+        format: iso-8601
+      target_match:
+        type: enum
+        values: [pass, fail, unknown]
+      issue_closed:
+        type: enum
+        values: [pass, fail, unknown, not-applicable]
+      fields_preserved:
+        type: enum
+        values: [pass, fail, unknown]
+      comment_verified:
+        type: enum
+        values: [pass, fail, unknown, not-requested]
+      closed_at:
+        type: string | null
+        format: iso-8601
+      state_reason:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, description, impact, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        impact:
+          type: string
+        evidence:
+          type: list
+          items: string
+  warnings:
+    type: list
+    items: string
+  evidence:
+    type: object
+    required: [status, sources]
+    fields:
+      status:
+        type: enum
+        values: [complete, partial, unavailable]
+      sources:
+        type: list
+        items:
+          type: object
+          required: [name, status, evidence]
+          fields:
+            name:
+              type: string
+            status:
+              type: enum
+              values: [loaded, empty, partial, unavailable]
+            evidence:
+              type: list
+              items: string
+            unavailable_reason:
+              type: string | null
+  rationale:
+    type: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values: [missing_input, verification_not_eligible, stale_verification, already_closed, approval_missing, state_changed, permission_denied, api_failure, verification_incomplete]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - Only one uniquely linked issue may be selected; mentioned-only, ambiguous, cross-repository, or inferred relationships block closure.
+  - The supplied verification must be version 1, status not-closed, expected closure true, and identity-matched to the verified merged pull request and issue.
+  - A merge approval, MergeReadiness result, closing keyword by itself, or generic issue-update authorization never authorizes this issue-state mutation.
+  - The close_on_merge_intent source is valid only when a matching version-1 PullRequestIssueLink proves closes_issue_on_merge true for the exact pull request and issue, and the current verification proves that the intended closure did not occur.
+  - The issue and pull request are refreshed immediately before the close operation; any changed, unknown, or ambiguous state blocks without writing.
+  - An already closed issue is a verified no-op and is never reported as closed by this workflow.
+  - The close operation is limited to the issue state; title, body, labels, assignees, milestones, pull requests, reviews, threads, branches, Git state, and local files are not modified.
+  - A comment is a separate optional write requiring separate exact authorization and post-publication verification.
+  - Closed is returned only after post-write verification; partial preserves uncertainty after a possible external write, and blocked means no write occurred.

@@ -1,0 +1,9 @@
+schema: BranchWorkspace
+version: 1
+status: planned
+repository: octo-org/widgets
+base_branch: base_branch-value
+branch_name: branch_name-value
+worktree_path: worktree_path-value
+isolation_mode: dedicated_worktree
+primary_checkout_untouched: false

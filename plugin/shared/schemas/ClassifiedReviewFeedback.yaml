@@ -1,0 +1,129 @@
+schema: ClassifiedReviewFeedback
+version: 1
+description: Read-only classification of collected pull-request feedback by cause, severity, affected component, and required follow-up action.
+required:
+  - status
+  - pull_request
+  - source
+  - classifications
+  - summary
+  - unavailable_fields
+  - failure
+fields:
+  status:
+    type: enum
+    values: [classified, partial, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url, head_sha]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      head_sha:
+        type: string
+  source:
+    type: object
+    required: [status, evidence, unavailable_fields]
+    fields:
+      status:
+        type: enum
+        values: [collected, partial, blocked]
+      evidence:
+        type: list
+        items: string
+      unavailable_fields:
+        type: list
+        items: string
+  classifications:
+    type: list
+    items:
+      type: object
+      required: [id, triage_status, cause, severity, affected_component, required_action, evidence, impact, classification_rationale, confidence, needs_discussion]
+      fields:
+        id:
+          type: string
+        source_item_id:
+          type: string | null
+        triage_status:
+          type: enum
+          values: [open, resolved, outdated, addressed]
+        cause:
+          type: enum
+          values: [code_change, test, documentation, explanation, conflict, external_dependency, possibly_unsubstantiated]
+        severity:
+          type: enum
+          values: [blocker, major, minor, suggestion, unclassified]
+        affected_component:
+          type: string
+        required_action:
+          type: enum
+          values: [change_code, change_test, change_documentation, provide_explanation, resolve_conflict, address_external_dependency, request_clarification, no_action_until_verified]
+        evidence:
+          type: list
+          items: string
+        impact:
+          type: string
+        classification_rationale:
+          type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        needs_discussion:
+          type: boolean
+        discussion_reason:
+          type: string | null
+        references:
+          type: list
+          items: string
+  summary:
+    type: object
+    required: [total, open, resolved, outdated, addressed, uncertain]
+    fields:
+      total:
+        type: integer
+        minimum: 0
+      open:
+        type: integer
+        minimum: 0
+      resolved:
+        type: integer
+        minimum: 0
+      outdated:
+        type: integer
+        minimum: 0
+      addressed:
+        type: integer
+        minimum: 0
+      uncertain:
+        type: integer
+        minimum: 0
+  unavailable_fields:
+    type: list
+    items: string
+  recommended_next_skill:
+    type: string | null
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: string
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The pull-request repository, number, URL, and head SHA identify exactly one target.
+  - Every source classification is preserved exactly once and retains its triage status.
+  - Only classifications with triage_status open are eligible for downstream resolution planning.
+  - Uncertainty is retained through needs_discussion and discussion_reason and never becomes a confirmed defect.
+  - The classification is read-only and grants no implementation, review, publication, or merge authorization.

@@ -1,0 +1,23 @@
+schema: ProductIssuePrioritization
+version: 1
+status: prioritized
+source:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+  product_dependency_graph_version: 1
+  product_dependency_graph_status: graphed
+  product_capability_decomposition_version: 1
+  product_capability_decomposition_status: decomposed
+  product_interview_version: 1
+  product_interview_status: complete
+  unavailable_fields: []
+candidates: []
+sequence_divergences: []
+selected_unit_id: selected_unit_id-value
+recommended_next_skill: compose-product-sub-issues
+failure:
+  code: missing_input
+  message: message-value
+  operation: operation-value
+  retryable: false

@@ -1,0 +1,257 @@
+schema: FeedbackResolutionPlan
+version: 1
+description: Read-only, evidence-backed plan for resolving explicitly confirmed open pull-request feedback through external implementation capabilities.
+required:
+  - status
+  - pull_request
+  - source
+  - scope
+  - resolution_groups
+  - external_handoffs
+  - blockers
+  - unresolved_questions
+  - validation
+  - risks
+  - metadata
+  - failure
+fields:
+  status:
+    type: enum
+    values: [planned, partial, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url, head_sha]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      head_sha:
+        type: string
+  source:
+    type: object
+    required: [collected_review_feedback_version, classified_review_feedback_version, feedback_resolution_capabilities_version, references, unavailable_inputs]
+    fields:
+      collected_review_feedback_version:
+        type: integer | null
+      classified_review_feedback_version:
+        type: integer
+      feedback_resolution_capabilities_version:
+        type: integer | null
+      implementation_context:
+        type: enum
+        values: [supplied, not_supplied, unavailable]
+      references:
+        type: list
+        items: string
+      unavailable_inputs:
+        type: list
+        items: string
+  scope:
+    type: object
+    required: [confirmed_feedback_item_ids, excluded_feedback_item_ids, in_scope, out_of_scope, scope_guard]
+    fields:
+      confirmed_feedback_item_ids:
+        type: list
+        items: string
+      excluded_feedback_item_ids:
+        type: list
+        items:
+          type: object
+          required: [id, reason]
+          fields:
+            id:
+              type: string
+            reason:
+              type: string
+      in_scope:
+        type: list
+        items: string
+      out_of_scope:
+        type: list
+        items: string
+      scope_guard:
+        type: string
+  resolution_groups:
+    type: list
+    items:
+      type: object
+      required: [id, order, feedback_item_ids, problem_core, expected_correction, evidence, confidence, dependencies, validation, risks, non_goals, external_implementation_request, capability_references]
+      fields:
+        id:
+          type: string
+        order:
+          type: integer
+          minimum: 1
+        feedback_item_ids:
+          type: list
+          items: string
+        problem_core:
+          type: string
+        expected_correction:
+          type: string
+        affected_areas:
+          type: list
+          items:
+            type: object
+            required: [path, reason]
+            fields:
+              path:
+                type: string
+              reason:
+                type: string
+        evidence:
+          type: list
+          items: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        dependencies:
+          type: list
+          items: string
+        validation:
+          type: list
+          items: string
+        risks:
+          type: list
+          items: string
+        non_goals:
+          type: list
+          items: string
+        external_implementation_request:
+          type: object
+          required: [required_outcome, constraints, evidence]
+          fields:
+            capability_type:
+              type: enum
+              values: [implementation, domain, tool, external_dependency]
+            required_outcome:
+              type: string
+            constraints:
+              type: list
+              items: string
+            evidence:
+              type: list
+              items: string
+        capability_references:
+          type: list
+          items: string
+  external_handoffs:
+    type: list
+    items:
+      type: object
+      required: [feedback_item_ids, capability_type, required_outcome, constraints, evidence, capability_references]
+      fields:
+        feedback_item_ids:
+          type: list
+          items: string
+        capability_type:
+          type: enum
+          values: [implementation, domain, tool, external_dependency]
+        required_outcome:
+          type: string
+        constraints:
+          type: list
+          items: string
+        evidence:
+          type: list
+          items: string
+        capability_references:
+          type: list
+          items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [description, resolution_needed, evidence]
+      fields:
+        description:
+          type: string
+        resolution_needed:
+          type: string
+        evidence:
+          type: list
+          items: string
+  unresolved_questions:
+    type: list
+    items:
+      type: object
+      required: [question, impact, blocking, evidence]
+      fields:
+        question:
+          type: string
+        impact:
+          type: string
+        blocking:
+          type: boolean
+        evidence:
+          type: list
+          items: string
+  validation:
+    type: object
+    required: [required_tests, required_checks, success_criteria]
+    fields:
+      required_tests:
+        type: list
+        items: string
+      required_checks:
+        type: list
+        items: string
+      success_criteria:
+        type: list
+        items: string
+  risks:
+    type: list
+    items:
+      type: object
+      required: [severity, description, mitigation]
+      fields:
+        severity:
+          type: enum
+          values: [low, medium, high]
+        description:
+          type: string
+        mitigation:
+          type: string
+  recommended_next_capability:
+    type: string | null
+  metadata:
+    type: object
+    required: [created_at, read_only]
+    fields:
+      created_at:
+        type: string
+        format: iso-8601
+      read_only:
+        type: boolean
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, unsupported_version, conflicting_evidence, insufficient_context, planning_failure]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The plan describes exactly one pull request and one recorded head SHA.
+  - Only explicitly selected, confirmed, open feedback item IDs may appear in resolution groups.
+  - Resolved, outdated, addressed, uncertain, and excluded items remain traceable and are never reactivated.
+  - Every resolution group preserves source IDs, evidence, a bounded expected correction, and an external implementation outcome.
+  - Different problem cores or causal mechanisms remain separate.
+  - Paths, dependencies, validations, and risks are evidence-backed; missing evidence remains explicit.
+  - The plan cannot authorize or execute implementation, GitHub mutation, Git operations, check reruns, or external capabilities.
+  - The plan cannot expand the supplied implementation scope.
+  - When a FeedbackResolutionCapabilities handoff is supplied, its version,
+    capability boundaries, availability, blockers, manual requirements, and
+    feedback-item references remain traceable in the plan.
+  - A non-null failure is required for blocked plans; failure is null for planned and partial plans unless a failure is being reported.

@@ -1,0 +1,1433 @@
+schema: CommandScenario
+version: 1
+scenarios:
+  - id: integrate-pr-happy-path
+    command: integrate-pr
+    description: Fetches, rebases, validates, merges, closes the still-open intended issue fallback, and cleans up with independent approvals.
+    expected:
+      status: completed
+      successful_writes:
+        [fetch-target-branch, rebase-branch, push-branch, merge-pull-request, close-linked-issue, delete-merged-branch, cleanup-worktree]
+      preserved_artifacts: []
+    target:
+      repository: &repo octo-org/widgets
+      issue_number: &issue 42
+      pull_request_number: &pr 7
+      head_sha: &head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      base_sha: &base bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      exact: true
+    facts:
+      worktree_clean: true
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+      branch_cleanup: true
+      worktree_cleanup: true
+    handoffs:
+      MergeReadiness:
+        patch:
+          status: ready
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          base_branch: main
+          mergeability: mergeable
+          blockers: []
+          checks:
+            - name: contract-tests
+              result: pass
+              required: true
+              evidence: Contract tests passed for the current head.
+              head_sha: *head
+          review_state:
+            approval_count: 2
+            change_request_count: 0
+            required_approvals_met: true
+            required_approvals: 1
+            unresolved_threads: 0
+            evidence_status: known
+            approval_inspection_status: inspected
+            approval_policy_evidence: [Repository branch protection]
+          issue_coverage:
+            status: covered
+            evidence: [Issue 42 is linked to pull request 7.]
+          evidence:
+            head_sha: *head
+            status: complete
+            sources:
+              - name: pull-request
+                status: loaded
+                evidence: [Current pull-request snapshot.]
+      TargetBranchFetch:
+        patch:
+          status: verified
+          repository: *repo
+          authorization:
+            approved: true
+            scope: main
+            evidence: Exact target branch approval.
+          fetch:
+            attempted: true
+            result: success
+      BranchRebase:
+        patch:
+          status: approved
+          repository: *repo
+          worktree:
+            path: C:/workspace/github-issue-42
+            branch: agent/issue-42
+            head_sha: *head
+          branch:
+            name: agent/issue-42
+            pre_rebase_head_sha: *head
+            post_rebase_head_sha: null
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          preflight:
+            repository_match: pass
+            worktree_registered: pass
+            branch_match: pass
+            target_fetch_verified: pass
+            target_reachable: pass
+            clean: pass
+            no_active_operation: pass
+            base_revision_match: pass
+      RebaseConflictAnalysis: {}
+      PreRebaseGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          authorization:
+            approved: true
+            exact_target: true
+            exact_operation: true
+            source: explicit_user
+            evidence: Exact rebase approval for pull request 7.
+      ValidationResult:
+        patch:
+          status: passed
+          required_checks_passed: true
+          evaluation:
+            scope:
+              status: aligned
+            acceptance_criteria: []
+            completion_criteria: []
+            planned_steps: []
+            unexpected_changes: []
+            documented_deviations: []
+      BranchPush: {}
+      PullRequestMerge:
+        patch:
+          status: approved
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+            delete_branch_authorized: false
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request_number: *pr
+            assessed_head_sha: *head
+            evidence: [Current readiness is bound to the rebased head.]
+      PreMergeGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request:
+              number: *pr
+              url: https://github.com/octo-org/widgets/pull/7
+            head_sha: *head
+      LinkedIssueClosureVerification:
+        patch:
+          status: not-closed
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: merged
+            base_branch: main
+            head_sha: *head
+          merge:
+            target_is_default_branch: false
+          linkage:
+            status: linked
+            primary_issue:
+              repository: *repo
+              number: *issue
+              url: https://github.com/octo-org/widgets/issues/42
+            closing_relationship:
+              status: confirmed
+              expected_to_close: true
+          issue:
+            repository: *repo
+            number: *issue
+            url: https://github.com/octo-org/widgets/issues/42
+            state: open
+            closed_at: null
+          closure:
+            expected: true
+            observed: open
+            attribution: unavailable
+            temporal_consistency: unavailable
+      PullRequestIssueLink:
+        patch:
+          repository: *repo
+          issue:
+            repository: *repo
+            number: *issue
+            url: https://github.com/octo-org/widgets/issues/42
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            draft: true
+          linkage_kind: fixes
+          closes_issue_on_merge: true
+          keyword_text: Fixes octo-org/widgets#42
+          linked_issues:
+            - repository: *repo
+              number: *issue
+      LinkedIssueStatusAssessment:
+        patch:
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+          head_sha: *head
+          issue:
+            repository: *repo
+            number: *issue
+      LinkedIssueClosure:
+        patch:
+          status: approved
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            head_sha: *head
+            base_branch: main
+            merge_commit_sha: cccccccccccccccccccccccccccccccccccccccc
+          issue:
+            repository: *repo
+            number: *issue
+            url: https://github.com/octo-org/widgets/issues/42
+          verification:
+            expected_closure: true
+            linkage_status: linked
+          authorization:
+            exact_target: true
+            exact_close_operation: true
+            close_authorized: true
+            source: close_on_merge_intent
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: fetch-target-branch
+        effect: write
+        handoff: TargetBranchFetch
+      - operation: detect-rebase-conflicts
+        effect: read
+        handoff: RebaseConflictAnalysis
+      - operation: rebase-branch
+        effect: write
+        handoff: BranchRebase
+      - operation: validate-rebased-branch
+        effect: read
+        handoff: ValidationResult
+      - operation: push-branch
+        effect: write
+        phase: integration
+        handoff: BranchPush
+      - operation: assess-final-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: merge-pull-request
+        effect: write
+        handoff: PullRequestMerge
+      - operation: verify-linked-issue-closure
+        effect: read
+        handoff: LinkedIssueClosureVerification
+      - operation: close-linked-issue
+        effect: write
+        handoff: LinkedIssueClosure
+      - operation: delete-merged-branch
+        effect: write
+      - operation: cleanup-worktree
+        effect: write
+
+  - id: integrate-pr-refs-opt-out
+    command: integrate-pr
+    description: Preserves an explicitly neutral Refs relationship instead of closing the issue.
+    expected:
+      status: blocked
+      successful_writes:
+        [fetch-target-branch, rebase-branch, push-branch, merge-pull-request]
+      blocked_operation: close-linked-issue
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      issue_number: *issue
+      pull_request_number: *pr
+      head_sha: *head
+      base_sha: *base
+      exact: true
+    facts:
+      worktree_clean: true
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+    handoffs:
+      MergeReadiness:
+        patch:
+          status: ready
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          base_branch: main
+          mergeability: mergeable
+          blockers: []
+          checks:
+            - name: contract-tests
+              result: pass
+              required: true
+              evidence: Contract tests passed for the current head.
+              head_sha: *head
+          review_state:
+            approval_count: 2
+            change_request_count: 0
+            required_approvals_met: true
+            required_approvals: 1
+            unresolved_threads: 0
+            evidence_status: known
+            approval_inspection_status: inspected
+            approval_policy_evidence: [Repository branch protection]
+          issue_coverage:
+            status: covered
+            evidence: [Issue 42 is linked to pull request 7.]
+          evidence:
+            head_sha: *head
+            status: complete
+            sources:
+              - name: pull-request
+                status: loaded
+                evidence: [Current pull-request snapshot.]
+      TargetBranchFetch:
+        patch:
+          status: verified
+          repository: *repo
+          authorization:
+            approved: true
+          fetch:
+            attempted: true
+            result: success
+      BranchRebase:
+        patch:
+          status: approved
+          repository: *repo
+          worktree:
+            path: C:/workspace/github-issue-42
+            branch: agent/issue-42
+            head_sha: *head
+          branch:
+            name: agent/issue-42
+            pre_rebase_head_sha: *head
+            post_rebase_head_sha: null
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          preflight:
+            repository_match: pass
+            worktree_registered: pass
+            branch_match: pass
+            target_fetch_verified: pass
+            target_reachable: pass
+            clean: pass
+            no_active_operation: pass
+            base_revision_match: pass
+      RebaseConflictAnalysis: {}
+      PreRebaseGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          authorization:
+            approved: true
+            exact_target: true
+            exact_operation: true
+            source: explicit_user
+      ValidationResult:
+        patch:
+          status: passed
+          required_checks_passed: true
+          evaluation:
+            scope:
+              status: aligned
+            acceptance_criteria: []
+            completion_criteria: []
+            planned_steps: []
+            unexpected_changes: []
+            documented_deviations: []
+      BranchPush: {}
+      PullRequestMerge:
+        patch:
+          status: approved
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+            delete_branch_authorized: false
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request_number: *pr
+            assessed_head_sha: *head
+            evidence: [Current readiness is bound to the rebased head.]
+      PreMergeGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request:
+              number: *pr
+              url: https://github.com/octo-org/widgets/pull/7
+            head_sha: *head
+      LinkedIssueClosureVerification:
+        patch:
+          status: not-closed
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: merged
+            base_branch: main
+            head_sha: *head
+          linkage:
+            status: linked
+            primary_issue:
+              repository: *repo
+              number: *issue
+          issue:
+            repository: *repo
+            number: *issue
+            state: open
+            closed_at: null
+          closure:
+            expected: false
+            observed: open
+            attribution: not-applicable
+            temporal_consistency: not-applicable
+      PullRequestIssueLink:
+        patch:
+          repository: *repo
+          issue:
+            repository: *repo
+            number: *issue
+          pull_request:
+            repository: *repo
+            number: *pr
+            draft: true
+          linkage_kind: refs
+          closes_issue_on_merge: false
+          keyword_text: Refs octo-org/widgets#42
+          linked_issues:
+            - repository: *repo
+              number: *issue
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: fetch-target-branch
+        effect: write
+        handoff: TargetBranchFetch
+      - operation: detect-rebase-conflicts
+        effect: read
+        handoff: RebaseConflictAnalysis
+      - operation: rebase-branch
+        effect: write
+        handoff: BranchRebase
+      - operation: validate-rebased-branch
+        effect: read
+        handoff: ValidationResult
+      - operation: push-branch
+        effect: write
+        phase: integration
+        handoff: BranchPush
+      - operation: assess-final-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: merge-pull-request
+        effect: write
+        handoff: PullRequestMerge
+      - operation: verify-linked-issue-closure
+        effect: read
+        handoff: LinkedIssueClosureVerification
+      - operation: close-linked-issue
+        effect: write
+        handoff: LinkedIssueClosure
+
+  - id: integrate-pr-missing-pull-request
+    command: integrate-pr
+    description: Stops before fetching a target branch when the pull request is unknown.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: assess-merge-readiness
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: null
+      exact: false
+    facts: {}
+    authorizations:
+      fetch: true
+      rebase: true
+      merge: true
+    handoffs: {}
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+      - operation: fetch-target-branch
+        effect: write
+
+  - id: integrate-pr-merge-conflict
+    command: integrate-pr
+    description: Stops on a current merge conflict before any merge write.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: assess-merge-readiness
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts: {}
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+    handoffs:
+      MergeReadiness:
+        patch:
+          status: needs-attention
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          mergeability: conflicts
+          blockers:
+            - id: conflict
+              severity: high
+              description: The pull request has merge conflicts.
+      TargetBranchFetch:
+        patch:
+          repository: *repo
+          authorization:
+            approved: true
+      BranchRebase:
+        patch:
+          status: approved
+          repository: *repo
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: fetch-target-branch
+        effect: write
+        handoff: TargetBranchFetch
+
+  - id: integrate-pr-missing-approvals
+    command: integrate-pr
+    description: Blocks readiness when required approvals are absent.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: assess-merge-readiness
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts: {}
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+    handoffs:
+      MergeReadiness:
+        patch:
+          status: ready
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          mergeability: mergeable
+          blockers: []
+          checks: []
+          review_state:
+            approval_count: 0
+            change_request_count: 0
+            required_approvals_met: false
+            required_approvals: 2
+            evidence_status: known
+            approval_inspection_status: inspected
+          issue_coverage:
+            status: covered
+          evidence:
+            head_sha: *head
+            status: complete
+            sources:
+              - name: approval-policy
+                status: loaded
+                evidence: [Required approval policy was inspected.]
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: fetch-target-branch
+        effect: write
+        handoff: TargetBranchFetch
+
+  - id: integrate-pr-review-blocker
+    command: integrate-pr
+    description: Blocks readiness while a request-changes review remains open.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: assess-merge-readiness
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts: {}
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+    handoffs:
+      MergeReadiness:
+        patch:
+          status: ready
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          mergeability: mergeable
+          blockers: []
+          checks: []
+          review_state:
+            approval_count: 1
+            change_request_count: 1
+            required_approvals_met: true
+            required_approvals: 1
+            evidence_status: known
+            approval_inspection_status: inspected
+          issue_coverage:
+            status: covered
+          evidence:
+            head_sha: *head
+            status: complete
+            sources:
+              - name: review-state
+                status: loaded
+                evidence: [Current review state was inspected.]
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: fetch-target-branch
+        effect: write
+        handoff: TargetBranchFetch
+
+  - id: integrate-pr-rebase-conflict
+    command: integrate-pr
+    description: Leaves a conflicted rebase stopped without continuing or resolving it.
+    expected:
+      status: blocked
+      successful_writes: [fetch-target-branch]
+      blocked_operation: rebase-branch
+      preserved_artifacts: [rebase]
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      worktree_clean: true
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+    handoffs:
+      MergeReadiness:
+        patch:
+          status: ready
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          mergeability: mergeable
+          blockers: []
+          checks: []
+          review_state:
+            approval_count: 1
+            change_request_count: 0
+            required_approvals_met: true
+            required_approvals: 1
+            evidence_status: known
+            approval_inspection_status: inspected
+          issue_coverage:
+            status: covered
+          evidence:
+            head_sha: *head
+            status: complete
+            sources:
+              - name: readiness
+                status: loaded
+                evidence: [Current readiness was inspected.]
+      TargetBranchFetch:
+        patch:
+          status: verified
+          repository: *repo
+          authorization:
+            approved: true
+            scope: main
+            evidence: Exact target branch approval.
+          fetch:
+            result: success
+      RebaseConflictAnalysis: {}
+      BranchRebase:
+        patch:
+          status: conflicted
+          repository: *repo
+      PreRebaseGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          authorization:
+            approved: true
+            exact_target: true
+            exact_operation: true
+            source: explicit_user
+      ValidationResult:
+        patch:
+          status: blocked
+          required_checks_passed: true
+      BranchPush: {}
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: fetch-target-branch
+        effect: write
+        handoff: TargetBranchFetch
+      - operation: detect-rebase-conflicts
+        effect: read
+        handoff: RebaseConflictAnalysis
+      - operation: rebase-branch
+        effect: write
+        handoff: BranchRebase
+
+  - id: integrate-pr-merge-api-error
+    command: integrate-pr
+    description: Stops after a merge API failure and does not start cleanup.
+    expected:
+      status: partial
+      successful_writes: [fetch-target-branch, rebase-branch, push-branch]
+      blocked_operation: merge-pull-request
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      worktree_clean: true
+      api_errors: [merge-pull-request]
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+    handoffs:
+      MergeReadiness:
+        patch:
+          status: ready
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          mergeability: mergeable
+          blockers: []
+          checks:
+            - name: contract-tests
+              result: pass
+              required: true
+              evidence: Contract tests passed.
+          review_state:
+            approval_count: 1
+            change_request_count: 0
+            required_approvals_met: true
+            required_approvals: 1
+            evidence_status: known
+            approval_inspection_status: inspected
+          issue_coverage:
+            status: covered
+          evidence:
+            head_sha: *head
+            status: complete
+            sources:
+              - name: readiness
+                status: loaded
+                evidence: [Current readiness was inspected.]
+      TargetBranchFetch:
+        patch:
+          status: verified
+          repository: *repo
+          authorization:
+            approved: true
+          fetch:
+            result: success
+      RebaseConflictAnalysis: {}
+      BranchRebase:
+        patch:
+          status: approved
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          preflight:
+            clean: pass
+      PreRebaseGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          authorization:
+            approved: true
+            exact_target: true
+            exact_operation: true
+            source: explicit_user
+      ValidationResult:
+        patch:
+          status: passed
+          required_checks_passed: true
+          evaluation:
+            scope:
+              status: aligned
+            unexpected_changes: []
+      BranchPush: {}
+      PullRequestMerge:
+        patch:
+          status: approved
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request_number: *pr
+            assessed_head_sha: *head
+            evidence: [Current readiness]
+      PreMergeGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request:
+              number: *pr
+              url: https://github.com/octo-org/widgets/pull/7
+            head_sha: *head
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: fetch-target-branch
+        effect: write
+        handoff: TargetBranchFetch
+      - operation: detect-rebase-conflicts
+        effect: read
+        handoff: RebaseConflictAnalysis
+      - operation: rebase-branch
+        effect: write
+        handoff: BranchRebase
+      - operation: validate-rebased-branch
+        effect: read
+        handoff: ValidationResult
+      - operation: push-branch
+        effect: write
+        phase: integration
+        handoff: BranchPush
+      - operation: assess-final-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: merge-pull-request
+        effect: write
+        result: api-error
+
+  - id: integrate-pr-uncommitted-cleanup
+    command: integrate-pr
+    description: Preserves uncommitted work instead of removing the implementation worktree.
+    expected:
+      status: partial
+      successful_writes: [fetch-target-branch, rebase-branch, push-branch, merge-pull-request]
+      preserved_artifacts: [cleanup-worktree]
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      worktree_clean: true
+      dirty_at_cleanup: true
+      recoverable_work: true
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+      cleanup: false
+    handoffs:
+      MergeReadiness:
+        patch:
+          status: ready
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          mergeability: mergeable
+          blockers: []
+          checks: []
+          review_state:
+            approval_count: 1
+            change_request_count: 0
+            required_approvals_met: true
+            required_approvals: 1
+            evidence_status: known
+            approval_inspection_status: inspected
+          issue_coverage:
+            status: covered
+          evidence:
+            head_sha: *head
+            status: complete
+            sources:
+              - name: readiness
+                status: loaded
+                evidence: [Current readiness was inspected.]
+      TargetBranchFetch:
+        patch:
+          status: verified
+          repository: *repo
+          authorization:
+            approved: true
+          fetch:
+            result: success
+      RebaseConflictAnalysis: {}
+      BranchRebase:
+        patch:
+          status: approved
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          preflight:
+            clean: pass
+      PreRebaseGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          authorization:
+            approved: true
+            exact_target: true
+            exact_operation: true
+            source: explicit_user
+      ValidationResult:
+        patch:
+          status: passed
+          required_checks_passed: true
+          evaluation:
+            scope:
+              status: aligned
+            unexpected_changes: []
+      BranchPush: {}
+      PullRequestMerge:
+        patch:
+          status: approved
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request_number: *pr
+            assessed_head_sha: *head
+            evidence: [Current readiness]
+      PreMergeGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request:
+              number: *pr
+              url: https://github.com/octo-org/widgets/pull/7
+            head_sha: *head
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: fetch-target-branch
+        effect: write
+        handoff: TargetBranchFetch
+      - operation: detect-rebase-conflicts
+        effect: read
+        handoff: RebaseConflictAnalysis
+      - operation: rebase-branch
+        effect: write
+        handoff: BranchRebase
+      - operation: validate-rebased-branch
+        effect: read
+        handoff: ValidationResult
+      - operation: push-branch
+        effect: write
+        phase: integration
+        handoff: BranchPush
+      - operation: assess-final-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: merge-pull-request
+        effect: write
+        handoff: PullRequestMerge
+      - operation: cleanup-worktree
+        effect: preserve
+
+  - id: integrate-pr-default-unique-link-blocked
+    command: integrate-pr
+    description: Blocks merge when unique linked issue is missing and no waiver is recorded.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: assess-merge-readiness
+      preserved_artifacts: []
+    target:
+      repository: &repo octo-org/widgets
+      issue_number: &issue 42
+      pull_request_number: &pr 7
+      head_sha: &head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      base_sha: &base bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      exact: true
+    facts:
+      worktree_clean: true
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+    handoffs:
+      MergeReadiness:
+        patch:
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          mergeability: mergeable
+          blockers: []
+          checks: []
+          review_state:
+            approval_count: 2
+            change_request_count: 0
+            required_approvals_met: true
+            required_approvals: 1
+            unresolved_threads: 0
+            evidence_status: known
+            approval_inspection_status: inspected
+            approval_policy_evidence: [Repository branch protection]
+          issue_coverage:
+            status: missing
+            evidence: []
+          evidence:
+            head_sha: *head
+            status: complete
+            sources:
+              - name: pull-request
+                status: loaded
+                evidence: [Current pull-request snapshot.]
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+
+  - id: integrate-pr-waived-unique-link-allowed
+    command: integrate-pr
+    description: Allows merge when the unique linked issue requirement is waived with complete waiver evidence.
+    expected:
+      status: completed
+      successful_writes:
+        [fetch-target-branch, rebase-branch, push-branch, merge-pull-request, delete-merged-branch, cleanup-worktree]
+      preserved_artifacts: []
+    target:
+      repository: &repo octo-org/widgets
+      issue_number: &issue 42
+      pull_request_number: &pr 7
+      head_sha: &head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      base_sha: &base bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      exact: true
+    facts:
+      worktree_clean: true
+    authorizations:
+      fetch: true
+      rebase: true
+      push: true
+      merge: true
+      branch_cleanup: true
+      worktree_cleanup: true
+    handoffs:
+      MergeReadiness:
+        patch:
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            state: open
+            draft: false
+          head_sha: *head
+          mergeability: mergeable
+          blockers: []
+          checks: []
+          review_state:
+            approval_count: 2
+            change_request_count: 0
+            required_approvals_met: true
+            required_approvals: 1
+            unresolved_threads: 0
+            evidence_status: known
+            approval_inspection_status: inspected
+            approval_policy_evidence: [Repository branch protection]
+          issue_coverage:
+            status: waived
+            evidence: [Unique-link waived by repository policy authorization.]
+            waiver:
+              reason: Unique linked issue is not available for this PR.
+              source: repository_policy
+              evidence: Waiver authorized by repository policy for this head SHA.
+          evidence:
+            head_sha: *head
+            status: complete
+            sources:
+              - name: pull-request
+                status: loaded
+                evidence: [Current pull-request snapshot.]
+      TargetBranchFetch:
+        patch:
+          status: verified
+          repository: *repo
+          authorization:
+            approved: true
+          fetch:
+            attempted: true
+            result: success
+      BranchRebase:
+        patch:
+          status: approved
+      RebaseConflictAnalysis: {}
+      PreRebaseGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+            head_sha: *head
+          authorization:
+            approved: true
+            exact_target: true
+            exact_operation: true
+            source: explicit_user
+      ValidationResult:
+        patch:
+          status: passed
+          required_checks_passed: true
+          evaluation:
+            scope:
+              status: aligned
+            acceptance_criteria: []
+            completion_criteria: []
+            planned_steps: []
+            unexpected_changes: []
+            documented_deviations: []
+      BranchPush: {}
+      PullRequestMerge:
+        patch:
+          status: approved
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+            delete_branch_authorized: false
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request_number: *pr
+            assessed_head_sha: *head
+            evidence: [Current readiness is bound to the rebased head.]
+      PreMergeGate:
+        patch:
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/7
+            base_branch: main
+            head_branch: agent/issue-42
+          expected_head_sha: *head
+          expected_base_sha: *base
+          authorization:
+            exact_target: true
+            exact_merge_operation: true
+            merge_authorized: true
+          readiness:
+            schema: MergeReadiness
+            version: 2
+            status: ready
+            repository: *repo
+            pull_request:
+              number: *pr
+              url: https://github.com/octo-org/widgets/pull/7
+            head_sha: *head
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: assess-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: fetch-target-branch
+        effect: write
+        handoff: TargetBranchFetch
+      - operation: detect-rebase-conflicts
+        effect: read
+        handoff: RebaseConflictAnalysis
+      - operation: rebase-branch
+        effect: write
+        handoff: BranchRebase
+      - operation: validate-rebased-branch
+        effect: read
+        handoff: ValidationResult
+      - operation: push-branch
+        effect: write
+        phase: integration
+        handoff: BranchPush
+      - operation: assess-final-merge-readiness
+        effect: read
+        handoff: MergeReadiness
+      - operation: merge-pull-request
+        effect: write
+        handoff: PullRequestMerge
+      - operation: delete-merged-branch
+        effect: write
+      - operation: cleanup-worktree
+        effect: write

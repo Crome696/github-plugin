@@ -1,0 +1,234 @@
+schema: FeedbackResolutionValidation
+version: 1
+description: Read-only validation of every explicitly confirmed pull-request feedback item after external follow-up, using current diff, commits, tests, checks, and discussion context without resolving threads or publishing replies.
+required:
+  - status
+  - pull_request
+  - source
+  - current_state
+  - selected_feedback_item_ids
+  - results
+  - summary
+  - blockers
+  - uncertainties
+  - unavailable_fields
+  - metadata
+  - failure
+fields:
+  status:
+    type: enum
+    values: [validated, partial, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url, baseline_head_sha, current_head_sha]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      baseline_head_sha:
+        type: string | null
+      current_head_sha:
+        type: string | null
+  source:
+    type: object
+    required: [classified_review_feedback_version, feedback_resolution_plan_version, references, unavailable_inputs]
+    fields:
+      classified_review_feedback_version:
+        type: integer | null
+      feedback_resolution_plan_version:
+        type: integer | null
+      collected_review_feedback_version:
+        type: integer | null
+      resolved_review_feedback_version:
+        type: integer | null
+      references:
+        type: list
+        items: string
+      unavailable_inputs:
+        type: list
+        items: string
+  current_state:
+    type: object
+    required: [status, diff_status, commits_status, discussions_status, checks_status, tests_status, evidence, unavailable_fields]
+    fields:
+      status:
+        type: enum
+        values: [loaded, partial, blocked, unavailable]
+      diff_status:
+        type: enum
+        values: [loaded, partial, blocked, unavailable]
+      commits_status:
+        type: enum
+        values: [loaded, partial, blocked, unavailable]
+      discussions_status:
+        type: enum
+        values: [loaded, partial, blocked, unavailable]
+      checks_status:
+        type: enum
+        values: [inspected, partial, blocked, unavailable]
+      tests_status:
+        type: enum
+        values: [loaded, partial, blocked, unavailable]
+      evidence:
+        type: list
+        items: string
+      unavailable_fields:
+        type: list
+        items: string
+  selected_feedback_item_ids:
+    type: list
+    items: string
+  results:
+    type: list
+    items:
+      type: object
+      required: [feedback_item_id, resolution_group_ids, original_feedback_reference, problem_core, expected_correction, status, evidence, observed_state, remaining_problems, confidence, required_follow_up, thread]
+      fields:
+        feedback_item_id:
+          type: string
+        resolution_group_ids:
+          type: list
+          items: string
+        original_feedback_reference:
+          type: string
+        problem_core:
+          type: string
+        expected_correction:
+          type: string
+        status:
+          type: enum
+          values: [addressed, partially_addressed, not_addressed, unverifiable]
+        evidence:
+          type: list
+          items:
+            type: object
+            required: [kind, reference, summary, head_sha]
+            fields:
+              kind:
+                type: enum
+                values: [diff, commit, test, check, thread]
+              reference:
+                type: string
+              summary:
+                type: string
+              head_sha:
+                type: string | null
+        observed_state:
+          type: string
+        remaining_problems:
+          type: list
+          items: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        required_follow_up:
+          type: string
+        thread:
+          type: object
+          required: [reference, current_status, resolution_eligible, decision]
+          fields:
+            reference:
+              type: string
+            current_status:
+              type: enum
+              values: [open, resolved, outdated, unavailable]
+            resolution_eligible:
+              type: boolean
+            decision:
+              type: enum
+              values: [eligible_for_separate_resolution, do_not_resolve]
+            ineligibility_reason:
+              type: string | null
+  summary:
+    type: object
+    required: [confirmed_count, addressed_count, partially_addressed_count, not_addressed_count, unverifiable_count, resolution_eligible_thread_count, ineligible_thread_count]
+    fields:
+      confirmed_count:
+        type: integer
+        minimum: 0
+      addressed_count:
+        type: integer
+        minimum: 0
+      partially_addressed_count:
+        type: integer
+        minimum: 0
+      not_addressed_count:
+        type: integer
+        minimum: 0
+      unverifiable_count:
+        type: integer
+        minimum: 0
+      resolution_eligible_thread_count:
+        type: integer
+        minimum: 0
+      ineligible_thread_count:
+        type: integer
+        minimum: 0
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [description, resolution_needed, evidence]
+      fields:
+        description:
+          type: string
+        resolution_needed:
+          type: string
+        evidence:
+          type: list
+          items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required: [feedback_item_id, question, evidence, verification]
+      fields:
+        feedback_item_id:
+          type: string
+        question:
+          type: string
+        evidence:
+          type: list
+          items: string
+        verification:
+          type: string
+  unavailable_fields:
+    type: list
+    items: string
+  metadata:
+    type: object
+    required: [retrieved_at, read_only]
+    fields:
+      retrieved_at:
+        type: string
+        format: iso-8601
+      read_only:
+        type: boolean
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, unsupported_version, conflicting_identity, stale_state, insufficient_evidence, validation_failure]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - Every selected feedback item appears exactly once in results, including items with missing evidence.
+  - The selected IDs are copied only from FeedbackResolutionPlan.scope.confirmed_feedback_item_ids.
+  - Addressed requires direct current evidence matching the problem core and expected correction.
+  - Pending, skipped, missing, unavailable, or differently SHA-bound tests and checks cannot prove resolution.
+  - Thread state is context only and never proves a correction.
+  - resolution_eligible is advisory only; this contract never resolves, reopens, or modifies a thread.
+  - Every partial, not_addressed, or unverifiable result uses do_not_resolve and states remaining problems or required verification.
+  - The current pull-request identity and head SHA are preserved exactly and never inferred.

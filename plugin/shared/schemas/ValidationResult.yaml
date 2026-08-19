@@ -1,0 +1,274 @@
+schema: ValidationResult
+version: 1
+description: Evidence-backed implementation-result validation, required-check outcome, scope assessment, and diagnostic readiness for commit and draft pull-request preparation.
+required:
+  - status
+  - workspace
+  - checks
+  - required_checks_passed
+  - source
+  - evaluation
+  - blockers
+  - warnings
+  - readiness
+  - failure
+  - recommended_next_skill
+fields:
+  status:
+    type: enum
+    values: [passed, failed, partial, blocked]
+  workspace:
+    type: object
+    required: [path, branch, head_sha]
+    fields:
+      path:
+        type: string
+      branch:
+        type: string
+      head_sha:
+        type: string
+  source:
+    type: object
+    required:
+      - implementation_plan_version
+      - working_tree_inspection_version
+      - change_classification_version
+      - unrelated_change_detection_version
+      - loaded_issue_version
+      - issue_analysis_version
+      - branch_workspace_version
+      - references
+      - unavailable_inputs
+    fields:
+      implementation_plan_version:
+        type: integer | null
+      working_tree_inspection_version:
+        type: integer | null
+      change_classification_version:
+        type: integer | null
+      unrelated_change_detection_version:
+        type: integer | null
+      loaded_issue_version:
+        type: integer | null
+      issue_analysis_version:
+        type: integer | null
+      branch_workspace_version:
+        type: integer | null
+      references:
+        type: list
+        items: string
+      unavailable_inputs:
+        type: list
+        items: string
+  checks:
+    type: list
+    items:
+      type: object
+      required: [id, command, result, required, evidence]
+      fields:
+        id:
+          type: string
+        command:
+          type: string
+        category:
+          type: enum
+          values: [format, lint, typecheck, unit, integration, build, security, repository, other]
+        result:
+          type: enum
+          values: [pass, fail, skipped, not_run]
+        required:
+          type: boolean
+        evidence:
+          type: string
+        exit_code:
+          type: integer | null
+        duration_ms:
+          type: integer | null
+        failure_summary:
+          type: string | null
+  required_checks_passed:
+    type: boolean
+  evaluation:
+    type: object
+    required:
+      - scope
+      - acceptance_criteria
+      - completion_criteria
+      - planned_steps
+      - unexpected_changes
+      - documented_deviations
+    fields:
+      scope:
+        type: object
+        required: [status, evidence]
+        fields:
+          status:
+            type: enum
+            values: [aligned, drift, unknown]
+          evidence:
+            type: list
+            items: string
+      acceptance_criteria:
+        type: list
+        items:
+          type: object
+          required: [criterion, status, evidence]
+          fields:
+            criterion:
+              type: string
+            status:
+              type: enum
+              values: [pass, fail, unverified]
+            evidence:
+              type: list
+              items: string
+      completion_criteria:
+        type: list
+        items:
+          type: object
+          required: [criterion, status, evidence]
+          fields:
+            criterion:
+              type: string
+            status:
+              type: enum
+              values: [pass, fail, unverified]
+            evidence:
+              type: list
+              items: string
+      planned_steps:
+        type: list
+        items:
+          type: object
+          required: [id, status, evidence]
+          fields:
+            id:
+              type: string
+            status:
+              type: enum
+              values: [completed, partial, missing, unexpected]
+            evidence:
+              type: list
+              items: string
+      unexpected_changes:
+        type: list
+        items:
+          type: object
+          required: [path, reason, evidence]
+          fields:
+            path:
+              type: string
+            reason:
+              type: string
+            evidence:
+              type: list
+              items: string
+      documented_deviations:
+        type: list
+        items:
+          type: object
+          required: [path, description, documented, evidence]
+          fields:
+            path:
+              type: string
+            description:
+              type: string
+            documented:
+              type: boolean
+            evidence:
+              type: list
+              items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, description, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  warnings:
+    type: list
+    items:
+      type: object
+      required: [id, description, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  readiness:
+    type: object
+    required:
+      - commit_preparation_allowed
+      - draft_pr_preparation_allowed
+      - reasons
+    fields:
+      commit_preparation_allowed:
+        type: boolean
+      draft_pr_preparation_allowed:
+        type: boolean
+      reasons:
+        type: list
+        items: string
+  skipped_checks:
+    type: list
+    items:
+      type: object
+      required: [check, reason]
+      fields:
+        check:
+          type: string
+        reason:
+          type: string
+  changed_files_reviewed:
+    type: list
+    items: string
+  generated_artifacts:
+    type: list
+    items: string
+  validated_at:
+    type: string | null
+    format: iso-8601
+  recommended_next_skill:
+    type: string | null
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - insufficient_context
+          - conflicting_evidence
+          - scope_unresolved
+          - validation_failure
+          - analysis_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - Every required check has a result and evidence.
+  - A failed, skipped, or not_run required check prevents a passed status.
+  - Skipped checks include a concrete reason and are not reported as passes.
+  - Every acceptance criterion and completion criterion is pass before a passed status is returned.
+  - Unresolved scope drift, uncertain changes, or a blocked or clarification scope gate prevents a passed status.
+  - Results identify the exact workspace revision that was checked.
+  - Readiness flags are diagnostic only and never authorize staging, commit, push, pull-request publication, merge, or cleanup.
+  - Evidence must not contain secrets, tokens, private keys, or credential-bearing output.

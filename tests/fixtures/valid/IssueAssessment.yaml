@@ -1,0 +1,12 @@
+schema: IssueAssessment
+version: 1
+status: draft
+issue:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+locked_requirements: []
+explicit_non_goals: []
+assumptions: []
+open_questions: []
+implementation_ready: false

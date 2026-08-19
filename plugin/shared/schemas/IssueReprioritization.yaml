@@ -1,0 +1,178 @@
+schema: IssueReprioritization
+version: 1
+description: >-
+  Exact-set application result for one confirmed OpenIssueRanking. Records
+  per-issue title updates, no-ops, failed operations, live-identity preflight,
+  and verification after unique consecutive P-number titles are applied.
+required:
+  - status
+  - repository
+  - ranking
+  - authorization
+  - preflight
+  - results
+  - failed_operations
+  - next_user_action
+  - evidence
+  - failure
+fields:
+  status:
+    type: enum
+    values: [applied, no_op, partial, blocked]
+  repository:
+    type: string | null
+    format: owner/repository
+  ranking:
+    type: object
+    required: [status, issue_numbers]
+    fields:
+      status:
+        type: enum
+        values: [recommended, ranked, partial, blocked]
+      issue_numbers:
+        type: list
+        items:
+          type: integer
+          minimum: 1
+  authorization:
+    type: object
+    required:
+      - ranking_confirmed
+      - exact_payload
+      - exact_set
+      - title_writes_authorized
+      - source
+      - task_scope
+      - evidence
+    fields:
+      ranking_confirmed:
+        type: boolean
+      exact_payload:
+        type: boolean
+      exact_set:
+        type: boolean
+      title_writes_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [unconfirmed, explicit_user, repository_policy]
+      task_scope:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  preflight:
+    type: object
+    required:
+      - checked_at
+      - live_open_issue_numbers
+      - inventory_match
+      - ranking_match
+      - authorization_match
+      - evidence
+    fields:
+      checked_at:
+        type: string | null
+        format: iso-8601
+      live_open_issue_numbers:
+        type: list
+        items:
+          type: integer
+          minimum: 1
+      inventory_match:
+        type: enum
+        values: [pass, fail, unknown]
+      ranking_match:
+        type: enum
+        values: [pass, fail, unknown]
+      authorization_match:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  results:
+    type: list
+    items:
+      type: object
+      required: [number, url, operation]
+      fields:
+        number:
+          type: integer
+          minimum: 1
+        url:
+          type: string
+          format: uri
+        operation:
+          type: enum
+          values: [updated, no_op, failed, skipped]
+        before_title:
+          type: string | null
+        after_title:
+          type: string | null
+        verification:
+          type: enum
+          values: [pass, fail, unknown, not_attempted]
+  failed_operations:
+    type: list
+    items:
+      type: object
+      required: [number, code, retryable, evidence]
+      fields:
+        number:
+          type: integer
+          minimum: 1
+        code:
+          type: enum
+          values:
+            - update_failure
+            - verification_failure
+            - identity_mismatch
+            - approval_missing
+            - empty_remainder
+            - edit_conflict
+        message:
+          type: string | null
+        retryable:
+          type: boolean
+        evidence:
+          type: list
+          items: string
+  next_user_action:
+    type: string | null
+  evidence:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - identity_mismatch
+          - approval_missing
+          - ranking_unconfirmed
+          - live_set_changed
+          - truncated_inventory
+          - update_failure
+          - verification_failure
+      message:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - Title writes require ranking status ranked, ranking_confirmed true, exact_payload true, exact_set true, and title_writes_authorized true.
+  - Live open-issue numbers must equal the approved ranking issue_numbers set before any write.
+  - Bodies, labels, assignees, milestones, and state are never changed.
+  - applied requires every ranked issue updated or no_op, empty failed_operations, and failure null.
+  - no_op means every approved title already matched the live title and no write occurred.
+  - partial means at least one external title write occurred and a later write or verification did not complete.
+  - blocked means no external write occurred.
+  - Successful title writes are never rolled back after a later failure.
+  - Command invocation never authorizes title writes.

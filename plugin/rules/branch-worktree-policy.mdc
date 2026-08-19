@@ -1,0 +1,121 @@
+---
+description: Select and verify an isolated branch and worktree autonomously for issue delivery while preserving repository and safety boundaries.
+alwaysApply: true
+---
+
+# Branch Worktree Policy
+
+## Purpose
+
+The default for issue-based AI implementations is a dedicated branch in a
+separate Git worktree. The primary checkout remains untouched. Read-only
+inspection and planning may use the primary checkout, while implementation
+files and implementation Git operations normally stay inside the authorized
+workspace. A task-scoped delivery authorization covers routine workspace
+creation or reuse; it does not remove any verification requirement.
+
+## Repository instruction overrides
+
+Before selecting or verifying a workspace, read the applicable
+repository-scoped durable instructions, especially `AGENTS.md`. A repository
+instruction may override the default isolation policy in natural language,
+including by authorizing the primary checkout, a different worktree path, an
+existing branch or worktree, reuse without a separate conversational gate, or
+continuation after a named verification or clean-state failure. No
+machine-readable override format or fixed keyword list is required.
+
+Apply an override only when it clearly identifies the workspace operation and
+its repository, branch, path, issue, or other scope. Record the source path and
+a concise quote or paraphrase. If instructions conflict, are ambiguous, or
+leave the operation or scope unclear, retain the dedicated-worktree default.
+
+An override changes the applicable policy; it does not change observed Git
+facts. Continue to use read-only verification, identify the actual
+`isolation_mode`, and record waived checks as policy waivers rather than
+claiming that they passed. A foreign repository or mismatched workspace must
+not be presented as verified; proceeding despite such a named failure requires
+an explicit repository instruction for that concrete condition and the
+`github-safety.mdc` rules.
+
+## Required workspace
+
+The autonomous default MUST:
+
+- Resolve the repository identity and target base branch from verified
+  repository metadata or explicit input. Never guess `main`, `master`, or
+  another base branch. Treat the default branch as read-only.
+- Derive the working branch from detected repository conventions and the
+  issue/task scope, using `derive-branch-name`. If no convention is evidenced,
+  use the concise `agent/<short-kebab-case-task>` fallback. Do not use
+  placeholders, unrelated identifiers, or an existing branch as evidence that
+  reuse is authorized.
+- Use an absolute, repository-specific worktree path. Prefer a documented
+  location; otherwise use
+  `<repository-parent>/.cromesdk-worktrees/<repository-name>/<branch-slug>`.
+  The path MUST be distinct from the primary checkout.
+- Start from a verified base revision and confirm that the target path,
+  repository, branch, and base are not being silently substituted or
+  overwritten.
+- For an existing workspace, confirm that the expected path is a registered
+  worktree of the expected repository and the expected branch is checked out.
+  For a new workspace, perform that registration and confirm it immediately
+  after creation. In both cases, confirm that the base revision is an ancestor
+  of `HEAD`.
+- Confirm a clean, conflict-free starting state: no unmerged index entries,
+  conflict status, in-progress merge/rebase/cherry-pick/revert/bisect, or
+  unapproved staged, unstaged, deleted, renamed, or untracked paths. Routine
+  delivery authorization removes a chat gate, not this safe-state check.
+- Run `verify-worktree` and trust the workspace only when its version-1
+  `BranchWorkspace` result is `status: active`, uses
+  `isolation_mode: dedicated_worktree`, has `primary_checkout_untouched: true`,
+  and contains no failure evidence.
+
+When a repository instruction explicitly overrides isolation or one of these
+checks, run the checks that remain applicable and return the actual
+`BranchWorkspace` mode and evidence. A policy-waived condition is not
+successful verification, and a waiver does not silently authorize a different
+branch, path, repository, or base revision.
+
+## Autonomous creation and reuse
+
+No separate conversational approval is required to create the derived
+workspace or reuse an existing one when all of the following conditions hold:
+
+1. The delivery authorization identifies the same repository and issue/task
+   scope, and names or derives the intended operation.
+2. Read-only checks verify repository identity, registered worktree ownership,
+   branch/path correspondence, base ancestry, and the clean starting state.
+3. The workspace is not the default branch, the primary checkout, or a
+   worktree whose owner, scope, or authorization cannot be established.
+4. `verify-worktree` returns the successful `BranchWorkspace` result described
+   above before implementation begins.
+
+The autonomous routine does not silently accept a branch or path deviation.
+Re-derive and validate the new values against the same task authorization. A
+materially different repository, base, branch owner, or isolation mode is a
+new target and must be clarified or covered by an exact repository policy.
+Approval for a hard operation does not imply workspace reuse, and workspace
+verification does not authorize hard operations.
+
+Without an override, the primary-checkout fallback is permitted only when a
+dedicated worktree cannot be used and the exact fallback is covered by the
+delivery authorization or explicit repository policy. The primary checkout
+must be clean. With an explicit repository override, it is an allowed
+`authorized_branch_fallback` policy mode, not a `dedicated_worktree`
+verification result.
+
+## Prohibited behavior
+
+The workflow MUST NOT:
+
+- Implement directly on the default branch or write to the primary checkout
+  without the authorized fallback and the applicable safety checks.
+- Write in an unregistered, foreign, mismatched, or silently substituted
+  worktree and claim that it is verified. A repository policy may explicitly
+  authorize proceeding despite a named failure, but the failure and waiver
+  must remain visible in the handoff.
+- Overwrite, reset, clean, switch, or take over an existing branch or worktree
+  to force reuse, or continue after a conflict or failed verification without
+  an exact continuation authorization.
+- Infer a repository, branch, path, base, owner, or task identity from an
+  existing path, matching branch name, or general request alone.

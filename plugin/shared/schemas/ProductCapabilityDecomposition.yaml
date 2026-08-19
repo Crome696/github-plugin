@@ -1,0 +1,169 @@
+schema: ProductCapabilityDecomposition
+version: 1
+description: Iterative decomposition of confirmed Product Capabilities from one parent LoadedIssue and one ProductCapabilityMap into the smallest value-oriented units, each with one observable outcome and independent acceptance, without creating sub-issues.
+required:
+  - status
+  - source
+  - units
+  - relations
+  - gaps
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [decomposed, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - repository
+      - number
+      - url
+      - loaded_issue_version
+      - loaded_issue_status
+      - product_capability_map_version
+      - product_capability_map_status
+      - unavailable_fields
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      loaded_issue_version:
+        type: integer
+      loaded_issue_status:
+        type: enum
+        values: [loaded, partial, blocked]
+      product_capability_map_version:
+        type: integer
+      product_capability_map_status:
+        type: enum
+        values: [mapped, partial, blocked]
+      unavailable_fields:
+        type: list
+        items: string
+  units:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - name
+        - observable_outcome
+        - product_value
+        - actor
+        - parent_capability_id
+        - parent_capability_name
+        - assigned_requirement_ids
+        - evidence
+        - stop_reason
+        - independent_acceptance
+      fields:
+        id:
+          type: string
+        name:
+          type: string
+        observable_outcome:
+          type: string
+        product_value:
+          type: string
+        actor:
+          type: string
+        parent_capability_id:
+          type: string
+        parent_capability_name:
+          type: string
+        assigned_requirement_ids:
+          type: list
+          items: string
+        evidence:
+          type: string
+        stop_reason:
+          type: enum
+          values: [atomic_enough, inseparable_dependency]
+        independent_acceptance:
+          type: string
+  relations:
+    type: list
+    items:
+      type: object
+      required: [from_id, to_id, type, evidence]
+      fields:
+        from_id:
+          type: string
+        to_id:
+          type: string
+        type:
+          type: enum
+          values: [depends_on, sequences]
+        evidence:
+          type: string
+  gaps:
+    type: list
+    items:
+      type: object
+      required: [kind, text, evidence]
+      fields:
+        kind:
+          type: enum
+          values:
+            - unassigned_requirement
+            - empty_capability
+            - compound_unit
+            - missing_trace
+        text:
+          type: string
+        evidence:
+          type: string
+        requirement_id:
+          type: string | null
+        capability_id:
+          type: string | null
+        unit_id:
+          type: string | null
+  recommended_next_skill:
+    type: enum
+    values:
+      - assess-issue-atomicity
+      - rewrite-github-issue
+      - structure-issue
+      - define-acceptance-criteria
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - identity_mismatch
+          - unconfirmed_map
+          - decomposition_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - source preserves the LoadedIssue and ProductCapabilityMap identities, contract versions, statuses, and unavailable fields without inventing replacements.
+  - decomposed status requires a valid LoadedIssue version 1, a mapped or partial ProductCapabilityMap version 1, units that each have one actor and one observable outcome, and remaining gaps that are documented rather than invented.
+  - partial status means decomposition is possible but one or more units, identities, or source fields remain incomplete; failure identifies the remaining gap.
+  - blocked status means a required handoff is missing, invalid, unsupported, blocked, unconfirmed, or identity-mismatched; units contain no fabricated product decisions.
+  - Each unit describes one observable behavior or outcome and enables independent acceptance criteria; further splits that would only produce technical tasks without independent domain meaning are not units.
+  - Continue decomposing while a candidate still contains multiple behaviors, actors, rules, or outcomes.
+  - Each unit preserves traceability to the parent issue through source and to exactly one parent capability through parent_capability_id.
+  - Technical components, layers, or ImplementationPlan steps are not units.
+  - This handoff never creates, proposes as a write, splits, or publishes GitHub sub-issues.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for decomposed results and non-null for partial or blocked results.

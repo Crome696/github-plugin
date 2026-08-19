@@ -1,0 +1,49 @@
+---
+description: Require evidence-backed GitHub statements and review findings.
+alwaysApply: true
+---
+
+# GitHub Evidence Contract
+
+## Purpose
+
+Keep GitHub workflow statements and review findings grounded in observable
+collaboration evidence. Do not present unsupported context as repository fact.
+
+## Allowed evidence sources
+
+Use evidence from:
+
+- Issue titles, bodies, labels, and state
+- Pull-request diffs and changed files
+- Repository files and inspected commits
+- Checks and CI results
+- Issue, pull-request, and review comments
+
+## Required behavior
+
+MUST:
+
+- Tie each material factual statement to a named evidence source.
+- Give every review finding concrete evidence: a path and line or diff hunk,
+  a check name and result, or an issue/comment reference.
+- Label unverified conclusions explicitly as an `Assumption` or `Hypothesis`,
+  and state what evidence would verify them.
+- Report missing or unavailable context as a limitation instead of filling it
+  with an invented detail.
+
+MUST NOT:
+
+- Invent requirements, behavior, API semantics, test results, review intent,
+  or other missing context.
+- Present an assumption or interpretation as an observed fact.
+- Report a finding without a verifiable location and evidence.
+- Treat an unavailable or skipped check as passed.
+
+## Examples
+
+Evidence-backed: “`src/parser.ts:42-45` returns the fallback for an empty
+token list; the changed condition in the diff admits that input.”
+
+Unsupported: “This probably breaks production” without a changed location,
+observed behavior, or check that supports the claim.

@@ -1,0 +1,95 @@
+schema: BranchWorkspace
+version: 1
+description: Isolated Git branch and worktree contract for implementation work and read-only workspace verification.
+required:
+  - status
+  - repository
+  - base_branch
+  - branch_name
+  - worktree_path
+  - isolation_mode
+  - primary_checkout_untouched
+fields:
+  status:
+    type: enum
+    values: [planned, active, completed, preserved, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  base_branch:
+    type: string
+  base_sha:
+    type: string | null
+  branch_name:
+    type: string
+  branch_exists_before:
+    type: boolean | null
+  worktree_path:
+    type: string
+  worktree_exists_before:
+    type: boolean | null
+  isolation_mode:
+    type: enum
+    values: [dedicated_worktree, authorized_branch_fallback]
+  fallback_authorized:
+    type: boolean
+  primary_checkout_untouched:
+    type: boolean
+  created_at:
+    type: string | null
+    format: iso-8601
+  current_head_sha:
+    type: string | null
+  cleanup:
+    type: object
+    required: [authorized, requested]
+    fields:
+      authorized:
+        type: boolean
+      requested:
+        type: boolean
+      completed:
+        type: boolean
+      reason:
+        type: string | null
+  evidence:
+    type: list
+    items: string
+  recommended_next_skill:
+    type: string | null
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - worktree_missing
+          - repository_mismatch
+          - branch_mismatch
+          - base_revision_mismatch
+          - unsafe_state
+          - unexpected_changes
+          - verification_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - A dedicated worktree is the default isolation mode.
+  - An existing branch or worktree is never reused without explicit authorization.
+  - The primary checkout remains untouched during isolated implementation.
+  - Cleanup is a separate explicit action and is never implied by completion.
+  - A branch push uses the recorded branch_name and never force-updates remote history.
+  - Worktree verification is read-only and never repairs, switches, creates, or removes Git state.
+  - A successful verification uses status active, a non-null current_head_sha, and failure null.
+  - A partial or blocked verification includes non-null failure evidence and never claims an unverified condition passed.
+  - recommended_next_skill identifies at most one follow-up and never authorizes or invokes it.

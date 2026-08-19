@@ -1,0 +1,101 @@
+---
+description: Gather product-decomposition decisions through a granular, adaptive user interview without inventing essential product choices.
+alwaysApply: true
+---
+
+# Product Interview Policy
+
+## Purpose
+
+Product decomposition of a GitHub issue MUST happen through a granular,
+adaptive dialog with the user. Elicit the product decisions needed to split
+or lock a nearly atomic issue. Do not invent those decisions.
+
+This rule owns how product decisions are gathered. Atomic issue size remains
+`product-decomposition-policy.mdc`. Observable GitHub facts remain
+`github-evidence.mdc`. The plugin still does not own product knowledge; it
+elicits the user's decisions.
+
+## Apply when
+
+Use this rule while creating, structuring, interviewing, rewriting, or
+refining a GitHub product issue, and before locking a decomposition slice
+or publishing a selected issue.
+
+Do not turn analysis-only, quality-assessment, text-only rewrite,
+implementation-planning, review, or merge workflows into this interview.
+
+## Coverage
+
+Cover these topics systematically, but only ask about gaps. Skip a topic
+when its answer is already evidenced by the issue, repository, or a prior
+user confirmation:
+
+1. Problem
+2. Outcome
+3. Actors
+4. Use Cases
+5. Behavior
+6. Business Rules
+7. Variants
+8. Edge Cases
+9. Priorities
+10. Dependencies
+11. Constraints
+12. Out-of-Scope
+
+Ask at most one or two critical questions per round. Do not dump a
+questionnaire. Prioritize questions that change scope, atomicity,
+acceptance, or the selected slice.
+
+Map answers into existing handoff fields. Do not invent new contract fields
+for these topics.
+
+## Required behavior
+
+MUST:
+
+- Treat product decomposition as an interview, not as an internal guess.
+- Skip questions whose answers are already evidenced.
+- Challenge ambiguous or contradictory answers instead of smoothing them.
+- Record remaining uncertainties as documented open points.
+- End the interview only when every remaining uncertainty is explicitly
+  accepted by the user or documented as an open point.
+- Keep `needs_clarification` or `blocked` when a material product gap
+  remains without that acceptance.
+
+MUST NOT:
+
+- Invent essential product decisions or present guesses as confirmed
+  requirements.
+- Re-ask a question whose answer is already evidenced.
+- Flatten contradictions into a single invented interpretation.
+- End the interview because a round budget expired while material product
+  topics remain uncovered or invented.
+- Loop forever on the same ambiguity: challenge it once, then treat it as
+  an unresolved open point that requires explicit acceptance.
+
+Unsuccessful clarification does not authorize a draft. Convert remaining
+material topics into documented open points. Without explicit user
+acceptance of those points, do not lock, rewrite, or publish.
+
+## Examples
+
+Bad: Infer that "billing users" are the actors and that CSV is the export
+format because those are common, then split the issue.
+
+Good: Ask which actors and which export format are in scope, unless the
+issue or the user already stated them.
+
+Bad: Ask all twelve topics as one questionnaire, including facts already
+in the issue body.
+
+Good: Ask the one or two uncovered decisions that would change the split
+or acceptance criteria.
+
+Bad: After three unclear answers, invent a default priority and out-of-scope
+list so the draft can proceed.
+
+Good: Document the unresolved priority and out-of-scope questions as open
+points, ask the user to accept them as residual risk, and stay blocked
+until that acceptance or a real answer arrives.

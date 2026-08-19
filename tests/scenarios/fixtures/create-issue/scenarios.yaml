@@ -1,0 +1,99 @@
+schema: CommandScenario
+version: 1
+scenarios:
+  - id: create-issue-happy-path
+    command: create-issue
+    description: Publishes one approved issue draft for an exact repository target.
+    expected:
+      status: completed
+      successful_writes: [create-github-issue]
+      preserved_artifacts: []
+    target:
+      repository: &repo octo-org/widgets
+      exact: true
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs:
+      IssueDraft:
+        patch:
+          status: approved
+          mode: create
+          issue:
+            repository: *repo
+            number: null
+            url: null
+          approval:
+            exact_payload: true
+            publication_authorized: true
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: issue-agent:create
+        effect: read
+        handoff: IssueDraft
+      - operation: create-github-issue
+        effect: write
+        handoff: IssueDraft
+
+  - id: create-issue-missing-repository
+    command: create-issue
+    description: Refuses publication when the repository target is absent.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: create-github-issue
+      preserved_artifacts: []
+    target:
+      repository: null
+      exact: false
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs: {}
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: issue-agent:create
+        effect: read
+      - operation: create-github-issue
+        effect: write
+
+  - id: create-issue-api-error
+    command: create-issue
+    description: Preserves a partial result when the issue API rejects the write.
+    expected:
+      status: partial
+      successful_writes: []
+      blocked_operation: create-github-issue
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      exact: true
+    facts:
+      api_errors: [create-github-issue]
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs:
+      IssueDraft:
+        patch:
+          status: approved
+          mode: create
+          issue:
+            repository: *repo
+            number: null
+            url: null
+          approval:
+            exact_payload: true
+            publication_authorized: true
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: issue-agent:create
+        effect: read
+      - operation: create-github-issue
+        effect: write
+        result: api-error

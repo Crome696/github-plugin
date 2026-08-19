@@ -1,0 +1,188 @@
+schema: ResolvedReviewFeedback
+version: 1
+description: Read-only comparison of collected pull-request feedback with the latest pull-request state, later commits, current diff, and explicit test evidence, identifying only clearly supported resolved candidates.
+required:
+  - status
+  - pull_request
+  - source
+  - latest_state
+  - resolved_candidates
+  - uncertainties
+  - summary
+  - metadata
+  - unavailable_fields
+  - failure
+fields:
+  status:
+    type: enum
+    values: [identified, partial, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url, base_sha, head_sha]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      base_sha:
+        type: string | null
+      head_sha:
+        type: string | null
+  source:
+    type: object
+    required: [feedback_status, evidence, baseline_head_sha, unavailable_fields]
+    fields:
+      feedback_status:
+        type: enum
+        values: [collected, partial, blocked, unavailable]
+      evidence:
+        type: list
+        items: string
+      baseline_head_sha:
+        type: string | null
+      unavailable_fields:
+        type: list
+        items: string
+  latest_state:
+    type: object
+    required: [status, head_sha, evidence, diff_status, commits_status, tests_status, unavailable_fields]
+    fields:
+      status:
+        type: enum
+        values: [loaded, partial, blocked, unavailable]
+      head_sha:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+      diff_status:
+        type: enum
+        values: [loaded, partial, blocked, unavailable]
+      commits_status:
+        type: enum
+        values: [loaded, partial, blocked, unavailable]
+      tests_status:
+        type: enum
+        values: [loaded, partial, blocked, unavailable]
+      unavailable_fields:
+        type: list
+        items: string
+  resolved_candidates:
+    type: list
+    items:
+      type: object
+      required: [id, feedback_reference, problem_core, expected_correction, observed_correction, evidence, impact, confidence, resolution_rationale]
+      fields:
+        id:
+          type: string
+          format: R-001
+        feedback_reference:
+          type: string
+        problem_core:
+          type: string
+        expected_correction:
+          type: string
+        observed_correction:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: object
+            required: [kind, reference, summary]
+            fields:
+              kind:
+                type: enum
+                values: [diff, commit, test, check]
+              reference:
+                type: string
+              summary:
+                type: string
+              head_sha:
+                type: string | null
+        impact:
+          type: string
+        confidence:
+          type: enum
+          values: [high, medium]
+        resolution_rationale:
+          type: string
+        original_location:
+          type: object | null
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+            end_line:
+              type: integer | null
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required: [id, feedback_reference, question, evidence, verification]
+      fields:
+        id:
+          type: string
+          format: U-001
+        feedback_reference:
+          type: string
+        question:
+          type: string
+        evidence:
+          type: list
+          items: string
+        verification:
+          type: string
+  summary:
+    type: object
+    required: [feedback_count, evaluated_count, resolved_candidate_count, uncertain_count, already_non_open_count]
+    fields:
+      feedback_count:
+        type: integer
+        minimum: 0
+      evaluated_count:
+        type: integer
+        minimum: 0
+      resolved_candidate_count:
+        type: integer
+        minimum: 0
+      uncertain_count:
+        type: integer
+        minimum: 0
+      already_non_open_count:
+        type: integer
+        minimum: 0
+  metadata:
+    type: object | null
+    fields:
+      retrieved_at:
+        type: string | null
+        format: iso-8601
+      recommended_next_skill:
+        type: string | null
+  unavailable_fields:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: string
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - A resolved candidate is an analysis classification and never confirms or changes GitHub thread state.
+  - Every resolved candidate has direct diff, later-commit, or explicit successful test/check evidence tied to the latest head.
+  - Similar wording, timestamps, thread state, review state, or a plausible but unverified code change cannot create a candidate.
+  - Uncertain evidence remains in uncertainties with a concrete verification step.
+  - The latest pull-request identity and head SHA are preserved exactly and never inferred.

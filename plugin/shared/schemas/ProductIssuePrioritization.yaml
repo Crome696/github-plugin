@@ -1,0 +1,270 @@
+schema: ProductIssuePrioritization
+version: 1
+description: Read-only MoSCoW prioritization of classified sub-issue candidates from one ProductDependencyGraph, recording recommended versus confirmed classes, six-dimension rationales, explicit user decisions, and divergences between product priority and required implementation order without creating sub-issues.
+required:
+  - status
+  - source
+  - candidates
+  - sequence_divergences
+  - selected_unit_id
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [prioritized, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - repository
+      - number
+      - url
+      - product_dependency_graph_version
+      - product_dependency_graph_status
+      - product_capability_decomposition_version
+      - product_capability_decomposition_status
+      - product_interview_version
+      - product_interview_status
+      - unavailable_fields
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      product_dependency_graph_version:
+        type: integer
+      product_dependency_graph_status:
+        type: enum
+        values: [graphed, partial, blocked]
+      product_capability_decomposition_version:
+        type: integer | null
+      product_capability_decomposition_status:
+        type: enum | null
+        values: [decomposed, partial, blocked]
+      product_interview_version:
+        type: integer | null
+      product_interview_status:
+        type: enum | null
+        values: [complete, needs_clarification, blocked]
+      unavailable_fields:
+        type: list
+        items: string
+  candidates:
+    type: list
+    items:
+      type: object
+      required:
+        - unit_id
+        - name
+        - classification
+        - eligibility
+        - recommended_class
+        - confirmed_class
+        - dimensions
+        - rationale
+        - decision
+        - evidence
+      fields:
+        unit_id:
+          type: string
+        name:
+          type: string
+        classification:
+          type: enum
+          values: [too-large, atomic-enough, over-fragmented]
+        eligibility:
+          type: enum
+          values: [eligible, ineligible]
+        recommended_class:
+          type: enum | null
+          values: [must, should, could, later]
+        confirmed_class:
+          type: enum | null
+          values: [must, should, could, later]
+        dimensions:
+          type: object
+          required:
+            - product_value
+            - user_impact
+            - urgency
+            - risk
+            - learning_value
+            - dependencies
+          fields:
+            product_value:
+              type: object
+              required: [score, rationale, evidence]
+              fields:
+                score:
+                  type: enum
+                  values: [high, medium, low, unknown]
+                rationale:
+                  type: string
+                evidence:
+                  type: string
+            user_impact:
+              type: object
+              required: [score, rationale, evidence]
+              fields:
+                score:
+                  type: enum
+                  values: [high, medium, low, unknown]
+                rationale:
+                  type: string
+                evidence:
+                  type: string
+            urgency:
+              type: object
+              required: [score, rationale, evidence]
+              fields:
+                score:
+                  type: enum
+                  values: [high, medium, low, unknown]
+                rationale:
+                  type: string
+                evidence:
+                  type: string
+            risk:
+              type: object
+              required: [score, rationale, evidence]
+              fields:
+                score:
+                  type: enum
+                  values: [high, medium, low, unknown]
+                rationale:
+                  type: string
+                evidence:
+                  type: string
+            learning_value:
+              type: object
+              required: [score, rationale, evidence]
+              fields:
+                score:
+                  type: enum
+                  values: [high, medium, low, unknown]
+                rationale:
+                  type: string
+                evidence:
+                  type: string
+            dependencies:
+              type: object
+              required:
+                - independence
+                - hard_predecessors
+                - hard_successors
+                - rationale
+                - evidence
+              fields:
+                independence:
+                  type: enum
+                  values: [independent, constrained]
+                hard_predecessors:
+                  type: list
+                  items: string
+                hard_successors:
+                  type: list
+                  items: string
+                rationale:
+                  type: string
+                evidence:
+                  type: string
+        rationale:
+          type: string
+        decision:
+          type: object
+          required: [source, summary]
+          fields:
+            source:
+              type: enum
+              values: [recommended, user, interview]
+            summary:
+              type: string
+        evidence:
+          type: string
+  sequence_divergences:
+    type: list
+    items:
+      type: object
+      required:
+        - unit_id
+        - product_class
+        - predecessor_id
+        - predecessor_class
+        - relation
+        - evidence
+        - implication
+        - user_decision
+      fields:
+        unit_id:
+          type: string
+        product_class:
+          type: enum
+          values: [must, should, could, later]
+        predecessor_id:
+          type: string
+        predecessor_class:
+          type: enum | null
+          values: [must, should, could, later]
+        relation:
+          type: enum
+          values: [requires, blocks]
+        evidence:
+          type: string
+        implication:
+          type: string
+        user_decision:
+          type: enum | null
+          values:
+            - implement_predecessor_first
+            - delay_must
+            - split_revisit
+  selected_unit_id:
+    type: string | null
+  recommended_next_skill:
+    type: enum
+    values:
+      - compose-product-sub-issues
+      - rewrite-github-issue
+      - build-product-dependency-graph
+      - assess-issue-atomicity
+      - decompose-product-capabilities
+      - structure-issue
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - identity_mismatch
+          - unconfirmed_graph
+          - prioritization_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - source preserves the ProductDependencyGraph identity, contract version, status, optional ProductCapabilityDecomposition and ProductInterview identities, and unavailable fields without inventing replacements.
+  - prioritized status requires a valid ProductDependencyGraph version 1 that is graphed or partial, one candidate per supplied graph node, a confirmed_class on every eligible candidate, remaining uncertainty that is documented rather than invented, and no silently resolved sequence divergence.
+  - partial status means prioritization is possible but one or more confirmed classes, identities, source fields, or sequence-divergence decisions remain incomplete; failure identifies the remaining gap.
+  - blocked status means a required handoff is missing, invalid, unsupported, blocked, unconfirmed, or identity-mismatched; candidates contain no fabricated product decisions.
+  - Eligible candidates are atomic-enough. too-large and over-fragmented candidates are ineligible and must not receive a MoSCoW class as if they were publishable slices.
+  - recommended_class is an AI recommendation only. confirmed_class is set only from an explicit user decision or an already confirmed ProductInterview priority. Graph order, topological sort, and technical sequence never set confirmed_class.
+  - sequence_divergences record hard requires or blocks edges where product class and required implementation order disagree. enables and related never create a divergence. Do not silently raise or lower a class to match graph order.
+  - selected_unit_id is null until the user explicitly chooses which eligible slice to publish in this run.
+  - This handoff never creates, proposes as a write, splits, or publishes GitHub sub-issues.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for prioritized results and non-null for partial or blocked results.

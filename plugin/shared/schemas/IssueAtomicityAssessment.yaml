@@ -1,0 +1,191 @@
+schema: IssueAtomicityAssessment
+version: 1
+description: Read-only atomicity assessment of each proposed sub-issue candidate from one parent ProductCapabilityDecomposition, classifying every unit as too-large, atomic-enough, or over-fragmented without creating sub-issues.
+required:
+  - status
+  - source
+  - candidates
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [assessed, partial, blocked]
+  source:
+    type: object | null
+    required:
+      - repository
+      - number
+      - url
+      - product_capability_decomposition_version
+      - product_capability_decomposition_status
+      - unavailable_fields
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      product_capability_decomposition_version:
+        type: integer
+      product_capability_decomposition_status:
+        type: enum
+        values: [decomposed, partial, blocked]
+      unavailable_fields:
+        type: list
+        items: string
+  candidates:
+    type: list
+    items:
+      type: object
+      required:
+        - unit_id
+        - name
+        - classification
+        - checks
+        - rationale
+        - better_cut
+        - evidence
+      fields:
+        unit_id:
+          type: string
+        name:
+          type: string
+        classification:
+          type: enum
+          values: [too-large, atomic-enough, over-fragmented]
+        checks:
+          type: object
+          required:
+            - single_outcome
+            - scope
+            - independent_understandability
+            - testability
+            - domain_behavior_count
+            - hidden_requirements
+            - unnecessary_coupling
+          fields:
+            single_outcome:
+              type: object
+              required: [verdict, finding]
+              fields:
+                verdict:
+                  type: enum
+                  values: [pass, fail, uncertain]
+                finding:
+                  type: string
+            scope:
+              type: object
+              required: [verdict, finding]
+              fields:
+                verdict:
+                  type: enum
+                  values: [pass, fail, uncertain]
+                finding:
+                  type: string
+            independent_understandability:
+              type: object
+              required: [verdict, finding]
+              fields:
+                verdict:
+                  type: enum
+                  values: [pass, fail, uncertain]
+                finding:
+                  type: string
+            testability:
+              type: object
+              required: [verdict, finding]
+              fields:
+                verdict:
+                  type: enum
+                  values: [pass, fail, uncertain]
+                finding:
+                  type: string
+            domain_behavior_count:
+              type: object
+              required: [count, verdict, finding]
+              fields:
+                count:
+                  type: integer
+                  minimum: 0
+                verdict:
+                  type: enum
+                  values: [pass, fail, uncertain]
+                finding:
+                  type: string
+            hidden_requirements:
+              type: object
+              required: [verdict, finding]
+              fields:
+                verdict:
+                  type: enum
+                  values: [pass, fail, uncertain]
+                finding:
+                  type: string
+            unnecessary_coupling:
+              type: object
+              required: [verdict, finding]
+              fields:
+                verdict:
+                  type: enum
+                  values: [pass, fail, uncertain]
+                finding:
+                  type: string
+        rationale:
+          type: string
+        better_cut:
+          type: object | null
+          required: [kind, proposal]
+          fields:
+            kind:
+              type: enum
+              values: [split, merge, keep]
+            proposal:
+              type: string
+            resulting_candidate_names:
+              type: list
+              items: string
+        evidence:
+          type: string
+  recommended_next_skill:
+    type: enum
+    values:
+      - rewrite-github-issue
+      - build-product-dependency-graph
+      - decompose-product-capabilities
+      - structure-issue
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - unconfirmed_decomposition
+          - assessment_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - source preserves the ProductCapabilityDecomposition identity, contract version, status, and unavailable fields without inventing replacements.
+  - assessed status requires a valid ProductCapabilityDecomposition version 1 that is decomposed or partial, one classification per supplied unit, and remaining uncertainty that is documented rather than invented.
+  - partial status means assessment is possible but one or more checks, identities, or source fields remain incomplete; failure identifies the remaining gap.
+  - blocked status means a required handoff is missing, invalid, unsupported, blocked, or unconfirmed; candidates contain no fabricated product decisions.
+  - Each candidate is classified as too-large, atomic-enough, or over-fragmented from the seven atomicity checks; technical implementation steps are not a sufficient reason for additional Product Issues.
+  - better_cut is null for atomic-enough candidates and records a split or merge proposal for too-large or over-fragmented candidates without executing it.
+  - This handoff never creates, proposes as a write, splits, or publishes GitHub sub-issues.
+  - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
+  - failure is null for assessed results and non-null for partial or blocked results.

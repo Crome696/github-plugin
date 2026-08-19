@@ -1,0 +1,55 @@
+schema: PreReviewSubmitGate
+version: 1
+workspace:
+  repository: octo-org/widgets
+  path: C:/workspace/github
+review_decision:
+  schema: ReviewDecision
+  version: 1
+  status: approved
+  repository: octo-org/widgets
+  pull_request:
+    number: null
+    url: null
+  head_sha: head_sha-value
+  proposed_event: COMMENT
+  summary: summary-value
+  findings: []
+  inline_comments: []
+  approval:
+    exact_payload: false
+    explicit_event_authorization: false
+classified_findings:
+  schema: ClassifiedReviewFindings
+  version: 1
+  status: classified
+  repository: octo-org/widgets
+  pull_request:
+    number: 1
+    url: https://github.com/octo-org/widgets
+  head_sha: head_sha-value
+  findings: []
+deduplicated_findings:
+  schema: DeduplicatedReviewFindings
+  version: 1
+  status: deduplicated
+  repository: octo-org/widgets
+  pull_request:
+    number: 1
+    url: https://github.com/octo-org/widgets
+  head_sha: head_sha-value
+  findings: []
+  suppressed: []
+confirmation:
+  repository: octo-org/widgets
+  pull_request_number: 1
+  head_sha: head_sha-value
+  confirmed_at: '2026-01-01T00:00:00.000Z'
+  entries: []
+freshness:
+  head_sha: head_sha-value
+  pull_request_state: open
+  verified_at: '2026-01-01T00:00:00.000Z'
+  findings: []
+  inline_comments: []
+written_at: '2026-01-01T00:00:00.000Z'

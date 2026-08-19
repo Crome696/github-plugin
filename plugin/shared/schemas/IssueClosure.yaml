@@ -1,0 +1,248 @@
+schema: IssueClosure
+version: 1
+description: >-
+  Explicitly authorized triage closure of exactly one verified GitHub issue
+  without a merged pull request, covering duplicate, not-planned, and
+  consciously not-delivered reasons with live preflight and post-write
+  verification.
+required:
+  - status
+  - repository
+  - issue
+  - close_reason
+  - duplicate_of
+  - github_state_reason
+  - comment
+  - authorization
+  - preflight
+  - mutation
+  - post_verification
+  - blockers
+  - warnings
+  - evidence
+  - rationale
+  - failure
+fields:
+  status:
+    type: enum
+    values: [draft, approved, closed, no-op, partial, blocked]
+  repository:
+    type: string | null
+    format: owner/repository
+  issue:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  close_reason:
+    type: enum | null
+    values: [not_planned, not_delivered, duplicate]
+  duplicate_of:
+    type: object | null
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  github_state_reason:
+    type: enum | null
+    values: [not_planned, duplicate]
+  comment:
+    type: string | null
+  authorization:
+    type: object
+    required:
+      - exact_target
+      - exact_close_operation
+      - close_authorized
+      - close_reason_authorized
+      - source
+      - evidence
+    fields:
+      exact_target:
+        type: boolean
+      exact_close_operation:
+        type: boolean
+      close_authorized:
+        type: boolean
+      close_reason_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [unconfirmed, explicit_user, repository_policy]
+      evidence:
+        type: string
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+  preflight:
+    type: object
+    required:
+      - checked_at
+      - issue_match
+      - issue_open
+      - close_reason_present
+      - duplicate_target_unique
+      - authorization_match
+      - evidence
+    fields:
+      checked_at:
+        type: string | null
+        format: iso-8601
+      issue_match:
+        type: enum
+        values: [pass, fail, unknown]
+      issue_open:
+        type: enum
+        values: [pass, fail, unknown, not-applicable]
+      close_reason_present:
+        type: enum
+        values: [pass, fail, unknown]
+      duplicate_target_unique:
+        type: enum
+        values: [pass, fail, unknown, not-applicable]
+      authorization_match:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  mutation:
+    type: object
+    required: [attempted, operation, result, evidence]
+    fields:
+      attempted:
+        type: boolean
+      operation:
+        type: string
+        value: gh issue close
+      result:
+        type: enum
+        values: [closed, not-attempted, failed, unknown]
+      evidence:
+        type: list
+        items: string
+  post_verification:
+    type: object
+    required:
+      - checked_at
+      - target_match
+      - issue_closed
+      - close_reason_recorded
+      - fields_preserved
+      - evidence
+    fields:
+      checked_at:
+        type: string | null
+        format: iso-8601
+      target_match:
+        type: enum
+        values: [pass, fail, unknown]
+      issue_closed:
+        type: enum
+        values: [pass, fail, unknown, not-applicable]
+      close_reason_recorded:
+        type: enum
+        values: [pass, fail, unknown, not-applicable]
+      fields_preserved:
+        type: enum
+        values: [pass, fail, unknown]
+      closed_at:
+        type: string | null
+        format: iso-8601
+      state_reason:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, description, impact, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        impact:
+          type: string
+        evidence:
+          type: list
+          items: string
+  warnings:
+    type: list
+    items: string
+  evidence:
+    type: object
+    required: [status, sources]
+    fields:
+      status:
+        type: enum
+        values: [complete, partial, unavailable]
+      sources:
+        type: list
+        items:
+          type: object
+          required: [name, status, evidence]
+          fields:
+            name:
+              type: string
+            status:
+              type: enum
+              values: [loaded, empty, partial, unavailable]
+            evidence:
+              type: list
+              items: string
+            unavailable_reason:
+              type: string | null
+  rationale:
+    type: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - missing_close_reason
+          - ambiguous_duplicate_target
+          - already_closed
+          - approval_missing
+          - state_changed
+          - permission_denied
+          - api_failure
+          - verification_incomplete
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - Exactly one verified issue may be selected; inferred, missing, or cross-target identities block closure.
+  - A merged pull request, LinkedIssueClosure, implementation completeness, or generic issue-update authorization never authorizes this triage close.
+  - close_reason must be not_planned, not_delivered, or duplicate before any write.
+  - duplicate requires one unique same-repository duplicate_of identity that is not the target issue; missing, same-as-target, or ambiguous targets block without writing.
+  - github_state_reason is not_planned for not_planned and not_delivered, and duplicate for duplicate.
+  - A short English close comment is generated from the authorized reason and is part of the same gh issue close write, not a second mutation.
+  - The issue is refreshed immediately before the close operation; any changed, unknown, or ambiguous state blocks without writing.
+  - An already closed issue is a verified no-op and is never reported as closed by this workflow.
+  - The close operation is limited to issue state, GitHub close reason, and the generated comment; title, body, labels, assignees, milestones, pull requests, reviews, threads, branches, Git state, and local files are not modified.
+  - Closed is returned only after post-write verification; partial preserves uncertainty after a possible external write; blocked means no write occurred.

@@ -1,0 +1,263 @@
+schema: LinkedIssueStatusAssessment
+version: 1
+description: Read-only assessment of one pull request's linked issue status, acceptance-criteria coverage, closing relationship, and integration consistency.
+required:
+  - status
+  - repository
+  - pull_request
+  - head_sha
+  - linkage
+  - issue
+  - acceptance_criteria
+  - integration
+  - blockers
+  - uncertainties
+  - evidence
+  - rationale
+  - failure
+fields:
+  status:
+    type: enum
+    values: [consistent, needs-attention, inconsistent, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, state]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      state:
+        type: enum
+        values: [open, closed, merged, unknown]
+      base_branch:
+        type: string | null
+      head_sha:
+        type: string | null
+  head_sha:
+    type: string | null
+  linkage:
+    type: object
+    required: [status, primary_issue, candidates, closing_relationship, evidence]
+    fields:
+      status:
+        type: enum
+        values: [linked, mentioned, ambiguous, unresolved, unavailable]
+      primary_issue:
+        type: object | null
+        fields:
+          repository:
+            type: string
+            format: owner/repository
+          number:
+            type: integer
+            minimum: 1
+          url:
+            type: string | null
+            format: uri
+          title:
+            type: string | null
+      candidates:
+        type: list
+        items:
+          type: object
+          required: [repository, number, classification, evidence]
+          fields:
+            repository:
+              type: string
+              format: owner/repository
+            number:
+              type: integer
+              minimum: 1
+            classification:
+              type: enum
+              values: [linked, mentioned]
+            keyword_text:
+              type: string | null
+            relationship:
+              type: string | null
+            evidence:
+              type: list
+              items: string
+      closing_relationship:
+        type: object
+        required: [status, keyword_evidence, github_evidence, consistency]
+        fields:
+          status:
+            type: enum
+            values: [confirmed, keyword-only, conflicting, absent, unavailable]
+          keyword_evidence:
+            type: list
+            items: string
+          github_evidence:
+            type: list
+            items: string
+          consistency:
+            type: enum
+            values: [consistent, needs-clarification, inconsistent, not-applicable, unavailable]
+          explicit_close_intent:
+            type: boolean | null
+          evidence:
+            type: list
+            items: string
+      evidence:
+        type: list
+        items: string
+  issue:
+    type: object
+    required: [status, repository, number, state, title, evidence]
+    fields:
+      status:
+        type: enum
+        values: [loaded, partial, unavailable]
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      state:
+        type: enum
+        values: [open, closed, unknown]
+      state_reason:
+        type: string | null
+      title:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  acceptance_criteria:
+    type: object
+    required: [status, items, evidence]
+    fields:
+      status:
+        type: enum
+        values: [complete, partial, absent, unavailable]
+      items:
+        type: list
+        items:
+          type: object
+          required: [id, text, source, coverage]
+          fields:
+            id:
+              type: string
+            text:
+              type: string
+            source:
+              type: string
+            coverage:
+              type: enum
+              values: [covered, partially-covered, not-covered, unverifiable]
+            evidence:
+              type: list
+              items: string
+            gap:
+              type: string | null
+      evidence:
+        type: list
+        items: string
+      unavailable_reason:
+        type: string | null
+  integration:
+    type: object
+    required: [status, issue_pr_relationship, rationale]
+    fields:
+      status:
+        type: enum
+        values: [consistent, needs-attention, inconsistent, blocked]
+      issue_pr_relationship:
+        type: enum
+        values: [consistent, ambiguous, missing, conflicting, unavailable]
+      rationale:
+        type: string
+      recommended_action:
+        type: string | null
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, severity, description, evidence]
+      fields:
+        id:
+          type: string
+        severity:
+          type: enum
+          values: [low, medium, high]
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required: [id, description, evidence, clarification]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+        clarification:
+          type: string
+  evidence:
+    type: object
+    required: [status, sources]
+    fields:
+      status:
+        type: enum
+        values: [complete, partial, unavailable]
+      sources:
+        type: list
+        items:
+          type: object
+          required: [name, status, evidence]
+          fields:
+            name:
+              type: string
+            status:
+              type: enum
+              values: [loaded, empty, partial, unavailable]
+            evidence:
+              type: list
+              items: string
+            unavailable_reason:
+              type: string | null
+  rationale:
+    type: string
+  recommended_next_skill:
+    type: string | null
+  assessed_at:
+    type: string | null
+    format: iso-8601
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_identity, invalid_pull_request_number, pull_request_not_found, issue_not_found, inaccessible, auth_unavailable, stale_head, api_failure]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The exact pull-request repository, number, and current head SHA are validated before assessment; stale supplied evidence is not combined with current evidence.
+  - A primary issue is selected only from a unique linked candidate in LinkedIssue or equivalent explicit GitHub relationship evidence; mentioned-only and ambiguous candidates are never promoted.
+  - Acceptance criteria are copied or extracted only from the loaded issue text and remain unverifiable when current PR evidence cannot demonstrate coverage.
+  - Issue state, closing relationship, and criteria coverage are reported independently; a closed issue or closing keyword never proves that acceptance criteria are met.
+  - Missing, unavailable, conflicting, or ambiguous evidence is preserved and cannot produce consistent.
+  - The assessment is diagnostic only and never closes an issue, edits GitHub, publishes a comment or review, merges, rebases, resolves a thread, or changes local files.

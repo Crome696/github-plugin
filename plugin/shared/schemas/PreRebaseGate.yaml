@@ -1,0 +1,154 @@
+schema: PreRebaseGate
+version: 1
+description: Local, read-only snapshot binding one exact approved rebase to a verified pull-request branch, clean worktree, current remote context, and unique target base.
+required:
+  - workspace
+  - pull_request
+  - target_fetch
+  - authorization
+  - written_at
+fields:
+  workspace:
+    type: object
+    required: [repository, path, branch, head_sha]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      path:
+        type: string
+        format: absolute-path
+      branch:
+        type: string
+      head_sha:
+        type: string
+        format: full git commit SHA
+  pull_request:
+    type: object
+    required: [repository, number, url, base_branch, head_branch, head_sha]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      base_branch:
+        type: string
+      base_branch_candidates:
+        type: list
+        items:
+          type: string
+        constraints:
+          - Exactly one candidate is permitted when this field is supplied.
+          - The candidate must equal base_branch.
+      head_branch:
+        type: string
+      head_sha:
+        type: string
+        format: full git commit SHA
+  target_fetch:
+    type: object
+    description: Complete version-1 TargetBranchFetch handoff for the exact base branch.
+    required:
+      - schema
+      - version
+      - status
+      - repository
+      - remote
+      - branch_name
+      - remote_ref
+      - tracking_ref
+      - remote_sha
+      - tracking_sha
+      - authorization
+      - fetch
+      - verification
+      - failure
+      - recommended_next_skill
+    fields:
+      schema:
+        type: string
+        const: TargetBranchFetch
+      version:
+        type: integer
+        const: 1
+      status:
+        type: enum
+        values: [verified, partial, blocked]
+      repository:
+        type: string
+        format: owner/repository
+      remote:
+        type: object
+        required: [name, owner_repository, fetch_url_sanitized]
+        fields:
+          name:
+            type: string
+          owner_repository:
+            type: string | null
+            format: owner/repository
+          fetch_url_sanitized:
+            type: string | null
+      branch_name:
+        type: string
+      remote_ref:
+        type: string
+        value: refs/heads/<branch_name>
+      tracking_ref:
+        type: string
+        value: refs/remotes/<remote.name>/<branch_name>
+      remote_sha:
+        type: string | null
+        format: full git commit SHA
+      tracking_sha:
+        type: string | null
+        format: full git commit SHA
+      authorization:
+        type: object
+      fetch:
+        type: object
+      verification:
+        type: object
+      failure:
+        type: object | null
+      recommended_next_skill:
+        type: string | null
+  authorization:
+    type: object
+    required: [approved, exact_target, exact_operation, source, evidence]
+    fields:
+      approved:
+        type: boolean
+      exact_target:
+        type: boolean
+      exact_operation:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, repository_policy, null]
+      evidence:
+        type: string | null
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+  written_at:
+    type: string
+    format: iso-8601
+invariants:
+  - The gate is local evidence only; it never authorizes a rebase without exact user or repository-policy authorization and never performs a Git or GitHub mutation.
+  - workspace.repository, pull_request.repository, and target_fetch.repository identify the same repository.
+  - workspace.branch and pull_request.head_branch identify the same non-base feature branch.
+  - pull_request has exactly one base_branch; when base_branch_candidates is present it contains only base_branch.
+  - target_fetch.status is verified, target_fetch.branch_name equals pull_request.base_branch, and target_fetch.tracking_sha equals target_fetch.remote_sha.
+  - The rebase target is the full target_fetch.tracking_sha, never an inferred branch name or another revision.
+  - The current worktree HEAD equals workspace.head_sha and pull_request.head_sha before the rebase.
+  - Live remote context must identify the configured remote default branch and prove that the checked-out pull-request head is not that default branch.
+  - The pre-rebase HEAD is backed by the configured remote feature-branch tracking ref; missing, divergent, or unknown upstream evidence is unsafe.
+  - authorization.approved, authorization.exact_target, and authorization.exact_operation are true and the source is explicit_user or repository_policy.
+  - A missing, stale, contradictory, or unavailable gate condition blocks the rebase; the hook never repairs or replaces the gate.

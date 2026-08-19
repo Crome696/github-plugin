@@ -1,0 +1,113 @@
+---
+description: Define compatibility and migration rules for GitHub plugin components and shared contracts.
+alwaysApply: true
+---
+
+# Plugin Versioning
+
+## Scope
+
+This rule governs changes to the GitHub plugin's Commands, Skills, Rules,
+Agents, Hooks, and Shared Contracts. It governs the plugin package and its
+documented handoffs; it does not define implementation knowledge for a target
+repository or replace the safety rules for GitHub and Git operations.
+
+## Version model
+
+- The plugin package version is the release compatibility marker. Increment
+  and synchronize it in `plugin.json`, every host-specific plugin manifest,
+  and every marketplace entry for the plugin whenever a published capability
+  changes.
+- Commands, Skills, Rules, Agents, and Hooks have no independent version
+  files. Their documented names and activation boundaries are stable
+  identities; package version changes communicate their release impact.
+- Each Shared Contract has its own integer `version`. A contract version
+  describes its validated shape and semantics, not the plugin package
+  version. Never reuse a version number for different semantics.
+
+## Change classes
+
+Classify every change before editing:
+
+| Component | Breaking change | Additive change | Internal refactoring |
+| --- | --- | --- | --- |
+| Command | Rename, removal, changed invocation or target resolution, changed output/status, or changed side effect or authorization boundary. | New command or optional, ignored metadata that preserves existing commands. | Reorganized entry-point text or routing with the same name, target, result, and Agent ownership. |
+| Skill | Changed required input/output handoff, activation boundary, authority, or responsibility that can break a caller. | Optional input or result detail that old callers may ignore, or a new independent read-only capability. | Reordered procedure or clarified wording with the same handoff, authority, and outcome. |
+| Rule | Changed scope, activation, required or forbidden behavior, safety requirement, or host mapping that changes an existing obligation. | A non-conflicting requirement or clarification that does not weaken or reinterpret existing policy. | Editorial restructuring that preserves the rule's effective semantics. |
+| Agent | Changed name or mode, sequencing, consumed or produced handoffs, user decisions, authorization, or result semantics. | New independent mode or optional diagnostic result that does not alter existing modes. | Orchestration rearrangement with identical interfaces, gates, and ownership. |
+| Hook | Changed event, input/output, gate result, fail-closed behavior, timeout, or permitted side effect. | New bounded observer or gate that preserves existing events and decisions. | Implementation or host-projection reorganization with identical observable behavior. |
+| Shared Contract | Changed required field, type, enum, status, identity, authorization, failure semantics, or meaning of an existing field. | Optional field or explicitly ignored extension allowed by the contract's source rules. | YAML, fixture, helper, or documentation reorganization with no shape or semantic change. |
+
+A change is breaking whenever an existing consumer can fail, receive a
+different meaning, or lose a safety guarantee without changing its inputs.
+Do not label a semantic change as an internal refactoring merely because the
+edited file is not a Command or Contract.
+
+## Breaking public changes
+
+Commands and Shared Contracts are public plugin surfaces. A breaking change
+to either requires all of the following in one traceable change:
+
+1. Document the old and new behavior, affected consumers, compatibility
+   impact, migration prerequisites, exact migration action, validation step,
+   and rollback or recovery consideration when relevant.
+2. Add a changelog entry naming the affected Command or Contract and its old
+   and new version or behavior. State who must act and do not claim
+   compatibility that was not verified.
+3. Increment the plugin package version. For a Contract shape break, increment
+   that Contract's `version` and never reinterpret the old version.
+4. Update every producer, consumer, Agent, Skill, Command, Hook, fixture,
+   invariant, handoff-graph edge, test, and inventory entry affected by the
+   new interface. Keep old and new semantics distinguishable during migration.
+5. Validate the migration and the complete updated handoff graph before
+   release. A successful test of only the changed component is insufficient.
+
+Additive public changes retain existing contract versions only when required
+fields, types, existing enum values, statuses, identities, and authorization
+semantics remain unchanged. Record the change in the changelog and state
+explicitly when no migration is required. Unknown values or absent evidence
+must not be converted into success.
+
+## Internal component changes
+
+Skills, Rules, Agents, and Hooks may be treated as internal only when no
+external consumer or documented plugin handoff depends on the changed
+interface. An internal breaking change is allowed only if every dependency is
+updated in the same change: direct references, Agents, Skills, Commands,
+Rules, Hooks, host projections, inventories, fixtures, handoff graph, and
+tests. Search for stale names and old assumptions; do not spread the break
+across releases or keep an old Contract version with new semantics.
+
+If the behavior is unchanged for users and integrators, record a consequential
+internal refactoring in the changelog as an internal change. If compatibility
+is uncertain, classify it as breaking or leave the change blocked until the
+affected dependency is verified.
+
+## External Skills and Rules
+
+External Skills and Rules are integration capabilities, not files owned by this
+plugin. Compatibility requires:
+
+- Reference an attributable current-session identity such as
+  `session:skill:<name>` or `session:rule:<name>`, never an unverified path,
+  copied instructions, or an assumed version from another plugin.
+- Hand over only the bounded task, repository, revision, and scope needed by
+  the capability. The capability must consume the exact supported handoff
+  version and preserve required evidence, uncertainty, unavailable fields, and
+  blocked or partial states.
+- Treat the GitHub handoff and safety boundary as the compatibility surface,
+  not the external capability's private API. External Skills and Rules must
+  not change plugin Contracts, approval decisions, Hook policy, or scope.
+- Treat a missing, stale, incompatible, or unavailable capability as
+  `partial` or `blocked`. Do not invent a substitute, infer compatibility,
+  or silently degrade a required capability into a successful result.
+- An external capability rename or implementation version change is compatible
+  when its identity, bounded responsibility, supported handoffs, and returned
+  evidence remain compatible. Re-resolution is required when any of those
+  boundaries changes.
+
+## Required change record
+
+Before release, record the classification, affected component identities,
+package and Contract versions, dependency updates, migration or no-migration
+decision, changelog entry, compatibility evidence, and validation results.

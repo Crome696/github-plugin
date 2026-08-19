@@ -1,0 +1,185 @@
+schema: LinkedIssue
+version: 1
+description: Read-only evidence-based resolution of the issue linked to one GitHub pull request.
+required:
+  - status
+  - pull_request
+  - candidates
+  - primary_issue
+  - loaded_issue
+  - clarifications
+  - ambiguous_candidates
+  - blockers
+  - evidence
+  - rationale
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [loaded, partial, ambiguous, unresolved, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  candidates:
+    type: list
+    items:
+      type: object
+      required:
+        - repository
+        - number
+        - classification
+        - evidence_sources
+        - evidence
+      fields:
+        repository:
+          type: string
+          format: owner/repository
+        number:
+          type: integer
+          minimum: 1
+        url:
+          type: string | null
+          format: uri
+        title:
+          type: string | null
+          constraints:
+            - Preserve the exact title when retrieved from GitHub.
+        classification:
+          type: enum
+          values: [linked, mentioned]
+        relationship:
+          type: enum | null
+          values: [referenced, cross_referenced, closed_by, connected]
+        keyword_text:
+          type: string | null
+          constraints:
+            - Preserve the exact closing-keyword reference when present.
+        evidence_sources:
+          type: list
+          items: string
+          constraints:
+            - Identify bounded sources such as pull_request.body, commit.message, timeline, or closing_issues_references.
+        evidence:
+          type: list
+          items: string
+  primary_issue:
+    type: object | null
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      title:
+        type: string | null
+  loaded_issue:
+    type: object | null
+    constraints:
+      - When present, this is the complete version-1 LoadedIssue handoff from load-github-issue, including its own status and failure semantics.
+  clarifications:
+    type: list
+    items:
+      type: object
+      required: [id, question, required_evidence, evidence]
+      fields:
+        id:
+          type: string
+        question:
+          type: string
+        required_evidence:
+          type: string
+        evidence:
+          type: list
+          items: string
+  ambiguous_candidates:
+    type: list
+    items:
+      type: object
+      required: [repository, number, evidence]
+      fields:
+        repository:
+          type: string
+          format: owner/repository
+        number:
+          type: integer
+          minimum: 1
+        url:
+          type: string | null
+          format: uri
+        title:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [code, description, evidence]
+      fields:
+        code:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  evidence:
+    type: list
+    items: string
+  rationale:
+    type: string
+    constraints:
+      - English.
+      - Explain the candidate classification, selected or withheld issue identity, and any loading limitation.
+  recommended_next_skill:
+    type: string | null
+    constraints:
+      - Use analyze-issue only after loaded_issue is available; use null when clarification or recovery is required.
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - invalid_pull_request_number
+          - repository_not_found
+          - pull_request_not_found
+          - issue_not_found
+          - inaccessible
+          - auth_unavailable
+          - api_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The pull-request identity is exact and is never inferred from the current workspace, branch, commit, or issue text.
+  - A candidate is linked only when a supported closing keyword or retrieved GitHub relationship establishes the relationship; an explicit reference without either signal is mentioned.
+  - A linked candidate is not selected when more than one linked candidate remains.
+  - Mentioned candidates never become the primary issue without additional linking evidence.
+  - loaded and partial results identify exactly one primary issue; ambiguous and unresolved results keep primary_issue and loaded_issue null.
+  - The issue context is loaded only after a unique linked candidate has been established.
+  - A populated field is retrieved evidence; null means unavailable or not produced; an empty list means the source was retrieved and contained no entries.
+  - The skill is read-only and never edits GitHub, closes an issue, changes a pull request, or invokes another Skill.
+  - recommended_next_skill is advisory only and never authorizes or invokes a follow-up.

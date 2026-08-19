@@ -1,0 +1,47 @@
+schema: PullRequestIntegration
+version: 1
+status: completed
+repository: octo-org/widgets
+pull_request:
+  number: 1
+  url: https://github.com/octo-org/widgets
+  base_branch: base_branch-value
+  head_branch: head_branch-value
+  initial_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  current_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+revisions:
+  initial_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  original_base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  refreshed_base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  pre_rebase_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  rebased_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  final_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  merge_commit_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+phases: []
+authorizations: []
+blockers: []
+deferred_operations: []
+cleanup:
+  status: completed
+  branch:
+    local:
+      target: target-value
+      status: performed
+    remote:
+      target: target-value
+      status: performed
+    status: performed
+  worktree:
+    target: C:/workspace/github
+    status: performed
+evidence: []
+failure:
+  code: missing_identity
+  message: message-value
+  phase: phase-value
+  retryable: false
+  evidence: []
+metadata:
+  started_at: '2026-01-01T00:00:00.000Z'
+  completed_at: '2026-01-01T00:00:00.000Z'
+  conversation_language: conversation_language-value

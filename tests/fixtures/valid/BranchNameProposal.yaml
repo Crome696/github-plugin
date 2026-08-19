@@ -1,0 +1,41 @@
+schema: BranchNameProposal
+version: 1
+status: proposed
+source:
+  task_or_issue: task_or_issue-value
+  issue:
+    repository: octo-org/widgets
+    number: 1
+    title: title-value
+    url: https://github.com/octo-org/widgets
+  loaded_issue_version: 1
+  issue_analysis_version: 1
+  repository_context_version: 1
+  repository_conventions_version: 1
+  references: []
+  unavailable_inputs: []
+focus:
+  summary: summary-value
+  keywords: []
+  issue_number: 1
+  paths_of_interest: []
+proposal:
+  branch_name: branch_name-value
+  rationale: rationale-value
+  applied_convention:
+    description: description-value
+    authority: mandatory
+    confidence: evidenced
+    evidence: []
+  issue_number_included: false
+  separator: separator-value
+  pattern_source: repository_convention
+  keywords: []
+  normalization: []
+alternatives: []
+recommended_next_skill: recommended_next_skill-value
+failure:
+  code: missing_input
+  operation: operation-value
+  retryable: false
+  evidence: []

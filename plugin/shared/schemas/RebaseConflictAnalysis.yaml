@@ -1,0 +1,322 @@
+schema: RebaseConflictAnalysis
+version: 1
+description: Read-only evidence-backed analysis of one stopped or explicitly planned Git rebase for a separate conflict-resolution step.
+required:
+  - status
+  - repository
+  - checkout
+  - rebase
+  - sources_evaluated
+  - conflicts
+  - capabilities_applied
+  - assumptions
+  - uncertainties
+  - blockers
+  - impact_assessment
+  - resolution_handoff
+  - metadata
+  - failure
+fields:
+  status:
+    type: enum
+    values: [analyzed, partial, blocked]
+  repository:
+    type: object
+    required: [identity, root]
+    fields:
+      identity:
+        type: string
+        format: owner/repository | local-repository-identity
+      root:
+        type: string
+      evidence:
+        type: list
+        items: string
+  checkout:
+    type: object
+    required: [path, branch, head_sha]
+    fields:
+      path:
+        type: string
+      branch:
+        type: string | null
+      head_sha:
+        type: string | null
+      clean_start:
+        type: boolean | null
+      evidence:
+        type: list
+        items: string
+  rebase:
+    type: object
+    required: [mode, source_revision, target_revision, current_revision, current_operation]
+    fields:
+      mode:
+        type: enum
+        values: [stopped, planned]
+      source_revision:
+        type: string | null
+      target_revision:
+        type: string | null
+      merge_base:
+        type: string | null
+      current_revision:
+        type: string | null
+      current_operation:
+        type: string | null
+      ordered_commits:
+        type: list
+        items:
+          type: object
+          required: [revision, order]
+          fields:
+            revision:
+              type: string
+            order:
+              type: integer
+              minimum: 1
+      state_evidence:
+        type: list
+        items: string
+  sources_evaluated:
+    type: list
+    items:
+      type: object
+      required: [kind, availability, evidence, unavailable_fields, limitation]
+      fields:
+        kind:
+          type: enum
+          values: [rebase_state, index, working_tree, revision_graph, diff, path_metadata, supplied_handoff, external_capability]
+        availability:
+          type: enum
+          values: [loaded, partial, unavailable, not_supplied]
+        evidence:
+          type: list
+          items: string
+        unavailable_fields:
+          type: list
+          items: string
+        limitation:
+          type: string | null
+  conflicts:
+    type: list
+    items:
+      type: object
+      required: [id, status, path, conflict_type, revisions, evidence, changes, impact, confidence, uncertainty, verification]
+      fields:
+        id:
+          type: string
+        status:
+          type: enum
+          values: [confirmed, potential]
+        path:
+          type: string
+        old_path:
+          type: string | null
+        conflict_type:
+          type: enum
+          values: [content, add_add, modify_delete, delete_modify, rename_rename, rename_modify, directory_file, binary, submodule, mode, unknown]
+        revisions:
+          type: object
+          required: [base, ours, theirs]
+          fields:
+            base:
+              type: object
+              required: [revision, blob, available]
+              fields:
+                revision:
+                  type: string | null
+                blob:
+                  type: string | null
+                available:
+                  type: boolean
+            ours:
+              type: object
+              required: [revision, blob, available]
+              fields:
+                revision:
+                  type: string | null
+                blob:
+                  type: string | null
+                available:
+                  type: boolean
+            theirs:
+              type: object
+              required: [revision, blob, available]
+              fields:
+                revision:
+                  type: string | null
+                blob:
+                  type: string | null
+                available:
+                  type: boolean
+        evidence:
+          type: list
+          items:
+            type: object
+            required: [kind, reference, observed]
+            fields:
+              kind:
+                type: enum
+                values: [hunk, index_stage, marker, path_operation, binary_metadata, submodule_metadata, command, supplied]
+              reference:
+                type: string
+              observed:
+                type: string
+        changes:
+          type: object
+          required: [base, ours, theirs, comparison]
+          fields:
+            base:
+              type: string
+            ours:
+              type: string
+            theirs:
+              type: string
+            comparison:
+              type: string
+        impact:
+          type: object
+          required: [observed, possible, affected_concerns]
+          fields:
+            observed:
+              type: string
+            possible:
+              type: string
+            affected_concerns:
+              type: list
+              items:
+                type: enum
+                values: [behavior, build, data, api, generated_output, repository_state, unknown]
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        uncertainty:
+          type: list
+          items: string
+        verification:
+          type: string
+  capabilities_applied:
+    type: list
+    items:
+      type: object
+      required: [name, type, availability, applied, scope, evidence, limitation]
+      fields:
+        name:
+          type: string
+        type:
+          type: string
+        availability:
+          type: enum
+          values: [available, unavailable]
+        applied:
+          type: boolean
+        scope:
+          type: string
+        evidence:
+          type: list
+          items: string
+        limitation:
+          type: string | null
+  assumptions:
+    type: list
+    items:
+      type: object
+      required: [statement, impact, evidence]
+      fields:
+        statement:
+          type: string
+        impact:
+          type: string
+        evidence:
+          type: list
+          items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required: [id, statement, why_unresolved, verification]
+      fields:
+        id:
+          type: string
+        statement:
+          type: string
+        why_unresolved:
+          type: string
+        verification:
+          type: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [description, resolution_needed, evidence]
+      fields:
+        description:
+          type: string
+        resolution_needed:
+          type: string
+        evidence:
+          type: list
+          items: string
+  impact_assessment:
+    type: object
+    required: [summary, concerns, confidence]
+    fields:
+      summary:
+        type: string
+      concerns:
+        type: list
+        items: string
+      confidence:
+        type: enum
+        values: [high, medium, low]
+  resolution_handoff:
+    type: object
+    required: [purpose, recommended_next_skill, read_only, authorized_operations, required_inputs]
+    fields:
+      purpose:
+        type: string
+      recommended_next_skill:
+        type: string | null
+      read_only:
+        type: boolean
+      authorized_operations:
+        type: list
+        items: string
+      required_inputs:
+        type: list
+        items: string
+  metadata:
+    type: object
+    required: [created_at, analysis_version, git_mutation_performed]
+    fields:
+      created_at:
+        type: string
+        format: iso-8601
+      analysis_version:
+        type: string
+      git_mutation_performed:
+        type: boolean
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, unsupported_version, conflicting_identity, insufficient_context, evidence_collection_failed, analysis_failed]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The result describes exactly one repository checkout and one stopped or planned rebase.
+  - A planned conflict is never marked confirmed without stopped-rebase or equivalent replay evidence.
+  - Every conflict has a repository-relative path, a conflict type, source evidence, confidence, impact, uncertainty handling, and a verification step.
+  - Base, ours, and theirs values remain null or unavailable when not observed; the analysis never invents hunks, lines, blobs, or revisions.
+  - Observed facts and possible impacts remain separate.
+  - External capabilities are recorded with availability, bounded scope, and evidence; unavailable capabilities remain limitations.
+  - The handoff never authorizes or performs conflict resolution, rebase continuation, abort, skip, Git mutation, or external capability installation.
+  - "`git_mutation_performed` must be false."
+  - A non-null failure is required for blocked results; failure is null for analyzed and partial results unless a failure is being reported.

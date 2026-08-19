@@ -1,0 +1,8 @@
+schema: CleanupResult
+version: 1
+status: not_requested
+repository: octo-org/widgets
+authorization:
+  explicit: false
+actions: []
+preserved_artifacts: []

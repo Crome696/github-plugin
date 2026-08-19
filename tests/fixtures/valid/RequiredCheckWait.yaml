@@ -1,0 +1,39 @@
+schema: RequiredCheckWait
+version: 1
+status: waiting
+repository: octo-org/widgets
+pull_request:
+  number: 1
+  url: https://github.com/octo-org/widgets
+  head_branch: head_branch-value
+  base_branch: base_branch-value
+head_sha: head_sha-value
+wait:
+  timeout_seconds: 1
+  poll_interval_seconds: 1
+  polls_attempted: 1
+  pending_treated_as_pass: false
+required_outcomes: []
+summary:
+  required_total: 1
+  pass: 1
+  fail: 1
+  pending: 1
+  skipped: 1
+  missing: 1
+policy_evidence:
+  status: known
+  evidence: []
+authorization:
+  source: source-value
+  task_scope: task_scope-value
+  wait_authorized: false
+  evidence: []
+blockers: []
+evidence: []
+failure:
+  code: code-value
+  message: message-value
+  operation: operation-value
+  retryable: false
+  evidence: []

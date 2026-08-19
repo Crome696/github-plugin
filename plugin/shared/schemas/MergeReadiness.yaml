@@ -1,0 +1,202 @@
+schema: MergeReadiness
+version: 2
+description: Evidence-based read-only assessment of whether one pull request satisfies explicitly retrieved merge conditions.
+required:
+  - status
+  - repository
+  - pull_request
+  - head_sha
+  - mergeability
+  - blockers
+  - checks
+  - review_state
+  - issue_coverage
+  - evidence
+fields:
+  status:
+    type: enum
+    values: [ready, needs-attention, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      state:
+        type: enum
+        values: [open, closed, merged, unknown]
+      draft:
+        type: boolean | null
+      state_evidence:
+        type: string | null
+  head_sha:
+    type: string | null
+  base_branch:
+    type: string | null
+  mergeability:
+    type: enum
+    values: [mergeable, conflicts, unknown]
+  mergeability_evidence:
+    type: string | null
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, severity, description]
+      fields:
+        id:
+          type: string
+        severity:
+          type: enum
+          values: [low, medium, high]
+        description:
+          type: string
+        owner:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+  checks:
+    type: list
+    items:
+      type: object
+      required: [name, result, required, evidence]
+      fields:
+        name:
+          type: string
+        result:
+          type: enum
+          values: [pass, fail, pending, skipped, unknown]
+        required:
+          type: boolean | null
+        evidence:
+          type: string
+        head_sha:
+          type: string | null
+  review_state:
+    type: object
+    required: [approval_count, change_request_count, evidence_status]
+    fields:
+      approval_count:
+        type: integer
+        minimum: 0
+      change_request_count:
+        type: integer
+        minimum: 0
+      comment_count:
+        type: integer
+        minimum: 0
+      required_approvals_met:
+        type: boolean | null
+      required_approvals:
+        type: integer | null
+        minimum: 0
+      unresolved_threads:
+        type: integer | null
+        minimum: 0
+      outdated_threads:
+        type: integer | null
+        minimum: 0
+      evidence_status:
+        type: enum
+        values: [known, partial, unavailable]
+      approval_inspection_status:
+        type: enum
+        values: [inspected, partial, blocked, not_supplied]
+      approval_policy_evidence:
+        type: list
+        items: string
+      evidence:
+        type: list
+        items: string
+  issue_coverage:
+    type: object
+    required: [status, evidence]
+    fields:
+      status:
+        type: enum
+        values: [covered, waived, missing, ambiguous, not_applicable, unavailable]
+      issue:
+        type: object | null
+        fields:
+          repository:
+            type: string
+          number:
+            type: integer
+            minimum: 1
+          url:
+            type: string
+            format: uri
+      waiver:
+        type: object | null
+        fields:
+          reason:
+            type: string
+          source:
+            type: enum
+            values: [explicit_user, repository_policy]
+          evidence:
+            type: string
+      evidence:
+        type: list
+        items: string
+      acceptance_criteria:
+        type: list
+        items: string
+      unavailable_reason:
+        type: string | null
+  evidence:
+    type: object
+    required: [head_sha, status, sources]
+    fields:
+      head_sha:
+        type: string
+      status:
+        type: enum
+        values: [complete, partial, unavailable]
+      sources:
+        type: list
+        items:
+          type: object
+          required: [name, status, evidence]
+          fields:
+            name:
+              type: string
+            status:
+              type: enum
+              values: [loaded, empty, partial, unavailable]
+            evidence:
+              type: list
+              items: string
+            unavailable_reason:
+              type: string | null
+  required_conditions:
+    type: list
+    items: string
+  remaining_conditions:
+    type: list
+    items: string
+  uncertainties:
+    type: list
+    items: string
+  assessed_at:
+    type: string | null
+    format: iso-8601
+invariants:
+  - Version 2 uses only ready, needs-attention, and blocked as assessment statuses.
+  - Ready means only that every applicable, explicitly retrieved condition is satisfied; it never authorizes merging.
+  - Needs-attention means the PR is assessable but one or more evidenced conditions require action or confirmation.
+  - Blocked means the exact PR or required evidence cannot support a reliable assessment.
+  - Unknown mergeability, unavailable required-check or review-policy evidence, stale identity, and ambiguous issue coverage prevent a ready status.
+  - "For `issue_coverage.status: waived`, the `issue_coverage.waiver` object must be present and include a reason, a waiver source, and evidence."
+  - Approval counts and required review conditions are copied only from a current, identity-matched RequiredApprovalInspection or equivalent explicit policy evidence; raw review counts never establish a requirement.
+  - Every blocker and material status decision includes reproducible evidence tied to the identified pull request and current head SHA.
+  - The assessment is tied to the recorded head SHA and must be refreshed after it changes.
+  - The assessment never performs or authorizes merge, rebase, conflict resolution, check rerun, review publication, or thread mutation.

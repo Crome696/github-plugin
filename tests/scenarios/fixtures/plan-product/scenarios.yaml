@@ -1,0 +1,193 @@
+schema: CommandScenario
+version: 1
+scenarios:
+  - id: plan-product-happy-path
+    command: plan-product
+    description: Publishes approved product sub-issues after overall-plan approval.
+    expected:
+      status: completed
+      successful_writes: [create-product-sub-issues]
+      preserved_artifacts: []
+    target:
+      repository: &repo octo-org/widgets
+      issue_number: &issue 123
+      exact: true
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs:
+      ProductPlannerRun:
+        patch: {}
+      IssueDraft:
+        patch:
+          status: approved
+          mode: create
+          issue:
+            repository: *repo
+            number: null
+            url: null
+          approval:
+            exact_payload: true
+            publication_authorized: true
+    actions: &plan_product_actions
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+        handoff: LoadedIssue
+      - operation: analyze-product-issue
+        effect: read
+        handoff: ProductAssessment
+      - operation: conduct-product-interview
+        effect: read
+        handoff: ProductInterview
+      - operation: identify-product-capabilities
+        effect: read
+        handoff: ProductCapabilityMap
+      - operation: decompose-product-capabilities
+        effect: read
+        handoff: ProductCapabilityDecomposition
+      - operation: assess-issue-atomicity
+        effect: read
+        handoff: IssueAtomicityAssessment
+      - operation: build-product-dependency-graph
+        effect: read
+        handoff: ProductDependencyGraph
+      - operation: prioritize-product-issues
+        effect: read
+        handoff: ProductIssuePrioritization
+      - operation: product-planner-agent
+        effect: read
+        handoff: ProductPlannerRun
+      - operation: create-product-sub-issues
+        effect: write
+        handoff: ProductSubIssuePublication
+
+  - id: plan-product-missing-repository
+    command: plan-product
+    description: Refuses publication when the repository target is absent.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: create-product-sub-issues
+      preserved_artifacts: []
+    target:
+      repository: null
+      issue_number: *issue
+      exact: false
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs: {}
+    actions: *plan_product_actions
+
+  - id: plan-product-missing-parent-issue
+    command: plan-product
+    description: Refuses publication when the parent issue identity is missing.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: create-product-sub-issues
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      issue_number: null
+      exact: false
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs: {}
+    actions: *plan_product_actions
+
+  - id: plan-product-missing-overall-plan-approval
+    command: plan-product
+    description: Refuses publication when overall-plan approval is absent.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: create-product-sub-issues
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      issue_number: *issue
+      exact: true
+    facts: {}
+    authorizations:
+      routine: true
+      issue_publication: false
+    handoffs:
+      ProductPlannerRun:
+        patch: {}
+      IssueDraft:
+        patch:
+          status: approved
+          mode: create
+          issue:
+            repository: *repo
+            number: null
+            url: null
+          approval:
+            exact_payload: true
+            publication_authorized: true
+    actions: *plan_product_actions
+
+  - id: plan-product-api-error
+    command: plan-product
+    description: Preserves a partial result when sub-issue publication fails.
+    expected:
+      status: partial
+      successful_writes: []
+      blocked_operation: create-product-sub-issues
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      issue_number: *issue
+      exact: true
+    facts:
+      api_errors: [create-product-sub-issues]
+    authorizations:
+      routine: true
+      issue_publication: true
+    handoffs:
+      ProductPlannerRun:
+        patch: {}
+      IssueDraft:
+        patch:
+          status: approved
+          mode: create
+          issue:
+            repository: *repo
+            number: null
+            url: null
+          approval:
+            exact_payload: true
+            publication_authorized: true
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: load-issue
+        effect: read
+      - operation: analyze-product-issue
+        effect: read
+      - operation: conduct-product-interview
+        effect: read
+      - operation: identify-product-capabilities
+        effect: read
+      - operation: decompose-product-capabilities
+        effect: read
+      - operation: assess-issue-atomicity
+        effect: read
+      - operation: build-product-dependency-graph
+        effect: read
+      - operation: prioritize-product-issues
+        effect: read
+      - operation: product-planner-agent
+        effect: read
+        handoff: ProductPlannerRun
+      - operation: create-product-sub-issues
+        effect: write
+        result: api-error
+        handoff: ProductSubIssuePublication

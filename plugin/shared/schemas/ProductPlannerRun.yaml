@@ -1,0 +1,248 @@
+schema: ProductPlannerRun
+version: 1
+description: >-
+  Task-authorized record of one interactive parent-issue product-planning
+  run. The product-planner-agent sequences product analysis, interview,
+  capability mapping, iterative decomposition, atomicity review, dependency
+  analysis, prioritization, sub-issue drafting, and overall review, then
+  hands approved create drafts to publication only after explicit user
+  approval of the exact draft set.
+required:
+  - status
+  - repository
+  - parent_issue
+  - phases
+  - drafts
+  - graph
+  - prioritization
+  - authorization
+  - blockers
+  - next_user_action
+  - evidence
+  - failure
+  - metadata
+fields:
+  status:
+    type: enum
+    values: [running, drafts_ready, publication_handed_off, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  parent_issue:
+    type: object
+    required: [number, url, title]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      title:
+        type: string
+      state:
+        type: enum
+        values: [open, closed, unknown]
+  phases:
+    type: list
+    items:
+      type: object
+      required: [name, status, evidence]
+      fields:
+        name:
+          type: enum
+          values:
+            - load
+            - analysis
+            - interview
+            - capability_map
+            - decomposition
+            - atomicity
+            - dependency_graph
+            - prioritization
+            - composition
+            - review
+            - publication
+        status:
+          type: enum
+          values: [not_started, in_progress, completed, skipped, partial, blocked]
+        handoff_schema:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+        blockers:
+          type: list
+          items: string
+  drafts:
+    type: list
+    items:
+      type: object
+      required:
+        - unit_id
+        - title
+        - parent_issue_number
+        - traceability
+        - confirmed_class
+        - publication_status
+      fields:
+        unit_id:
+          type: string
+        title:
+          type: string
+        parent_issue_number:
+          type: integer
+          minimum: 1
+        parent_capability_id:
+          type: string | null
+        traceability:
+          type: object
+          required: [parent_issue_url, parent_capability_id]
+          fields:
+            parent_issue_url:
+              type: string
+              format: uri
+            parent_capability_id:
+              type: string | null
+            hard_predecessors:
+              type: list
+              items: string
+        confirmed_class:
+          type: enum
+          values: [must, should, could, later, unconfirmed]
+        quality_status:
+          type: string | null
+        publication_status:
+          type: enum
+          values: [unpublished, handed_off, published, partial, blocked]
+        issue_number:
+          type: integer | null
+          minimum: 1
+        issue_url:
+          type: string | null
+          format: uri
+  graph:
+    type: object | null
+    required: [status]
+    fields:
+      status:
+        type: string | null
+      handoff_schema:
+        type: string | null
+  prioritization:
+    type: object | null
+    required: [status]
+    fields:
+      status:
+        type: string | null
+      handoff_schema:
+        type: string | null
+      selected_unit_ids:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required:
+      - source
+      - task_scope
+      - orchestration_authorized
+      - publication_authorized
+      - exact_payload
+      - evidence
+    fields:
+      source:
+        type: enum
+        values: [task_intent, user_approval, repository_policy]
+      task_scope:
+        type: string
+      orchestration_authorized:
+        type: boolean
+      publication_authorized:
+        type: boolean
+      exact_payload:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, phase, description, status, evidence]
+      fields:
+        id:
+          type: string
+        phase:
+          type: string
+        description:
+          type: string
+        status:
+          type: enum
+          values: [open, resolved, deferred, unknown]
+        evidence:
+          type: list
+          items: string
+        next_step:
+          type: string | null
+  next_user_action:
+    type: string
+  evidence:
+    type: list
+    items:
+      type: object
+      required: [source, reference, observed]
+      fields:
+        source:
+          type: enum
+          values: [github, git, handoff, user_decision, repository_policy]
+        reference:
+          type: string
+        observed:
+          type: string
+  failure:
+    type: object | null
+    required: [code, message, phase, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - parent_blocked
+          - interview_blocked
+          - decomposition_blocked
+          - atomicity_blocked
+          - graph_blocked
+          - prioritization_blocked
+          - review_blocked
+          - approval_missing
+          - publication_blocked
+          - verification_failure
+      message:
+        type: string
+      phase:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  metadata:
+    type: object
+    required: [started_at, completed_at, conversation_language]
+    fields:
+      started_at:
+        type: string | null
+        format: iso-8601
+      completed_at:
+        type: string | null
+        format: iso-8601
+      conversation_language:
+        type: string
+invariants:
+  - The run identifies exactly one repository and one parent issue.
+  - The parent issue is never reported as overwritten, closed, or replaced.
+  - drafts_ready requires a reviewed draft set and publication_authorized equal to false.
+  - publication_handed_off requires explicit user approval of the exact draft set and verified create results for every approved draft.
+  - Orchestration authorization never implies publication authorization.
+  - too-large and over-fragmented units never appear as published drafts.
+  - Missing, stale, unavailable, or ambiguous evidence is preserved and never converted into success.

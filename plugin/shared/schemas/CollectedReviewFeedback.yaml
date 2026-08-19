@@ -1,0 +1,219 @@
+schema: CollectedReviewFeedback
+version: 1
+description: Read-only grouped pull-request review feedback, discussion states, actionable comments, and failed or missing required checks for follow-up work.
+required:
+  - status
+  - pull_request
+  - sources
+  - groups
+  - uncertainties
+  - summary
+  - metadata
+  - unavailable_fields
+  - failure
+fields:
+  status:
+    type: enum
+    values: [collected, partial, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url, head_sha]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      head_sha:
+        type: string | null
+  sources:
+    type: object
+    required: [discussions, classified_findings, checks]
+    fields:
+      discussions:
+        type: object
+        required: [status, evidence, unavailable_fields]
+        fields:
+          status:
+            type: enum
+            values: [loaded, partial, blocked, unavailable, not_supplied]
+          evidence:
+            type: list
+            items: string
+          unavailable_fields:
+            type: list
+            items: string
+      classified_findings:
+        type: object
+        required: [status, evidence, unavailable_fields]
+        fields:
+          status:
+            type: enum
+            values: [classified, partial, blocked, unavailable, not_supplied]
+          evidence:
+            type: list
+            items: string
+          unavailable_fields:
+            type: list
+            items: string
+      checks:
+        type: object
+        required: [status, evidence, unavailable_fields]
+        fields:
+          status:
+            type: enum
+            values: [inspected, partial, blocked, unavailable, not_supplied]
+          evidence:
+            type: list
+            items: string
+          unavailable_fields:
+            type: list
+            items: string
+  groups:
+    type: list
+    items:
+      type: object
+      required: [id, kind, problem_core, status, items, evidence, confidence]
+      fields:
+        id:
+          type: string
+        kind:
+          type: enum
+          values: [review, check, mixed]
+        problem_core:
+          type: string
+        status:
+          type: enum
+          values: [open, resolved, outdated, addressed]
+        items:
+          type: list
+          items:
+            type: object
+            required: [id, source_kind, status, summary, evidence, confidence]
+            fields:
+              id:
+                type: string
+              source_kind:
+                type: enum
+                values: [review_thread, request_changes_finding, review_comment, conversation_comment, check]
+              status:
+                type: enum
+                values: [open, resolved, outdated, addressed]
+              summary:
+                type: string
+              body:
+                type: string | null
+              location:
+                type: object | null
+                required: [path, start_line, line, side]
+                fields:
+                  path:
+                    type: string
+                  start_line:
+                    type: integer | null
+                  line:
+                    type: integer | null
+                  side:
+                    type: enum
+                    values: [LEFT, RIGHT, unknown]
+              check:
+                type: object | null
+                fields:
+                  name:
+                    type: string
+                  result:
+                    type: enum
+                    values: [fail, missing]
+                  raw_status:
+                    type: string | null
+                  raw_conclusion:
+                    type: string | null
+                  head_sha:
+                    type: string | null
+                  failure_summary:
+                    type: string | null
+              references:
+                type: list
+                items: string
+              evidence:
+                type: list
+                items: string
+              requested_correction:
+                type: string | null
+              confidence:
+                type: enum
+                values: [high, medium, low]
+        evidence:
+          type: list
+          items: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required: [id, question, evidence, verification]
+      fields:
+        id:
+          type: string
+        question:
+          type: string
+        evidence:
+          type: list
+          items: string
+        verification:
+          type: string
+  summary:
+    type: object
+    required: [group_count, item_count, open_count, resolved_count, outdated_count, addressed_count, failed_check_count, missing_required_check_count]
+    fields:
+      group_count:
+        type: integer
+        minimum: 0
+      item_count:
+        type: integer
+        minimum: 0
+      open_count:
+        type: integer
+        minimum: 0
+      resolved_count:
+        type: integer
+        minimum: 0
+      outdated_count:
+        type: integer
+        minimum: 0
+      addressed_count:
+        type: integer
+        minimum: 0
+      failed_check_count:
+        type: integer
+        minimum: 0
+      missing_required_check_count:
+        type: integer
+        minimum: 0
+  metadata:
+    type: object | null
+    fields:
+      retrieved_at:
+        type: string | null
+        format: iso-8601
+  unavailable_fields:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: string
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean

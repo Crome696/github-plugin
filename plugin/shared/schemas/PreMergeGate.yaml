@@ -1,0 +1,156 @@
+schema: PreMergeGate
+version: 1
+description: Local, read-only snapshot binding one exact approved GitHub pull-request merge to current merge-readiness evidence and an explicit merge authorization.
+required:
+  - workspace
+  - pull_request
+  - expected_head_sha
+  - expected_base_sha
+  - merge
+  - authorization
+  - readiness
+  - written_at
+fields:
+  workspace:
+    type: object
+    required: [repository, path]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      path:
+        type: string
+        format: absolute-path
+  pull_request:
+    type: object
+    required: [repository, number, url, base_branch, head_branch]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      base_branch:
+        type: string
+      head_branch:
+        type: string
+  expected_head_sha:
+    type: string
+    format: full git commit SHA
+  expected_base_sha:
+    type: string
+    format: full git commit SHA
+  merge:
+    type: object
+    required: [method, delete_branch]
+    fields:
+      method:
+        type: enum
+        values: [merge, squash, rebase]
+      commit_title:
+        type: string | null
+      commit_message:
+        type: string | null
+      delete_branch:
+        type: boolean
+  authorization:
+    type: object
+    required:
+      - exact_target
+      - exact_merge_operation
+      - merge_authorized
+      - delete_branch_authorized
+      - source
+      - evidence
+    fields:
+      exact_target:
+        type: boolean
+      exact_merge_operation:
+        type: boolean
+      merge_authorized:
+        type: boolean
+      delete_branch_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, repository_policy]
+      evidence:
+        type: string
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+  readiness:
+    type: object
+    description: Complete version-2 MergeReadiness handoff captured for the exact pull request and expected head SHA.
+    required:
+      - schema
+      - version
+      - status
+      - repository
+      - pull_request
+      - head_sha
+      - base_branch
+      - mergeability
+      - blockers
+      - checks
+      - review_state
+      - issue_coverage
+      - evidence
+    fields:
+      schema:
+        type: string
+        const: MergeReadiness
+      version:
+        type: integer
+        const: 2
+      status:
+        type: enum
+        values: [ready]
+      repository:
+        type: string
+        format: owner/repository
+      pull_request:
+        type: object
+        required: [number, url]
+      head_sha:
+        type: string
+        format: full git commit SHA
+      base_branch:
+        type: string
+      mergeability:
+        type: enum
+        values: [mergeable]
+      blockers:
+        type: list
+        items:
+          type: object
+      checks:
+        type: list
+        items:
+          type: object
+      review_state:
+        type: object
+        required: [approval_count, change_request_count, evidence_status]
+      issue_coverage:
+        type: object
+        required: [status, evidence]
+      evidence:
+        type: object
+        required: [head_sha, status, sources]
+  written_at:
+    type: string
+    format: iso-8601
+invariants:
+  - The snapshot is local-only and is written immediately before one exact GitHub pull-request merge command; it never performs or authorizes a merge by itself.
+  - The hook must validate the complete version-2 MergeReadiness handoff and refresh the live pull-request, review, thread, approval, required-check, conflict, base, and issue evidence before allowing the merge.
+  - readiness.status is ready, readiness.head_sha equals expected_head_sha, and readiness evidence is complete and identity-matched; readiness never substitutes for explicit merge authorization.
+  - readiness.issue_coverage.status must be either `covered` or `waived`; when `waived`, the embedded `issue_coverage.waiver` object must be present and complete.
+  - authorization.exact_target, authorization.exact_merge_operation, and authorization.merge_authorized are true and cover the exact repository, pull request, head and base SHAs, base branch, method, commit metadata, and branch-deletion effect.
+  - A requested branch deletion requires authorization.delete_branch_authorized to be true; no branch is deleted implicitly.
+  - Any changed, missing, stale, unavailable, ambiguous, failed, pending, skipped, or unknown merge condition blocks without repairing the condition or rewriting the snapshot.

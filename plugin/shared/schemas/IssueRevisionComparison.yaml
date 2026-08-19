@@ -1,0 +1,422 @@
+schema: IssueRevisionComparison
+version: 1
+description: Evidence-based semantic comparison of an original GitHub issue and one rewritten revision.
+required:
+  - status
+  - original
+  - revision
+  - summary
+  - diff
+  - review_flags
+  - neutrality_note
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [compared, partial, blocked]
+  original:
+    type: object | null
+    required:
+      - source_type
+      - contract
+      - version
+      - identity
+      - title
+      - body_reference
+      - unavailable_fields
+    fields:
+      source_type:
+        type: enum
+        values: [loaded_issue, pasted_text]
+      contract:
+        type: string
+        constraints:
+          - LoadedIssue for a loaded issue; pasted_text for pasted content.
+      version:
+        type: integer | null
+        constraints:
+          - LoadedIssue sources use version 1.
+          - Pasted sources use null unless an explicit source contract version is supplied.
+      identity:
+        type: object | null
+        required: [repository, number, url]
+        fields:
+          repository:
+            type: string | null
+            format: owner/repository
+          number:
+            type: integer | null
+            minimum: 1
+          url:
+            type: string | null
+            format: uri
+      title:
+        type: string | null
+        constraints:
+          - Preserve the exact source title.
+      body_reference:
+        type: string | null
+        constraints:
+          - Use a short stable source pointer or a non-sensitive content digest; do not include unnecessary raw body text.
+      unavailable_fields:
+        type: list
+        items: string
+  revision:
+    type: object | null
+    required:
+      - source_type
+      - contract
+      - version
+      - identity
+      - title
+      - body_reference
+      - unavailable_fields
+    fields:
+      source_type:
+        type: enum
+        values: [issue_draft, rewritten_issue, pasted_text]
+      contract:
+        type: string
+        constraints:
+          - IssueDraft for an IssueDraft source; rewrite-issue for a rewrite result; pasted_text for pasted content.
+      version:
+        type: integer | null
+        constraints:
+          - IssueDraft sources use version 2.
+          - rewrite-issue and pasted sources use null or their explicitly supplied source version.
+      identity:
+        type: object | null
+        required: [repository, number, url]
+        fields:
+          repository:
+            type: string | null
+            format: owner/repository
+          number:
+            type: integer | null
+            minimum: 1
+          url:
+            type: string | null
+            format: uri
+      title:
+        type: string | null
+        constraints:
+          - Preserve the exact revision title.
+      body_reference:
+        type: string | null
+        constraints:
+          - Use a short stable source pointer or a non-sensitive content digest; do not include unnecessary raw body text.
+      unavailable_fields:
+        type: list
+        items: string
+  summary:
+    type: object
+    required:
+      - added
+      - removed
+      - modified
+      - unchanged
+      - material_change_count
+    fields:
+      added:
+        type: integer
+        minimum: 0
+      removed:
+        type: integer
+        minimum: 0
+      modified:
+        type: integer
+        minimum: 0
+      unchanged:
+        type: integer
+        minimum: 0
+      material_change_count:
+        type: integer
+        minimum: 0
+  diff:
+    type: object
+    required: [added, removed, modified, unchanged]
+    fields:
+      added:
+        type: list
+        items:
+          type: object
+          required:
+            - id
+            - category
+            - location
+            - original_text
+            - revision_text
+            - purpose
+            - potential_impact
+            - evidence
+            - certainty
+          fields:
+            id:
+              type: string
+              format: D-001
+            category:
+              type: enum
+              values:
+                - requirement
+                - acceptance_criterion
+                - scope
+                - constraint
+                - dependency
+                - assumption
+                - other
+            location:
+              type: object
+              required: [original, revision]
+              fields:
+                original:
+                  type: string | null
+                revision:
+                  type: string
+            original_text:
+              type: string | null
+            revision_text:
+              type: string
+            purpose:
+              type: string
+            potential_impact:
+              type: string
+            evidence:
+              type: list
+              items: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      removed:
+        type: list
+        items:
+          type: object
+          required:
+            - id
+            - category
+            - location
+            - original_text
+            - revision_text
+            - purpose
+            - potential_impact
+            - evidence
+            - certainty
+          fields:
+            id:
+              type: string
+              format: D-001
+            category:
+              type: enum
+              values:
+                - requirement
+                - acceptance_criterion
+                - scope
+                - constraint
+                - dependency
+                - assumption
+                - other
+            location:
+              type: object
+              required: [original, revision]
+              fields:
+                original:
+                  type: string
+                revision:
+                  type: string | null
+            original_text:
+              type: string
+            revision_text:
+              type: string | null
+            purpose:
+              type: string
+            potential_impact:
+              type: string
+            evidence:
+              type: list
+              items: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      modified:
+        type: list
+        items:
+          type: object
+          required:
+            - id
+            - category
+            - location
+            - original_text
+            - revision_text
+            - purpose
+            - potential_impact
+            - evidence
+            - certainty
+          fields:
+            id:
+              type: string
+              format: D-001
+            category:
+              type: enum
+              values:
+                - requirement
+                - acceptance_criterion
+                - scope
+                - constraint
+                - dependency
+                - assumption
+                - other
+            location:
+              type: object
+              required: [original, revision]
+              fields:
+                original:
+                  type: string
+                revision:
+                  type: string
+            original_text:
+              type: string
+            revision_text:
+              type: string
+            purpose:
+              type: string
+            potential_impact:
+              type: string
+            evidence:
+              type: list
+              items: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+      unchanged:
+        type: list
+        items:
+          type: object
+          required:
+            - id
+            - category
+            - location
+            - original_text
+            - revision_text
+            - purpose
+            - potential_impact
+            - evidence
+            - certainty
+          fields:
+            id:
+              type: string
+              format: D-001
+            category:
+              type: enum
+              values:
+                - requirement
+                - acceptance_criterion
+                - scope
+                - constraint
+                - dependency
+                - assumption
+                - other
+            location:
+              type: object
+              required: [original, revision]
+              fields:
+                original:
+                  type: string
+                revision:
+                  type: string
+            original_text:
+              type: string
+            revision_text:
+              type: string
+            purpose:
+              type: string
+            potential_impact:
+              type: string
+            evidence:
+              type: list
+              items: string
+            certainty:
+              type: enum
+              values: [evidenced, inferred, uncertain]
+  review_flags:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - kind
+        - severity
+        - summary
+        - evidence
+        - potential_impact
+        - certainty
+        - review_required
+      fields:
+        id:
+          type: string
+          format: F-001
+        kind:
+          type: enum
+          values:
+            - unintended_scope_change
+            - contradiction
+            - requirement_weakened
+            - requirement_strengthened
+            - identity_mismatch
+            - incomplete_source
+        severity:
+          type: enum
+          values: [blocker, major, minor, info]
+        summary:
+          type: string
+        evidence:
+          type: list
+          items: string
+        potential_impact:
+          type: string
+        certainty:
+          type: enum
+          values: [evidenced, inferred, uncertain]
+        review_required:
+          type: boolean
+  neutrality_note:
+    type: string
+    constraints:
+      - State that the result reports evidenced differences and does not rank the source versions without supporting evidence.
+  recommended_next_skill:
+    type: enum
+    values:
+      - rewrite-github-issue
+      - assess-issue-quality
+      - analyze-issue
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - blocked_source
+          - incomplete_source
+          - comparison_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - Original content is a version-1 LoadedIssue or explicitly supplied pasted text; revision content is a version-2 IssueDraft, a validated rewrite-issue result, or explicitly supplied pasted text.
+  - Compared and partial results contain validated non-null source title and body references; blocked results may use null source objects or content fields when the corresponding input is missing or unavailable.
+  - The exact source title and body are preserved as comparison evidence; no workspace, branch, label, comment, or metadata value is silently substituted.
+  - A null identity means that identity was not supplied; it never means that the source was matched to the current workspace.
+  - If both identities are explicit and differ, comparison may continue but an identity_mismatch review flag is required.
+  - "Every aligned semantic item appears in exactly one diff bucket: added, removed, modified, or unchanged."
+  - Added, removed, and modified entries explain observable purpose and potential impact; unchanged entries explicitly state that no semantic change was identified.
+  - Every material review flag is grounded in source evidence and distinguishes observed change from uncertain authorization or intent.
+  - Labels, comments, issue state, and publication metadata are not requirements unless the supplied issue text explicitly makes them requirements.
+  - The result contains no quality score or preferred_version field and does not claim that one version is better without evidence.
+  - Compared results have failure null; partial and blocked results have a non-null failure with the limitation or cause.

@@ -1,0 +1,163 @@
+schema: PullRequestIssueLink
+version: 1
+description: Read-only, evidence-backed relationship between exactly one Draft pull request and exactly one GitHub issue, including explicit closing-keyword intent without closing the issue.
+required:
+  - status
+  - repository
+  - issue
+  - pull_request
+  - linkage_kind
+  - closes_issue_on_merge
+  - keyword_text
+  - linked_issues
+  - evidence
+  - rationale
+  - blockers
+  - ambiguous_candidates
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [linked, ambiguous, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  issue:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      title:
+        type: string | null
+  pull_request:
+    type: object
+    required: [repository, base_branch, head_branch, draft]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      head_sha:
+        type: string | null
+      base_branch:
+        type: string
+      head_branch:
+        type: string
+      draft:
+        type: boolean
+  linkage_kind:
+    type: enum | null
+    values: [refs, fixes, closes, resolves]
+  closes_issue_on_merge:
+    type: boolean | null
+    constraints:
+      - True means GitHub's closing-keyword behavior is intended for a merge into the repository default branch; this handoff does not perform or verify closure.
+  keyword_text:
+    type: string | null
+    constraints:
+      - Exact English issue-reference fragment intended for the pull-request body.
+      - Uses neutral Refs unless verified close-on-merge intent requires a GitHub closing keyword.
+  linked_issues:
+    type: list
+    items:
+      type: object
+      required: [repository, number]
+      fields:
+        repository:
+          type: string
+          format: owner/repository
+        number:
+          type: integer
+          minimum: 1
+  evidence:
+    type: list
+    items: string
+  rationale:
+    type: string
+    constraints:
+      - English.
+      - Records the verified identities, relationship choice, closing intent, and limitations.
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [code, description, evidence]
+      fields:
+        code:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  ambiguous_candidates:
+    type: list
+    items:
+      type: object
+      required: [repository, number, evidence]
+      fields:
+        repository:
+          type: string
+          format: owner/repository
+        number:
+          type: integer
+          minimum: 1
+        url:
+          type: string | null
+          format: uri
+        title:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+  recommended_next_skill:
+    type: string | null
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - repository_mismatch
+          - pull_request_mismatch
+          - issue_mismatch
+          - ambiguous_issue
+          - conflicting_link
+          - closing_intent_unverified
+          - verification_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - A linked result identifies exactly one issue and exactly one Draft pull request in the same repository.
+  - linked_issues contains exactly the verified issue when status is linked, and never contains an inferred second issue.
+  - refs is neutral and never closes an issue on merge; fixes, closes, and resolves set closes_issue_on_merge to true only when close-on-merge intent is explicitly evidenced for a merge into the repository default branch.
+  - A repository convention or supplied instruction may select a closing keyword only when it also establishes that the verified issue should close after a successful merge.
+  - An issue number, branch name, filename, commit message, or unverified prose reference alone never establishes closing intent or a unique issue relationship.
+  - Multiple candidate issues, conflicting linked_issues data, or an existing closing keyword without verified close-on-merge intent produces ambiguous or blocked status and no usable closing keyword.
+  - "The skill is read-only: it never edits a pull-request body, closes an issue, merges a pull request, marks a pull request ready, or changes GitHub state."
+  - recommended_next_skill is advisory only and never authorizes or invokes a follow-up.

@@ -1,0 +1,118 @@
+schema: PrePrReadyGate
+version: 1
+description: >-
+  Local, read-only snapshot binding one exact authorized Ready-for-Review
+  transition and optional confirmed reviewer requests to a current open Draft
+  pull request, unique linked issue, expected head SHA, and independent
+  authorization before gh pr ready.
+required:
+  - workspace
+  - pull_request
+  - expected_head_sha
+  - is_draft
+  - linked_issue
+  - reviewers
+  - authorization
+  - written_at
+fields:
+  workspace:
+    type: object
+    required: [repository, path]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      path:
+        type: string
+        format: absolute-path
+  pull_request:
+    type: object
+    required: [repository, number, url, base_branch, head_branch]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      base_branch:
+        type: string
+      head_branch:
+        type: string
+  expected_head_sha:
+    type: string
+    format: full git commit SHA
+  is_draft:
+    type: boolean
+    const: true
+  linked_issue:
+    type: object
+    required: [repository, number, url, unique]
+    fields:
+      repository:
+        type: string
+        format: owner/repository
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      unique:
+        type: boolean
+        const: true
+  reviewers:
+    type: object
+    required: [add]
+    fields:
+      add:
+        type: list
+        items:
+          type: object
+          required: [kind, login]
+          fields:
+            kind:
+              type: enum
+              values: [user, team]
+            login:
+              type: string
+  authorization:
+    type: object
+    required:
+      - exact_target
+      - exact_ready_operation
+      - ready_authorized
+      - reviewers_authorized
+      - source
+      - evidence
+    fields:
+      exact_target:
+        type: boolean
+      exact_ready_operation:
+        type: boolean
+      ready_authorized:
+        type: boolean
+      reviewers_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, repository_policy]
+      evidence:
+        type: string
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+  written_at:
+    type: string
+    format: iso-8601
+invariants:
+  - The gate is local, read-only input to the host hook and never grants Ready-for-Review authority by itself.
+  - is_draft must be true and linked_issue.unique must be true for the exact repository, pull request, and expected head SHA.
+  - exact_target, exact_ready_operation, ready_authorized, and reviewers_authorized must all be true, including when reviewers.add is empty.
+  - The host hook allows only gh pr ready and, when reviewers.add is non-empty, the matching requested_reviewers API write for that exact identity.
+  - The hook never rewrites title, body, labels, reviewers beyond the authorized add set, or other pull-request metadata.

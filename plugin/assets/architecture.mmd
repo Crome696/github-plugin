@@ -1,0 +1,19 @@
+flowchart TD
+  GITHUB["GitHub Workflow Plugin<br/><br/>Issue → Planning → Implementation → Pull Request → Review → Merge"]
+
+  COMMANDS["Commands<br/><br/>Interactive entry points<br/>for user use cases"]
+  AGENTS["Workflow Agents<br/><br/>Issue · Preparation<br/>Delivery · Review · Integration<br/><br/>Workflow orchestration and dialogue"]
+
+  SKILLS["GitHub Skills<br/><br/>Issues<br/>Branches<br/>Worktrees<br/>Commits<br/>Pull Requests<br/>Reviews<br/>Merge"]
+
+  HOOKS["Hooks<br/><br/>Status validation<br/>Safety gates"]
+  RULES["GitHub Rules<br/><br/>Branch strategy<br/>Commit conventions<br/>Issue linkage<br/>Draft PR policy<br/>Merge policy<br/>Protection against destructive actions"]
+
+  EXTERNAL["External Project Capabilities<br/><br/>TypeScript · Angular · NestJS · NX · ModernUO<br/>Architecture · Testing · Security · Documentation<br/><br/>Loaded dynamically based on project context"]
+
+  GITHUB --> AGENTS
+  COMMANDS --> AGENTS
+  AGENTS --> SKILLS
+  SKILLS --> HOOKS
+  SKILLS --> RULES
+  AGENTS -. "resolves capabilities" .-> EXTERNAL

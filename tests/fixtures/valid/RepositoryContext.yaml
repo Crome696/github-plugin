@@ -1,0 +1,15 @@
+schema: RepositoryContext
+version: 1
+status: verified
+repository:
+  owner: owner-value
+  name: name-value
+  full_name: octo-org/widgets
+  url: https://github.com/octo-org/widgets
+git:
+  checkout_path: checkout_path-value
+  current_branch: current_branch-value
+  working_tree: clean
+remotes: []
+relevant_paths: []
+instructions: []

@@ -1,0 +1,33 @@
+schema: OpenReviewThreadAssessment
+version: 1
+status: clear
+pull_request:
+  repository: octo-org/widgets
+  number: 1
+  url: https://github.com/octo-org/widgets
+head_sha: head_sha-value
+threads: []
+summary:
+  thread_count: 1
+  open_count: 1
+  open_current_count: 1
+  open_outdated_count: 1
+  resolved_count: 1
+  unknown_count: 1
+  required_problem_count: 1
+  optional_discussion_count: 1
+  uncertain_count: 1
+sources:
+  discussions:
+    status: loaded
+    evidence: []
+    unavailable_fields: []
+uncertainties: []
+evidence:
+  status: complete
+  sources: []
+failure:
+  code: code-value
+  message: message-value
+  operation: operation-value
+  retryable: false

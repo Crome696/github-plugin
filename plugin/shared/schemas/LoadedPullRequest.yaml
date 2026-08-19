@@ -1,0 +1,371 @@
+schema: LoadedPullRequest
+version: 1
+description: Read-only GitHub pull-request snapshot for downstream diff, issue, check, and review workflows.
+required:
+  - status
+  - pull_request
+  - title
+  - body
+  - state
+  - is_draft
+  - author
+  - assignees
+  - labels
+  - milestone
+  - base
+  - head
+  - commits
+  - files
+  - checks
+  - reviews
+  - review_requests
+  - comments
+  - linked_issues
+  - metadata
+  - unavailable_fields
+  - failure
+fields:
+  status:
+    type: enum
+    values: [loaded, partial, blocked]
+  pull_request:
+    type: object
+    required: [repository, number, url]
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  title:
+    type: string | null
+    constraints:
+      - Preserve the exact title returned by GitHub.
+  body:
+    type: string | null
+    constraints:
+      - Preserve the exact body returned by GitHub, including empty strings.
+  state:
+    type: enum | null
+    values: [open, closed, merged]
+  is_draft:
+    type: boolean | null
+  author:
+    type: object | null
+    required: [login]
+    fields:
+      login:
+        type: string
+      name:
+        type: string | null
+      url:
+        type: string | null
+  assignees:
+    type: list | null
+    items:
+      type: object
+      required: [login]
+      fields:
+        login:
+          type: string
+        name:
+          type: string | null
+        url:
+          type: string | null
+  labels:
+    type: list | null
+    items:
+      type: object
+      required: [name]
+      fields:
+        name:
+          type: string
+        color:
+          type: string | null
+        description:
+          type: string | null
+        url:
+          type: string | null
+  milestone:
+    type: object | null
+    fields:
+      number:
+        type: integer | null
+      title:
+        type: string | null
+      state:
+        type: enum | null
+        values: [open, closed]
+      description:
+        type: string | null
+      due_on:
+        type: string | null
+        format: iso-8601
+      url:
+        type: string | null
+        format: uri
+  base:
+    type: object | null
+    fields:
+      ref:
+        type: string | null
+      sha:
+        type: string | null
+      repository:
+        type: string | null
+        format: owner/repository
+  head:
+    type: object | null
+    fields:
+      ref:
+        type: string | null
+      sha:
+        type: string | null
+      repository:
+        type: string | null
+        format: owner/repository
+  commits:
+    type: list | null
+    items:
+      type: object
+      required: [sha]
+      fields:
+        sha:
+          type: string
+        message_headline:
+          type: string | null
+          constraints:
+            - Preserve the exact commit message headline returned by GitHub.
+        message_body:
+          type: string | null
+          constraints:
+            - Preserve the exact commit message body returned by GitHub.
+        authors:
+          type: list | null
+        author:
+          type: object | null
+        committer:
+          type: object | null
+        authored_at:
+          type: string | null
+          format: iso-8601
+        committed_at:
+          type: string | null
+          format: iso-8601
+        url:
+          type: string | null
+          format: uri
+  files:
+    type: list | null
+    items:
+      type: object
+      required: [path]
+      fields:
+        path:
+          type: string
+        additions:
+          type: integer | null
+          minimum: 0
+        deletions:
+          type: integer | null
+          minimum: 0
+        change_type:
+          type: string | null
+        blob_url:
+          type: string | null
+          format: uri
+  checks:
+    type: list | null
+    items:
+      type: object
+      required: [name]
+      fields:
+        name:
+          type: string
+        context:
+          type: string | null
+        status:
+          type: string | null
+        conclusion:
+          type: string | null
+        details_url:
+          type: string | null
+          format: uri
+        workflow_name:
+          type: string | null
+        started_at:
+          type: string | null
+          format: iso-8601
+        completed_at:
+          type: string | null
+          format: iso-8601
+  reviews:
+    type: list | null
+    items:
+      type: object
+      required: [body, state]
+      fields:
+        id:
+          type: string | null
+        author:
+          type: object | null
+        body:
+          type: string
+          constraints:
+            - Preserve the exact review body returned by GitHub.
+        state:
+          type: enum
+          values: [APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING]
+        submitted_at:
+          type: string | null
+          format: iso-8601
+        commit_sha:
+          type: string | null
+        url:
+          type: string | null
+          format: uri
+  review_requests:
+    type: list | null
+    items:
+      type: object
+      required: [kind]
+      fields:
+        kind:
+          type: enum
+          values: [user, team]
+        login:
+          type: string | null
+        name:
+          type: string | null
+        slug:
+          type: string | null
+        url:
+          type: string | null
+          format: uri
+  comments:
+    type: list | null
+    items:
+      type: object
+      required: [body]
+      fields:
+        id:
+          type: string | null
+        author:
+          type: object | null
+        body:
+          type: string
+          constraints:
+            - Preserve the exact comment body returned by GitHub.
+        created_at:
+          type: string | null
+          format: iso-8601
+        updated_at:
+          type: string | null
+          format: iso-8601
+        url:
+          type: string | null
+          format: uri
+        is_minimized:
+          type: boolean | null
+  linked_issues:
+    type: list | null
+    items:
+      type: object
+      required: [repository, number, url, title, state]
+      fields:
+        repository:
+          type: string
+          format: owner/repository
+        number:
+          type: integer
+          minimum: 1
+        url:
+          type: string
+          format: uri
+        title:
+          type: string | null
+        state:
+          type: enum | null
+          values: [open, closed]
+        author:
+          type: object | null
+        relationship:
+          type: enum | null
+          values: [referenced, cross_referenced, closed_by, connected]
+  metadata:
+    type: object | null
+    fields:
+      node_id:
+        type: string | null
+      additions:
+        type: integer | null
+        minimum: 0
+      deletions:
+        type: integer | null
+        minimum: 0
+      changed_files:
+        type: integer | null
+        minimum: 0
+      mergeable:
+        type: enum | null
+        values: [mergeable, conflicts, unknown]
+      merge_state_status:
+        type: string | null
+      created_at:
+        type: string | null
+        format: iso-8601
+      updated_at:
+        type: string | null
+        format: iso-8601
+      closed_at:
+        type: string | null
+        format: iso-8601
+      merged_at:
+        type: string | null
+        format: iso-8601
+      merged_by:
+        type: object | null
+      retrieved_at:
+        type: string | null
+        format: iso-8601
+  unavailable_fields:
+    type: list
+    items: string
+    constraints:
+      - Use dot paths such as checks, reviews, or linked_issues.
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - invalid_pull_request_number
+          - repository_not_found
+          - pull_request_not_found
+          - inaccessible
+          - auth_unavailable
+          - api_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The snapshot is an immutable source reference for downstream workflows; consumers must not rewrite or reinterpret retrieved fields.
+  - Loaded status requires the primary pull-request payload and all requested fields to be retrieved.
+  - Partial status means the primary pull-request payload was retrieved but one or more requested fields are listed in unavailable_fields; failure describes the failed enrichment when an operation failed.
+  - Blocked status means the primary pull-request payload could not be retrieved; unavailable payload fields are null and failure is non-null.
+  - A populated field is a retrieved fact, never an inferred value or a rewritten pull-request field.
+  - The title, body, review bodies, comment bodies, and commit message parts preserve GitHub's returned text exactly, including whitespace and empty strings.
+  - An empty list means the field was retrieved and contains no entries; null means it was unavailable or not produced.
+  - Every unavailable field is listed in unavailable_fields using its output field path.
+  - failure is null for a complete loaded result and contains the mapped failure code for a partial enrichment failure or blocked primary load.
+  - Linked issues are returned only when GitHub link evidence was retrieved; no issue is inferred from pull-request body text alone.
+  - File entries contain file metadata only; a complete patch is not part of this snapshot and must not be fabricated.

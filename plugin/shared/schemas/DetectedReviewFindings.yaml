@@ -1,0 +1,282 @@
+schema: DetectedReviewFindings
+version: 1
+description: Read-only aggregation of pull-request diff, issue, check, discussion, and external-rule evidence into proposed review findings.
+required:
+  - status
+  - repository
+  - pull_request
+  - head_sha
+  - sources_evaluated
+  - capabilities_applied
+  - findings
+  - uncertainties
+  - summary
+  - recommended_next_skill
+  - failure
+  - detected_at
+fields:
+  status:
+    type: enum
+    values: [detected, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+  head_sha:
+    type: string | null
+  sources_evaluated:
+    type: list
+    items:
+      type: object
+      required: [kind, availability, evidence]
+      fields:
+        kind:
+          type: enum
+          values:
+            - diff_analysis
+            - issue_coverage
+            - checks
+            - discussions
+            - external_rules
+        input:
+          type: string | null
+        availability:
+          type: enum
+          values: [loaded, partial, blocked, unavailable, not_supplied]
+        evidence:
+          type: list
+          items: string
+        unavailable_fields:
+          type: list
+          items: string
+        limitation:
+          type: string | null
+        finding_count:
+          type: integer
+          minimum: 0
+          constraints:
+            - Counts findings after source-level aggregation, before content-level comparison with all findings and existing discussions.
+  capabilities_applied:
+    type: list
+    items:
+      type: object
+      required: [name, type, availability, applied, usage, evidence]
+      fields:
+        name:
+          type: string
+        type:
+          type: enum
+          values: [skill, rule, agent, tool, domain]
+        availability:
+          type: enum
+          values: [available, unavailable, unknown]
+        applied:
+          type: boolean
+        usage:
+          type: string
+        evidence:
+          type: string
+  findings:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - status
+        - category
+        - severity
+        - confidence
+        - location
+        - evidence
+        - impact
+        - recommendation
+        - verification
+        - sources
+      fields:
+        id:
+          type: string
+          format: F-001
+        status:
+          type: enum
+          values: [proposed]
+        category:
+          type: enum
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        severity:
+          type: enum
+          values: [blocker, major, minor, nit]
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        location:
+          type: object
+          required: [path]
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+            commit_sha:
+              type: string | null
+        evidence:
+          type: string
+          constraints:
+            - Identifies the observed behavior or material gap and every relevant source.
+            - Does not rely on an unverified assumption or a style preference without project evidence.
+        impact:
+          type: string
+        recommendation:
+          type: string
+        verification:
+          type: string
+        sources:
+          type: list
+          items:
+            type: enum
+            values:
+              - diff_analysis
+              - issue_coverage
+              - checks
+              - discussions
+              - external_rules
+        related_acceptance_criterion:
+          type: string | null
+        references:
+          type: list
+          items: string
+  uncertainties:
+    type: list
+    items:
+      type: object
+      required:
+        - id
+        - category
+        - statement
+        - evidence
+        - limitation
+        - confidence
+        - verification
+      fields:
+        id:
+          type: string
+          format: U-001
+        category:
+          type: enum
+          values:
+            - correctness
+            - architecture
+            - security
+            - performance
+            - maintainability
+            - tests
+            - documentation
+            - scope
+        statement:
+          type: string
+        evidence:
+          type: string
+        limitation:
+          type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+        verification:
+          type: string
+        location:
+          type: object | null
+          required: [path]
+          fields:
+            path:
+              type: string
+            start_line:
+              type: integer | null
+              minimum: 1
+            end_line:
+              type: integer | null
+              minimum: 1
+            side:
+              type: enum
+              values: [LEFT, RIGHT, unknown]
+        sources:
+          type: list
+          items:
+            type: enum
+            values:
+              - diff_analysis
+              - issue_coverage
+              - checks
+              - discussions
+              - external_rules
+  summary:
+    type: string
+  recommended_next_skill:
+    type: enum
+    values:
+      - analyze-pr-diff
+      - inspect-pr-checks
+      - load-pr-discussions
+      - load-linked-issue
+      - deduplicate-review-findings
+      - none
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_identity
+          - invalid_input
+          - unsupported_version
+          - source_unavailable
+          - source_conflict
+          - no_usable_source
+          - incomplete_source
+          - aggregation_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  detected_at:
+    type: string | null
+    format: iso-8601
+invariants:
+  - The aggregation is read-only and never publishes comments, reviews, change requests, approvals, merges, check reruns, or discussion updates.
+  - The result is tied to one verified repository, pull request, and head SHA; conflicting source identity blocks aggregation.
+  - Each finding has proposed status, category, severity, location, evidence, impact, recommendation, verification, and confidence and is not authorization for a ReviewDecision.
+  - Findings are created only from observed behavior, explicit issue requirements, exact required-check evidence, actionable unresolved discussion evidence, or applicable external rules with repository or path evidence.
+  - A style preference without project-specific evidence is not a finding.
+  - Failures or missing results become findings only for checks explicitly identified as required by retrieved branch-protection or ruleset evidence; pending and skipped checks are not failures.
+  - Resolved or outdated discussion threads do not create active findings; they may be used to deduplicate or qualify another source finding.
+  - Source-equivalent findings for the same problem and relevant location are merged, their source list is unioned, and the highest evidence-supported severity is retained; content-level comparison with all findings and existing threads belongs to DeduplicatedReviewFindings.
+  - Uncertainties preserve hypotheses, unavailable sources, and missing context separately from findings.
+  - Detected status requires every source kind to be represented in sources_evaluated, with absent optional inputs recorded as not_supplied and host capabilities checked; partial preserves usable evidence with material source limitations; blocked means no reliable detection is possible.

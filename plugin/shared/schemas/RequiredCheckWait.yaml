@@ -1,0 +1,160 @@
+schema: RequiredCheckWait
+version: 1
+description: Evidence-backed wait for required pull-request checks after a verified head push, reporting pass, fail, pending, skipped, and missing required outcomes without treating pending or unavailable policy evidence as a pass.
+required:
+  - status
+  - repository
+  - pull_request
+  - head_sha
+  - wait
+  - required_outcomes
+  - summary
+  - policy_evidence
+  - authorization
+  - blockers
+  - evidence
+  - failure
+fields:
+  status:
+    type: enum
+    values: [waiting, complete, timeout, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, head_branch, base_branch]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      head_branch:
+        type: string
+      base_branch:
+        type: string
+  head_sha:
+    type: string
+  wait:
+    type: object
+    required: [timeout_seconds, poll_interval_seconds, polls_attempted, pending_treated_as_pass]
+    fields:
+      started_at:
+        type: string | null
+        format: iso-8601
+      completed_at:
+        type: string | null
+        format: iso-8601
+      timeout_seconds:
+        type: integer
+        minimum: 1
+      poll_interval_seconds:
+        type: integer
+        minimum: 1
+      polls_attempted:
+        type: integer
+        minimum: 0
+      pending_treated_as_pass:
+        type: boolean
+  required_outcomes:
+    type: list
+    items:
+      type: object
+      required: [name, result, required, evidence]
+      fields:
+        name:
+          type: string
+        context:
+          type: string | null
+        result:
+          type: enum
+          values: [pass, fail, pending, skipped, missing]
+        required:
+          type: boolean
+        evidence:
+          type: list
+          items: string
+  summary:
+    type: object
+    required: [required_total, pass, fail, pending, skipped, missing]
+    fields:
+      required_total:
+        type: integer
+        minimum: 0
+      pass:
+        type: integer
+        minimum: 0
+      fail:
+        type: integer
+        minimum: 0
+      pending:
+        type: integer
+        minimum: 0
+      skipped:
+        type: integer
+        minimum: 0
+      missing:
+        type: integer
+        minimum: 0
+  policy_evidence:
+    type: object
+    required: [status, evidence]
+    fields:
+      status:
+        type: enum
+        values: [known, partial, unavailable]
+      evidence:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required: [source, task_scope, wait_authorized, evidence]
+    fields:
+      source:
+        type: string
+      task_scope:
+        type: string
+      wait_authorized:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, description, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  evidence:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: string
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - The wait identifies exactly one repository, pull request, and head SHA.
+  - pending, skipped, missing, and unavailable policy evidence never become pass.
+  - Optional checks are never counted as required.
+  - timeout, partial, and blocked results preserve limiting evidence and never claim all required checks passed.
+  - The wait never reruns checks, merges, publishes a review, or marks Ready-for-Review.

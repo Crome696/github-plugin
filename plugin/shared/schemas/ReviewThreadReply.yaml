@@ -1,0 +1,204 @@
+schema: ReviewThreadReply
+version: 2
+description: Exact, evidence-backed reply to one GitHub pull-request review-thread comment, using either direct approval or a narrowly scoped address-pr-feedback authorization, without resolving or otherwise modifying the thread.
+required:
+  - status
+  - repository
+  - pull_request
+  - thread
+  - head_sha
+  - response
+  - evidence
+  - approval
+  - feedback_authorization
+  - publication
+  - verification
+  - unavailable_fields
+  - failure
+fields:
+  status:
+    type: enum
+    values: [draft, approved, published, partial, blocked]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+  thread:
+    type: object
+    required: [id, parent_comment_id, is_resolved, is_outdated, state_approval]
+    fields:
+      id:
+        type: string
+      parent_comment_id:
+        type: string
+      parent_comment_url:
+        type: string | null
+        format: uri
+      parent_comment_body:
+        type: string | null
+      is_resolved:
+        type: boolean | null
+      is_outdated:
+        type: boolean | null
+      state_approval:
+        type: object
+        required: [resolved, outdated, evidence]
+        fields:
+          resolved:
+            type: boolean
+          outdated:
+            type: boolean
+          evidence:
+            type: string | null
+            constraints:
+              - Explicitly identifies approval to reply despite the retrieved resolved or outdated state.
+      path:
+        type: string | null
+      line:
+        type: integer | null
+        minimum: 1
+      side:
+        type: enum
+        values: [LEFT, RIGHT, unknown]
+  head_sha:
+    type: string
+  response:
+    type: string
+    constraints:
+      - Exact English response body presented for approval and publication.
+  evidence:
+    type: list
+    items:
+      type: object
+      required: [kind, reference, summary]
+      fields:
+        kind:
+          type: enum
+          values: [diff, commit, test, check, requirement, user_decision, thread]
+        reference:
+          type: string
+        summary:
+          type: string
+  approval:
+    type: object
+    required: [exact_payload, publication_authorized]
+    fields:
+      exact_payload:
+        type: boolean
+      publication_authorized:
+        type: boolean
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+      evidence:
+        type: string | null
+      task_scope:
+        type: string | null
+  feedback_authorization:
+    type: object
+    required: [mode, authorized, repository, pull_request_number, feedback_item_id, validation_reference, current_head_sha, evidence]
+    fields:
+      mode:
+        type: enum
+        values: [address_pr_feedback, not_applicable]
+      authorized:
+        type: boolean
+      repository:
+        type: string | null
+      pull_request_number:
+        type: integer | null
+      feedback_item_id:
+        type: string | null
+      validation_reference:
+        type: string | null
+      current_head_sha:
+        type: string | null
+      evidence:
+        type: list
+        items: string
+  publication:
+    type: object
+    required: [comment_id, comment_url, parent_comment_id, published_at]
+    fields:
+      comment_id:
+        type: string | null
+      comment_url:
+        type: string | null
+        format: uri
+      parent_comment_id:
+        type: string | null
+      published_at:
+        type: string | null
+        format: iso-8601
+      author:
+        type: string | null
+      effect:
+        type: enum
+        values: [thread_reply, none, unknown]
+  verification:
+    type: object
+    required: [target_match, thread_match, parent_match, body_match, publication_match, resolution_unchanged, evidence]
+    fields:
+      target_match:
+        type: enum
+        values: [pass, fail, unknown]
+      thread_match:
+        type: enum
+        values: [pass, fail, unknown]
+      parent_match:
+        type: enum
+        values: [pass, fail, unknown]
+      body_match:
+        type: enum
+        values: [pass, fail, unknown]
+      publication_match:
+        type: enum
+        values: [pass, fail, unknown]
+      resolution_unchanged:
+        type: enum
+        values: [pass, fail, unknown]
+      evidence:
+        type: list
+        items: string
+  unavailable_fields:
+    type: list
+    items: string
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, conflicting_identity, stale_state, insufficient_evidence, authentication_unavailable, api_failure, verification_incomplete]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+invariants:
+  - Exactly one repository, pull request, thread, parent comment, head SHA, and response are addressed.
+  - The response is composed only from supplied or freshly retrieved evidence; uncertainty is preserved instead of converted to a claim.
+  - A response explaining no change requires an evidenced reason or remains blocked as insufficiently supported.
+  - "Publication requires exact_payload: true and publication_authorized: true for direct invocation, or a valid feedback_authorization for the exact target, feedback item, current head SHA, and body."
+  - Immediately before publication, the live pull request, thread, parent relationship, and current head are refreshed.
+  - Publication uses a reply operation addressed to the approved parent comment; it never substitutes a top-level comment or review.
+  - A stale or ambiguous target blocks publication and never retargets or rewrites the approved response.
+  - A resolved or outdated thread requires explicit state-specific approval; a general publication approval does not authorize replying despite that state.
+  - Feedback-mode authorization is valid only for the named repository, pull request, feedback item, current head SHA, and exact response; it does not authorize thread resolution or any other mutation.
+  - An ambiguous write result is read back once before any further action and remains partial when exact verification is unavailable.
+  - Thread resolution, outdated state, comment editing, dismissal, minimization, and all unrelated GitHub or Git mutations are outside this contract.
+  - Published status requires verified target, thread, parent, body, publication effect, and unchanged-resolution evidence.
