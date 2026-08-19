@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   existsSync,
@@ -36,6 +37,18 @@ const fakeRunnerPath = join(runtimeDirectory, "fake-command-runner.mjs");
 const fakeExecFileShimPath = join(runtimeDirectory, "fake-execfile-shim.cjs");
 const runtimeTimeoutMs = 10_000;
 const fakeCommandTimeoutMs = 500;
+const stagedIndexFingerprintArgs = [
+  "diff",
+  "--cached",
+  "--raw",
+  "-z",
+  "--no-renames",
+  "--full-index",
+  "--abbrev=40",
+  "--no-ext-diff",
+  "--no-textconv",
+];
+const commitMessage = "Runtime oracle\n\nExecute generated project hooks.\n";
 const credentialsToRemove = [
   "GH_TOKEN",
   "GITHUB_TOKEN",
@@ -95,6 +108,17 @@ const runRealGit = (root: string, args: string[], environment: NodeJS.ProcessEnv
     timeout: runtimeTimeoutMs,
   });
 
+const runRealGitBuffer = (root: string, args: string[], environment: NodeJS.ProcessEnv) =>
+  execFileSync("git", ["-C", root, ...args], {
+    cwd: root,
+    env: environment,
+    encoding: null,
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: runtimeTimeoutMs,
+  });
+
+const sha256Bytes = (value: Buffer) => createHash("sha256").update(value).digest("hex");
+
 const createRepositoryAtRoot = (root: string): RuntimeContext => {
   const environment = isolatedEnvironment(root);
   execFileSync("git", ["init", "--initial-branch", "master", root], {
@@ -109,11 +133,17 @@ const createRepositoryAtRoot = (root: string): RuntimeContext => {
   const runtimeFileRelativePath = "runtime-oracle.txt";
   const runtimeFilePath = join(root, runtimeFileRelativePath);
   const bodyPath = join(root, "draft-pr-body.md");
+  const messageDirectory = mkdtempSync(join(tmpdir(), "cromesdk-commit-message-"));
+  const messagePath = join(messageDirectory, "message files", "runtime-commit-message.txt");
+  mkdirSync(dirname(messagePath), { recursive: true });
   const reviewPayloadPath = join(root, "review-payload.json");
   writeFileSync(join(root, "README.md"), "runtime-oracle baseline\n", "utf8");
   writeFileSync(runtimeFilePath, "runtime oracle fixture\n", "utf8");
   runRealGit(root, ["add", "README.md"], environment);
   runRealGit(root, ["commit", "-m", "runtime oracle baseline"], environment);
+  writeFileSync(messagePath, commitMessage, "utf8");
+  runRealGit(root, ["add", runtimeFileRelativePath], environment);
+  const stagedIndexDiff = runRealGitBuffer(root, stagedIndexFingerprintArgs, environment);
 
   const repository = "Crome696/github-plugin";
   const branch = "feature/runtime-oracle";
@@ -184,6 +214,9 @@ const createRepositoryAtRoot = (root: string): RuntimeContext => {
     issueNumber,
     issueUrl,
     bodyPath,
+    messageDirectory,
+    messagePath,
+    stagedIndexDiff,
     reviewPayloadPath,
     runtimeFilePath,
     runtimeFileRelativePath,
@@ -230,6 +263,7 @@ const createShims = (context: RuntimeContext) => {
 
 export const cleanupRuntimeRepository = (context: RuntimeContext) => {
   rmSync(context.repositoryRoot, { recursive: true, force: true });
+  rmSync(context.messageDirectory, { recursive: true, force: true });
 };
 
 export const createRuntimeContext = (): RuntimeContext => {
@@ -324,6 +358,21 @@ const removeGate = (context: RuntimeContext, hook: HookName) => {
 const gatePath = (context: RuntimeContext, hook: HookName) =>
   join(context.repositoryRoot, ".cursor", "hooks", "state", `${hook}.json`);
 
+export const mutateGate = (
+  context: RuntimeContext,
+  hook: HookName,
+  mutate: (gate: Record<string, unknown>) => void,
+) => {
+  const path = gatePath(context, hook);
+  const gate = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+  mutate(gate);
+  writeFileSync(path, JSON.stringify(gate, null, 2), "utf8");
+};
+
+export const overwriteCommitMessage = (context: RuntimeContext, value: string) => {
+  writeFileSync(context.messagePath, value, "utf8");
+};
+
 const cursorPayload = (command: string, cwd: string) => ({
   hook_event_name: "beforeShellExecution",
   command,
@@ -346,7 +395,7 @@ export const payloadFor = (
 export const commandFor = (context: RuntimeContext, hook: HookName): string => {
   switch (hook) {
     case "pre-commit":
-      return "git commit -m \"runtime oracle\"";
+      return `git -C "${context.repositoryRoot}" commit --cleanup=verbatim --file="${context.messagePath}"`;
     case "pre-pr-create":
       return `gh pr create --draft --repo ${context.repository} --base ${context.baseBranch} --head ${context.branch} --title \"Runtime Oracle\" --body-file draft-pr-body.md`;
     case "pre-review-submit":
@@ -444,7 +493,7 @@ const pullRequestIdentity = (context: RuntimeContext) => ({
 
 const preCommitGate = (context: RuntimeContext) => ({
   schema: "PreCommitGate",
-  version: 1,
+  version: 2,
   workspace: {
     repository: context.repository,
     path: context.repositoryRoot,
@@ -478,6 +527,18 @@ const preCommitGate = (context: RuntimeContext) => ({
     validation: {
       result_status: "passed",
       evidence: ["runtime fixture validation"],
+    },
+  },
+  commit_binding: {
+    message_file: {
+      path: context.messagePath,
+      sha256: sha256Bytes(Buffer.from(commitMessage, "utf8")),
+      byte_length: Buffer.byteLength(commitMessage, "utf8"),
+    },
+    staged_index: {
+      format: "git-diff-cached-raw-z-no-renames-full-index-abbrev-40-v1",
+      sha256: sha256Bytes(context.stagedIndexDiff),
+      byte_length: context.stagedIndexDiff.length,
     },
   },
   written_at: now(),
@@ -897,9 +958,35 @@ const gitIdentityRules = (context: RuntimeContext, includeBranch = true): ExactC
   ),
 ];
 
+const stagedDiffForMode = (context: RuntimeContext, mode: RuntimeMode): Buffer => {
+  const original = context.stagedIndexDiff;
+  const text = original.toString("utf8");
+  if (mode === "staged-path") {
+    return Buffer.from(text.replaceAll(context.runtimeFileRelativePath, "other-runtime-oracle.txt"), "utf8");
+  }
+  if (mode === "staged-mode") {
+    return Buffer.from(text.replace(":000000 100644", ":000000 100755"), "utf8");
+  }
+  if (mode === "staged-blob") {
+    const match = /(:\d{6} \d{6} [0-9a-f]{40} )([0-9a-f]{40})/.exec(text);
+    if (!match) throw new Error("The runtime staged diff did not contain a full blob id.");
+    return Buffer.from(text.replace(match[0], `${match[1]}${"f".repeat(40)}`), "utf8");
+  }
+  if (mode === "staged-deletion") {
+    const match = /:000000 100644 0{40} ([0-9a-f]{40})/.exec(text);
+    if (!match) throw new Error("The runtime staged diff did not contain the expected added file.");
+    return Buffer.from(
+      `:100644 000000 ${match[1]} ${"0".repeat(40)} D\0${context.runtimeFileRelativePath}\0`,
+      "utf8",
+    );
+  }
+  return original;
+};
+
 const preCommitStateRules = (
   context: RuntimeContext,
   state: "clean" | "unmerged" = "clean",
+  stagedDiff = context.stagedIndexDiff,
 ): ExactCommandRule[] => [
   ...["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "BISECT_LOG", "rebase-merge", "rebase-apply", "sequencer"].map(
     (marker) =>
@@ -911,8 +998,13 @@ const preCommitStateRules = (
   ),
   exact(
     "git",
+    ["-C", context.repositoryRoot, ...stagedIndexFingerprintArgs],
+    stagedDiff.toString("utf8"),
+  ),
+  exact(
+    "git",
     ["-C", context.repositoryRoot, "status", "--porcelain=v1", "--untracked-files=all", "-z"],
-    state === "clean" ? "?? runtime-oracle.txt\0" : "?? runtime-oracle.txt\0",
+    state === "clean" ? "A  runtime-oracle.txt\0" : "UU runtime-oracle.txt\0",
   ),
   exact("git", ["-C", context.repositoryRoot, "ls-files", "-u"], state === "unmerged" ? "100644 deadbeef\t1\truntime-oracle.txt\n" : ""),
   exact("git", ["-C", context.repositoryRoot, "show", ":runtime-oracle.txt"], "runtime oracle fixture\n"),
@@ -1219,8 +1311,12 @@ const rulesFor = (
     case "pre-commit":
       return [
         ...gitIdentityRules(context),
-        ...(mode === "allow" || mode === "unmerged-index"
-          ? preCommitStateRules(context, mode === "unmerged-index" ? "unmerged" : "clean")
+        ...(mode === "allow" || mode === "unmerged-index" || mode === "message-bytes" || mode === "message-source" || mode.startsWith("staged-")
+          ? preCommitStateRules(
+              context,
+              mode === "unmerged-index" ? "unmerged" : "clean",
+              stagedDiffForMode(context, mode),
+            )
           : []),
       ];
     case "pre-pr-create":

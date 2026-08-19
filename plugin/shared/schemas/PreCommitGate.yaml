@@ -1,10 +1,11 @@
 schema: PreCommitGate
-version: 1
-description: Local, read-only pre-commit gate snapshot binding one AI commit to a verified worktree, exact approved scope, complete validation evidence, and task-scoped authorization.
+version: 2
+description: Local, read-only pre-commit gate snapshot binding one AI commit to a verified worktree, exact approved scope, complete validation evidence, task-scoped authorization, exact commit-message bytes, and a complete staged-index fingerprint.
 required:
   - workspace
   - validation
   - commit_proposal
+  - commit_binding
   - written_at
 fields:
   workspace:
@@ -326,6 +327,37 @@ fields:
             type: string | null
       commit:
         type: object
+  commit_binding:
+    type: object
+    description: Exact commit message file and cached staged-index bytes captured by the gate owner immediately before the canonical commit invocation.
+    required: [message_file, staged_index]
+    fields:
+      message_file:
+        type: object
+        required: [path, sha256, byte_length]
+        fields:
+          path:
+            type: string
+            description: Absolute path to the approved message file.
+          sha256:
+            type: string
+            description: Lowercase SHA-256 digest of the complete message-file bytes.
+          byte_length:
+            type: integer
+            description: Exact byte length of the complete message-file bytes.
+      staged_index:
+        type: object
+        required: [format, sha256, byte_length]
+        fields:
+          format:
+            type: string
+            const: git-diff-cached-raw-z-no-renames-full-index-abbrev-40-v1
+          sha256:
+            type: string
+            description: Lowercase SHA-256 digest of the complete cached raw diff bytes.
+          byte_length:
+            type: integer
+            description: Exact byte length of the cached raw diff bytes.
   written_at:
     type: string
     format: iso-8601
@@ -333,8 +365,12 @@ invariants:
   - The snapshot is written only after read-only validation and before the final status check.
   - workspace and validation.workspace identify the same repository, absolute worktree, branch, and pre-commit HEAD.
   - commit_proposal is status approved, has exact scope and commit authorization, and has no verified commit result.
+  - The only permitted invocation is one standalone direct command of the form git -C <verified-worktree> commit --cleanup=verbatim --file=<approved-message-file>; wrappers, shell segments, redirection, pathspecs, alternate message sources, and additional options fail closed.
+  - The approved message-file bytes must match the commit proposal exactly, including the deterministic trailing newline, byte length, and SHA-256 digest.
+  - The cached staged-index bytes must match the recorded git-diff-cached-raw-z-no-renames-full-index-abbrev-40-v1 byte length and SHA-256 digest, and its paths and change types must match the approved file categories exactly.
   - The approved file union is non-empty, repository-relative, duplicate-free, and free of path traversal or NUL characters.
   - Validation status passed requires aligned scope, no unexpected changes, no blockers, no unreviewed deviations, passed completion and acceptance criteria, passed required checks, and a true commit-preparation readiness flag.
   - The hook reads this snapshot and Git state only; it never creates, edits, stages, restores, resets, cleans, or deletes anything.
   - Hook state is local-only and must never enter the commit scope.
   - Evidence and hook output must not contain secrets, tokens, private keys, or credential-bearing values.
+  - Version-1 PreCommitGate snapshots are incompatible with this hook and must fail closed; a fresh version-2 snapshot is required.

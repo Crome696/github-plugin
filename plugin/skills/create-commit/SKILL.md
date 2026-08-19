@@ -29,11 +29,13 @@ rewrite, or approve the proposal.
 - Do not bypass hooks with `--no-verify` or equivalent flags.
 - Do not expose or commit secrets, tokens, private keys, credential-bearing
   values, `.env` contents, or other confidential data.
-- Before the final status check, write one local version-1 `PreCommitGate`
+- Before the final status check, write one local version-2 `PreCommitGate`
   snapshot to `.cursor/hooks/state/pre-commit.json` containing the exact
   approved `CommitProposal`, the complete current `ValidationResult`, the
-  verified worktree identity, and the pre-commit `HEAD`. The hook state path
-  is ignored and must never be staged.
+  verified worktree identity, the pre-commit `HEAD`, the exact approved
+  message-file bytes, and the complete cached staged-index fingerprint. The
+  hook state path is ignored and must never be staged. Version-1 snapshots
+  fail closed and must be regenerated as version 2.
 - A normal commit uses the existing task-scoped delivery authorization and
   does not ask for a second conversational approval. A repository instruction
   may explicitly re-enable an interactive commit gate for its scope.
@@ -168,12 +170,12 @@ unstage or clean automatically; report the exact diagnostic state.
 After the cached scope and whitespace checks pass, write exactly one
 repository-local, ignored JSON snapshot at
 `.cursor/hooks/state/pre-commit.json`. Create the ignored state directory only
-when it does not exist. The snapshot must have this version-1 shape:
+when it does not exist. The snapshot must have this version-2 shape:
 
 ```json
 {
   "schema": "PreCommitGate",
-  "version": 1,
+  "version": 2,
   "workspace": {
     "repository": "<verified owner/repository>",
     "path": "<verified absolute worktree path>",
@@ -182,6 +184,18 @@ when it does not exist. The snapshot must have this version-1 shape:
   },
   "validation": "<the complete current ValidationResult object>",
   "commit_proposal": "<the exact approved CommitProposal with an empty commit result>",
+  "commit_binding": {
+    "message_file": {
+      "path": "<absolute temporary message-file path>",
+      "sha256": "<SHA-256 of the complete message-file bytes>",
+      "byte_length": 0
+    },
+    "staged_index": {
+      "format": "git-diff-cached-raw-z-no-renames-full-index-abbrev-40-v1",
+      "sha256": "<SHA-256 of the cached raw staged-index bytes>",
+      "byte_length": 0
+    }
+  },
   "written_at": "<current ISO-8601 timestamp>"
 }
 ```
@@ -189,7 +203,11 @@ when it does not exist. The snapshot must have this version-1 shape:
 The `workspace`, `validation.workspace`, and `commit_proposal` identities must
 agree. `validation` must be the complete current handoff, not a summary or
 only its `result_status`; `commit_proposal` must remain `status: approved` and
-must contain the exact repository-relative path union and authorization. Do not
+must contain the exact repository-relative path union and authorization. The
+message file must contain the approved subject, two newline characters when a
+body is present, the approved body, and exactly one trailing newline. The
+staged-index digest must be captured from the exact format named in the
+snapshot and must be recomputed immediately before commit preparation. Do not
 put secrets, tokens, private keys, `.env` contents, or credential-bearing
 values into the snapshot. If the snapshot cannot be written or verified as
 valid JSON, return `status: blocked` and leave the index and files unchanged.
@@ -218,12 +236,17 @@ message file.
 Construct one temporary message file from the approved fields only before the
 immediate pre-commit status check:
 
-- when `message.body` is empty, the file contains exactly `message.subject`;
+- when `message.body` is empty, the file contains exactly `message.subject` and
+  one trailing newline;
 - otherwise, it contains `message.subject`, two newline characters, and
-  `message.body`.
+  `message.body`, followed by one trailing newline.
 
-Do not add a trailing explanation, generated metadata, or trailer. Use the
-message file with Git's verbatim cleanup and leave normal hooks enabled:
+Do not add a trailing explanation, generated metadata, or trailer. The only
+permitted command is one standalone direct invocation with the verified
+worktree and exact message file; wrappers, pipelines, redirection, command
+substitution, pathspecs, alternate message sources, and additional options
+are denied by the hook. Use the message file with Git's verbatim cleanup and
+leave normal hooks enabled:
 
 ```text
 git -C <worktree_path> commit --cleanup=verbatim --file=<exact-message-file>

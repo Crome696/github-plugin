@@ -14,7 +14,9 @@ import {
   executeProjectedHook,
   irrelevantCommandFor,
   malformedCommandFor,
+  mutateGate,
   overwriteGeneratedEntrypoint,
+  overwriteCommitMessage,
   payloadFor,
   prepareRuntimeMode,
   redirectGeneratedRoute,
@@ -206,6 +208,109 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
         );
         assertRuntimeResponse(mismatched, false);
         assertNoUnexpectedFakeCommands(context);
+      }
+    });
+  }, 30_000);
+
+  it("binds pre-commit to the exact command, message bytes, and staged index on both hosts", () => {
+    withRuntimeRepository((context) => {
+      const approvedMessage = readFileSync(context.messagePath, "utf8");
+      const canonicalCommand = commandFor(context, "pre-commit");
+
+      for (const host of hosts) {
+        prepareRuntimeMode(context, "pre-commit", "allow");
+        const allowed = executeProjectedHook(
+          context,
+          host,
+          "pre-commit",
+          "allow",
+          payloadFor(host, canonicalCommand, context.repositoryRoot),
+        );
+        assertRuntimeResponse(allowed, true);
+        assertNoUnexpectedFakeCommands(context);
+
+        prepareRuntimeMode(context, "pre-commit", "message-source");
+        const alternateSource = executeProjectedHook(
+          context,
+          host,
+          "pre-commit",
+          "message-source",
+          payloadFor(
+            host,
+            canonicalCommand.replace(context.messagePath, context.bodyPath),
+            context.repositoryRoot,
+          ),
+        );
+        assertRuntimeResponse(alternateSource, false);
+        assertNoUnexpectedFakeCommands(context);
+
+        prepareRuntimeMode(context, "pre-commit", "message-bytes");
+        overwriteCommitMessage(context, "Runtime oracle\n\nUnexpected message bytes.\n");
+        const alteredMessage = executeProjectedHook(
+          context,
+          host,
+          "pre-commit",
+          "message-bytes",
+          payloadFor(host, canonicalCommand, context.repositoryRoot),
+        );
+        assertRuntimeResponse(alteredMessage, false);
+        expect(`${alteredMessage.stdout}\n${alteredMessage.stderr}`).not.toContain("Unexpected message bytes.");
+        assertNoUnexpectedFakeCommands(context);
+        overwriteCommitMessage(context, approvedMessage);
+
+        prepareRuntimeMode(context, "pre-commit", "allow");
+        mutateGate(context, "pre-commit", (gate) => {
+          const binding = gate.commit_binding as Record<string, unknown>;
+          const messageFile = binding.message_file as Record<string, unknown>;
+          messageFile.sha256 = "0".repeat(64);
+        });
+        const alteredBinding = executeProjectedHook(
+          context,
+          host,
+          "pre-commit",
+          "allow",
+          payloadFor(host, canonicalCommand, context.repositoryRoot),
+        );
+        assertRuntimeResponse(alteredBinding, false);
+        assertNoUnexpectedFakeCommands(context);
+
+        for (const mode of ["staged-path", "staged-mode", "staged-blob", "staged-deletion"] as const) {
+          prepareRuntimeMode(context, "pre-commit", mode);
+          const alteredIndex = executeProjectedHook(
+            context,
+            host,
+            "pre-commit",
+            mode,
+            payloadFor(host, canonicalCommand, context.repositoryRoot),
+          );
+          assertRuntimeResponse(alteredIndex, false);
+          assertNoUnexpectedFakeCommands(context);
+        }
+
+        for (const command of [
+          `${canonicalCommand} && echo unsupported`,
+          `echo unsupported && ${canonicalCommand}`,
+          `${canonicalCommand} | echo unsupported`,
+          `${canonicalCommand} > commit-output.txt`,
+          `env ${canonicalCommand}`,
+          `git -C "$(pwd)" commit --cleanup=verbatim --file="${context.messagePath}"`,
+          `${canonicalCommand} -- runtime-oracle.txt`,
+          `${canonicalCommand.replace("--cleanup=verbatim", "--cleanup=strip")}`,
+        ]) {
+          prepareRuntimeMode(context, "pre-commit", "allow");
+          const deniedCommand = executeProjectedHook(
+            context,
+            host,
+            "pre-commit",
+            "allow",
+            payloadFor(host, command, context.repositoryRoot),
+          );
+          assertRuntimeResponse(deniedCommand, false);
+          expect(`${deniedCommand.stdout}\n${deniedCommand.stderr}`).not.toContain(
+            "Execute generated project hooks.",
+          );
+          assertNoUnexpectedFakeCommands(context);
+        }
       }
     });
   }, 30_000);

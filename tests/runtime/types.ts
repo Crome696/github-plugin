@@ -19,6 +19,12 @@ export type RuntimeMode =
   | "mismatched-gate"
   | "malformed-gate"
   | "unmerged-index"
+  | "message-bytes"
+  | "message-source"
+  | "staged-path"
+  | "staged-mode"
+  | "staged-blob"
+  | "staged-deletion"
   | "active-operation"
   | "cli-failure"
   | "cli-invalid-json"
@@ -38,6 +44,9 @@ export interface RuntimeContext {
   issueNumber: number;
   issueUrl: string;
   bodyPath: string;
+  messageDirectory: string;
+  messagePath: string;
+  stagedIndexDiff: Buffer;
   reviewPayloadPath: string;
   runtimeFilePath: string;
   runtimeFileRelativePath: string;

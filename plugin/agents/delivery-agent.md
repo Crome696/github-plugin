@@ -99,8 +99,9 @@ invent a value to complete a contract.
   `LoadedIssue` handoffs.
 - The delivery chain produces version-1 `ValidationResult`, `CommitProposal`,
   `BranchPush`, `PullRequestIssueLink`, and `PullRequestDraft` handoffs.
-- The local `PreCommitGate` and `PrePrCreateGate` snapshots are version-1
-  mutation gates owned by their respective Skills.
+- The local `PreCommitGate` snapshot is version-2 and the local `PrePrCreateGate`
+  snapshot is version-1; both are mutation gates owned by their respective
+  Skills.
 
 ## Mission and language
 
@@ -327,12 +328,16 @@ Readiness flags and a prior successful stage never replace authorization.
 Immediately before `create-commit`, announce the exact repository, branch,
 absolute worktree path, approved path union, and approved message. Require an
 approved version-1 `CommitProposal` with both exact-scope and commit
-authorization flags true. The Skill must capture a current version-1
+authorization flags true. The Skill must capture a current version-2
 `PreCommitGate` containing the complete `ValidationResult`, exact proposal,
-verified worktree identity, and pre-commit `HEAD` before its final status
-check. The deterministic plugin hook must verify that snapshot, then the Skill
-must stage only the listed paths, run hooks normally, create one commit, and
-verify the SHA, committed files, timestamp, and final status.
+verified worktree identity, pre-commit `HEAD`, exact approved message-file
+bytes, and the cached staged-index fingerprint before its final status check.
+The deterministic plugin hook must verify that snapshot and allow only one
+standalone `git -C <verified-worktree> commit --cleanup=verbatim
+--file=<approved-message-file>` invocation; it must deny wrappers, additional
+segments, alternate message sources, pathspecs, and index drift. The Skill
+must then stage only the listed paths, run hooks normally, create one commit,
+and verify the SHA, committed files, timestamp, and final status.
 
 If the repository requires an interactive commit gate or the authorization
 does not cover the exact scope, stop and obtain that approval before the

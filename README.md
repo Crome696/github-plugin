@@ -20,7 +20,7 @@ plugin lives in [`plugin/`](plugin/); the contract and scenario tests live in
 | Snapshot | Value |
 | --- | --- |
 | Status | Standalone workflow plugin |
-| Version | `0.3.105` |
+| Version | `0.3.106` |
 | License | MIT |
 | Plugin name | `github` |
 | Marketplace name | `github-plugin` |
@@ -117,7 +117,7 @@ npm run generate-project-hooks
 The script invokes the installable generator at
 `plugin/hooks/generate-project-hooks.mjs`.
 
-When changing plugin identity, keep version `0.3.105` synchronized across the
+When changing plugin identity, keep version `0.3.106` synchronized across the
 four manifests under `plugin/` and the three root Marketplace manifests. When
 changing a Skill, Agent, Command, Rule, Hook, or Shared Contract, update the
 corresponding plugin inventory and run the typecheck and full test suite.
