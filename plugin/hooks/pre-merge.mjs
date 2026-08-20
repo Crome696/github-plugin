@@ -31,7 +31,7 @@ function isNonEmptyString(value) {
 }
 
 function isSha(value) {
-  return typeof value === "string" && /^[0-9a-f]{40,64}$/i.test(value);
+  return typeof value === "string" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(value);
 }
 
 function isIsoTimestamp(value) {
@@ -1057,6 +1057,135 @@ function validatePullRequest(pullRequest, findings) {
   return pullRequest;
 }
 
+function validatePreflight(preflight, gate, findings) {
+  if (!isRecord(preflight)) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight is missing or malformed.",
+      "write a fresh version-3 gate with the final live merge preflight",
+    );
+    return null;
+  }
+
+  if (!isIsoTimestamp(preflight.checked_at)) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight.checked_at is missing or malformed.",
+      "record the timestamp of the final live merge preflight",
+    );
+  }
+  if (
+    !validateRepositoryName(preflight.repository) ||
+    normalizeRepository(preflight.repository) !==
+      normalizeRepository(gate.pull_request.repository)
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight.repository does not match the approved repository.",
+      "preserve the exact live repository identity in the final preflight",
+    );
+  }
+  if (
+    preflight.pull_request_number !== gate.pull_request.number ||
+    !Number.isInteger(preflight.pull_request_number) ||
+    preflight.pull_request_number < 1
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight.pull_request_number does not match the approved PR.",
+      "preserve the exact live pull-request number in the final preflight",
+    );
+  }
+  if (
+    !isHttpUrl(preflight.pull_request_url) ||
+    normalizeUrl(preflight.pull_request_url) !==
+      normalizeUrl(gate.pull_request.url)
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight.pull_request_url does not match the approved PR.",
+      "preserve the exact live pull-request URL in the final preflight",
+    );
+  }
+  if (
+    !isSafeBranchName(preflight.head_branch) ||
+    preflight.head_branch !== gate.pull_request.head_branch
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight.head_branch does not match the approved head branch.",
+      "preserve the exact live head branch in the final preflight",
+    );
+  }
+  if (
+    !isSha(preflight.live_head_sha) ||
+    preflight.live_head_sha.toLowerCase() !== gate.expected_head_sha.toLowerCase()
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight.live_head_sha does not match the expected head.",
+      "refresh the final preflight for the exact pull-request head",
+    );
+  }
+  if (
+    !isSha(preflight.live_base_sha) ||
+    preflight.live_base_sha.toLowerCase() !== gate.expected_base_sha.toLowerCase()
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight.live_base_sha does not match the expected base.",
+      "refresh the final preflight for the exact base revision",
+    );
+  }
+  if (
+    !isSafeBranchName(preflight.base_branch) ||
+    preflight.base_branch !== gate.pull_request.base_branch
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight.base_branch does not match the approved base branch.",
+      "preserve the exact live base branch in the final preflight",
+    );
+  }
+
+  const requiredPassFields = [
+    "target_match",
+    "open_state",
+    "non_draft",
+    "head_sha_match",
+    "base_branch_match",
+    "base_sha_match",
+    "mergeability",
+    "reviews_current",
+    "checks_current",
+    "method_allowed",
+    "authorization_match",
+  ];
+  for (const field of requiredPassFields) {
+    if (preflight[field] !== "pass") {
+      addFinding(
+        findings,
+        `PreMergeGate.preflight.${field} is not pass.`,
+        "repeat the final live preflight and stop when any merge identity or policy state is changed or unavailable",
+      );
+    }
+  }
+
+  if (
+    !Array.isArray(preflight.evidence) ||
+    preflight.evidence.length === 0 ||
+    !preflight.evidence.every((entry) => isNonEmptyString(entry))
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight.evidence is missing or incomplete.",
+      "preserve source and provenance evidence for the final live preflight",
+    );
+  }
+
+  return preflight;
+}
+
 function validateReadiness(readiness, gate, findings) {
   if (!isRecord(readiness)) {
     addFinding(
@@ -1223,7 +1352,9 @@ function validateReadiness(readiness, gate, findings) {
     reviewState.required_approvals < 0 ||
     reviewState.required_approvals_met !== true ||
     !Number.isInteger(reviewState.unresolved_threads) ||
-    reviewState.unresolved_threads < 0
+    reviewState.unresolved_threads < 0 ||
+    !Number.isInteger(reviewState.outdated_threads) ||
+    reviewState.outdated_threads < 0
   ) {
     addFinding(
       findings,
@@ -1236,13 +1367,6 @@ function validateReadiness(readiness, gate, findings) {
         findings,
         "PreMergeGate.readiness records an active change request.",
         "resolve the current change request and reassess readiness",
-      );
-    }
-    if (reviewState.unresolved_threads !== 0) {
-      addFinding(
-        findings,
-        "PreMergeGate.readiness records open review threads.",
-        "resolve or explicitly reassess every open blocking review thread",
       );
     }
     if (!Array.isArray(reviewState.approval_policy_evidence) || reviewState.approval_policy_evidence.length === 0) {
@@ -1536,6 +1660,135 @@ function validateReadiness(readiness, gate, findings) {
     }
 
     if (
+      isRecord(requiredChecks) &&
+      ["loaded", "empty"].includes(requiredChecks.status) &&
+      Array.isArray(requiredChecks.checks)
+    ) {
+      const summaryChecks = new Map(
+        Array.isArray(readiness.checks)
+          ? readiness.checks
+              .filter((check) => isRecord(check) && isNonEmptyString(check.name))
+              .map((check) => [check.name, check])
+          : [],
+      );
+      for (const check of requiredChecks.checks) {
+        if (
+          !isRecord(check) ||
+          !isNonEmptyString(check.name) ||
+          typeof check.required !== "boolean" ||
+          !["pass", "fail", "pending", "skipped", "unknown"].includes(check.result) ||
+          !Array.isArray(check.evidence) ||
+          check.evidence.length === 0 ||
+          !check.evidence.every((entry) => isNonEmptyString(entry))
+        ) {
+          addFinding(
+            findings,
+            "PreMergeGate.readiness.readiness_evidence contains an incomplete required-check policy record.",
+            "preserve the current required-check set, result, head, and evidence from S03",
+          );
+          continue;
+        }
+        if (
+          check.required === true &&
+          (check.result !== "pass" ||
+            !isSha(check.head_sha) ||
+            check.head_sha.toLowerCase() !== gate.expected_head_sha.toLowerCase())
+        ) {
+          addFinding(
+            findings,
+            `Current required check ${safeLabel(check.name)} is not a passing result for the approved head.`,
+            "refresh current required-check policy and outcomes before merging",
+          );
+        }
+        const summary = summaryChecks.get(check.name);
+        if (
+          !isRecord(summary) ||
+          summary.required !== check.required ||
+          summary.result !== check.result ||
+          (check.head_sha !== null &&
+            check.head_sha !== undefined &&
+            summary.head_sha !== check.head_sha)
+        ) {
+          addFinding(
+            findings,
+            `Readiness summary for required check ${safeLabel(check.name)} differs from the current policy snapshot.`,
+            "rebuild MergeReadiness from the same final S03 snapshot",
+          );
+        }
+      }
+    }
+
+    if (
+      isRecord(approvals) &&
+      ["loaded", "empty"].includes(approvals.status) &&
+      Number.isInteger(approvals.required_approvals) &&
+      Array.isArray(approvals.approvals) &&
+      Array.isArray(approvals.dismissals) &&
+      Array.isArray(approvals.change_requests)
+    ) {
+      if (
+        !approvals.approvals.every(isRecord) ||
+        !approvals.dismissals.every(isRecord) ||
+        !approvals.change_requests.every(isRecord)
+      ) {
+        addFinding(
+          findings,
+          "The current approval policy snapshot contains malformed approval, dismissal, or change-request records.",
+          "reload complete normalized approval evidence from S03",
+        );
+      }
+      if (
+        approvals.approvals.some(
+          (approval) =>
+            approval.dismissed === true ||
+            approval.current_for_head === false ||
+            approval.qualifying_approval === false,
+        )
+      ) {
+        addFinding(
+          findings,
+          "The current approval policy snapshot includes a dismissed, stale, or non-qualifying approval.",
+          "rebuild the effective approval list from current non-dismissed reviews",
+        );
+      }
+      if (approvals.change_requests.some((request) => request.active === false)) {
+        addFinding(
+          findings,
+          "The current approval policy snapshot includes a non-active change request in its active list.",
+          "rebuild the active change-request list from current review evidence",
+        );
+      }
+      if (approvals.change_requests.length > 0) {
+        addFinding(
+          findings,
+          "The current approval policy snapshot records active change requests.",
+          "resolve current change requests and rebuild the final S03 snapshot",
+        );
+      }
+      if (approvals.approvals.length < approvals.required_approvals) {
+        addFinding(
+          findings,
+          "The current approval policy snapshot does not meet its required approval threshold.",
+          "obtain the current required approvals and rebuild the final S03 snapshot",
+        );
+      }
+      if (
+        isRecord(reviewState) &&
+        (reviewState.required_approvals !== approvals.required_approvals ||
+          reviewState.approval_count !== approvals.approvals.length ||
+          reviewState.change_request_count !== approvals.change_requests.length ||
+          reviewState.required_approvals_met !==
+            (approvals.approvals.length >= approvals.required_approvals))
+      ) {
+        addFinding(
+          findings,
+          "Stored review summary differs from the current approval policy snapshot.",
+          "rebuild MergeReadiness from the same final S03 approval evidence",
+        );
+      }
+    }
+
+    if (
       !isRecord(discussions) ||
       !["loaded", "empty"].includes(discussions.status) ||
       !isRecord(discussions.pagination) ||
@@ -1568,6 +1821,40 @@ function validateReadiness(readiness, gate, findings) {
           );
           break;
         }
+        if (
+          (thread.state === "resolved" && thread.is_resolved !== true) ||
+          (thread.state === "open" && thread.is_resolved === true)
+        ) {
+          addFinding(
+            findings,
+            `Review thread ${safeLabel(thread.id)} has contradictory resolved-state evidence.`,
+            "reload the current thread state and disposition from S03",
+          );
+        }
+        if (
+          thread.state === "unknown" ||
+          thread.disposition === "uncertain" ||
+          (thread.is_resolved !== true && thread.disposition !== "nonblocking")
+        ) {
+          addFinding(
+            findings,
+            `Review thread ${safeLabel(thread.id)} is unresolved, ambiguous, or explicitly blocking under the current S03 disposition.`,
+            "refresh current/outdated thread policy and resolve every blocking or uncertain thread",
+          );
+        }
+      }
+      if (
+        isRecord(reviewState) &&
+        (reviewState.unresolved_threads !==
+          discussions.threads.filter((thread) => thread.is_resolved !== true).length ||
+          reviewState.outdated_threads !==
+            discussions.threads.filter((thread) => thread.is_outdated === true).length)
+      ) {
+        addFinding(
+          findings,
+          "Stored review-thread counts differ from the current paginated discussion evidence.",
+          "rebuild MergeReadiness from the same final S03 discussion snapshot",
+        );
       }
     }
 
@@ -1652,11 +1939,11 @@ function validateGate(gate, repositoryRoot, findings) {
   if (!isRecord(gate)) {
     return null;
   }
-  if (gate.schema !== "PreMergeGate" || gate.version !== 2) {
+  if (gate.schema !== "PreMergeGate" || gate.version !== 3) {
     addFinding(
       findings,
       "PreMergeGate has an unsupported schema version.",
-      "write a fresh version-2 PreMergeGate",
+      "write a fresh version-3 PreMergeGate",
     );
   }
   if (!isIsoTimestamp(gate.written_at)) {
@@ -1699,6 +1986,21 @@ function validateGate(gate, repositoryRoot, findings) {
       "use one verified repository identity",
     );
   }
+
+  const preflight =
+    pullRequest !== null &&
+    isSha(gate.expected_head_sha) &&
+    isSha(gate.expected_base_sha)
+      ? validatePreflight(
+          gate.preflight,
+          {
+            expected_head_sha: gate.expected_head_sha,
+            expected_base_sha: gate.expected_base_sha,
+            pull_request: pullRequest,
+          },
+          findings,
+        )
+      : null;
 
   const merge = gate.merge;
   if (
@@ -1764,8 +2066,79 @@ function validateGate(gate, repositoryRoot, findings) {
             expected_base_sha: gate.expected_base_sha,
           },
           findings,
-        )
+      )
       : null;
+
+  if (
+    isRecord(preflight) &&
+    isIsoTimestamp(preflight.checked_at) &&
+    isRecord(gate.readiness) &&
+    isRecord(gate.readiness.readiness_evidence) &&
+    isIsoTimestamp(gate.readiness.readiness_evidence.observed_at) &&
+    Date.parse(preflight.checked_at) <
+      Date.parse(gate.readiness.readiness_evidence.observed_at)
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight predates the readiness evidence snapshot.",
+      "capture the final live preflight after the current S03 snapshot and write a new gate",
+    );
+  }
+  if (
+    isRecord(preflight) &&
+    isIsoTimestamp(gate.written_at) &&
+    isIsoTimestamp(preflight.checked_at) &&
+    Date.parse(preflight.checked_at) > Date.parse(gate.written_at)
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight was recorded after the gate write.",
+      "write one gate immediately after the final live preflight",
+    );
+  }
+  if (
+    isRecord(preflight) &&
+    isIsoTimestamp(preflight.checked_at) &&
+    isRecord(gate.readiness) &&
+    isRecord(gate.readiness.readiness_evidence) &&
+    isIsoTimestamp(gate.readiness.readiness_evidence.observed_at) &&
+    Date.parse(preflight.checked_at) -
+      Date.parse(gate.readiness.readiness_evidence.observed_at) >
+      60_000
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.preflight is too far removed from the final readiness evidence snapshot.",
+      "run the complete S03 reader chain and final preflight immediately before writing the gate",
+    );
+  }
+  const snapshotSources =
+    isRecord(gate.readiness) &&
+    isRecord(gate.readiness.readiness_evidence) &&
+    Array.isArray(gate.readiness.readiness_evidence.sources)
+      ? gate.readiness.readiness_evidence.sources
+      : [];
+  if (isRecord(preflight) && isIsoTimestamp(preflight.checked_at)) {
+    for (const source of snapshotSources) {
+      if (!isRecord(source) || !isIsoTimestamp(source.retrieved_at)) continue;
+      if (Date.parse(source.retrieved_at) > Date.parse(preflight.checked_at)) {
+        addFinding(
+          findings,
+          "A readiness source was retrieved after the final preflight.",
+          "rerun the complete S03 reader chain before the final preflight",
+        );
+      } else if (
+        Date.parse(preflight.checked_at) - Date.parse(source.retrieved_at) >
+        60_000
+      ) {
+        addFinding(
+          findings,
+          "A readiness source is outside the final preflight freshness window.",
+          "refresh every S03 reader source immediately before the final preflight",
+        );
+      }
+    }
+  }
 
   return {
     gate,
@@ -1773,6 +2146,7 @@ function validateGate(gate, repositoryRoot, findings) {
     pullRequest,
     merge,
     authorization,
+    preflight,
     readiness,
   };
 }
@@ -1817,15 +2191,24 @@ function compareCommandToGate(spec, context, findings) {
     );
   }
   if (
-    spec.matchHeadSha !== null &&
-    (!isSha(spec.matchHeadSha) ||
-      !isSha(gate.expected_head_sha) ||
-      spec.matchHeadSha.toLowerCase() !== gate.expected_head_sha.toLowerCase())
+    !isSha(spec.matchHeadSha) ||
+    !isSha(gate.expected_head_sha) ||
+    spec.matchHeadSha.toLowerCase() !== gate.expected_head_sha.toLowerCase()
   ) {
     addFinding(
       findings,
-      "The merge command head-SHA guard differs from the approved head.",
-      "use the exact approved head SHA",
+      "The merge command is missing an enforceable exact head-SHA compare-and-set guard or uses a different head.",
+      "use --match-head-commit or API sha with the full approved head SHA",
+    );
+  }
+  if (
+    spec.url !== null &&
+    normalizeUrl(spec.url) !== normalizeUrl(gate.pull_request.url)
+  ) {
+    addFinding(
+      findings,
+      "The merge command pull-request URL differs from PreMergeGate.",
+      "run the exact approved pull-request URL or number",
     );
   }
   if (spec.kind === "api-merge" && spec.httpMethod !== "PUT" && spec.httpMethod !== "POST") {

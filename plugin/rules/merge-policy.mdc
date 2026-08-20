@@ -33,14 +33,17 @@ The merge is blocked when any condition is failed, stale, unavailable, or
 ambiguous. Recheck branch protection, applicable rulesets, required reviews,
 required checks, mergeability, and base-branch state while building the
 snapshot. A new snapshot is required after every rebase or push; no individual
-source may be reused in isolation.
+source may be reused in isolation. The final S03 snapshot is the only current
+policy source for required checks, approval thresholds, change requests, and
+review-thread dispositions. A diagnostic `MergeReadiness` summary cannot
+replace or override that snapshot.
 
 ## Deterministic pre-merge gate
 
 Immediately before the GitHub merge write, `merge-pull-request` MUST write a
-current local version-2 `PreMergeGate` containing the exact pull-request
-identity, expected head and base SHAs, selected strategy, branch-deletion
-effect, version-3 `MergeReadiness`, its complete version-1
+current local version-3 `PreMergeGate` containing the exact pull-request
+identity, expected head and base SHAs, final live preflight, selected strategy,
+branch-deletion effect, version-3 `MergeReadiness`, its complete version-1
 `PullRequestReadinessEvidence`, and explicit merge authorization. The
 host-specific `pre-merge` Hook MUST fail closed unless the local gate and
 embedded snapshot agree for:
@@ -55,6 +58,11 @@ embedded snapshot agree for:
 - exactly one linked issue relationship OR a waived unique-link condition;
   and
 - the exact user or repository-policy merge authorization and selected strategy.
+
+Every supported merge command MUST also carry an exact full expected-head
+compare-and-set: `--match-head-commit <sha>` for `gh pr merge`, or `sha=<sha>`
+for the supported merge API payload. Missing or mismatched protection is a
+pre-write denial.
 
 The Hook does not execute `gh`, GraphQL, or any other live GitHub acquisition;
 policy interpretation belongs to the reader Skills and the snapshot builder.

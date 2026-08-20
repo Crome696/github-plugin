@@ -17,14 +17,17 @@ const expectedVersionTwo = new Set([
   "IssueDraft",
   "LinkedIssueClosure",
   "LoadedPullRequestDiscussions",
-  "PreMergeGate",
   "PrePrCreateGate",
   "PullRequestMerge",
   "ReviewThreadReply",
   "ReviewThreadResolution",
   "ValidationResult",
 ]);
-const expectedVersionThree = new Set(["MergeReadiness", "PreCommitGate"]);
+const expectedVersionThree = new Set([
+  "MergeReadiness",
+  "PreCommitGate",
+  "PreMergeGate",
+]);
 const allowedTypes = new Set([
   "string",
   "integer",

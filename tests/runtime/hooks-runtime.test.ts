@@ -156,6 +156,307 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
     });
   });
 
+  it("requires atomic head binding and evaluates current S03 policy evidence on both hosts", () => {
+    withRuntimeRepository((context) => {
+      const wrongHead = "d".repeat(40);
+      const shortenedHead = "e".repeat(12);
+      const apiCommand =
+        `gh api repos/${context.repository}/pulls/${context.pullRequestNumber}/merge ` +
+        `--method PUT --field sha=${context.headSha} --field merge_method=merge`;
+      const apiWithoutSha =
+        `gh api repos/${context.repository}/pulls/${context.pullRequestNumber}/merge ` +
+        "--method PUT --field merge_method=merge";
+      const apiWithWrongSha =
+        `gh api repos/${context.repository}/pulls/${context.pullRequestNumber}/merge ` +
+        `--method PUT --field sha=${wrongHead} --field merge_method=merge`;
+      const apiWithShortSha =
+        `gh api repos/${context.repository}/pulls/${context.pullRequestNumber}/merge ` +
+        `--method PUT --field sha=${shortenedHead} --field merge_method=merge`;
+
+      const policySource = {
+        kind: "ruleset",
+        identity: "ruleset:runtime",
+        status: "loaded",
+        provenance: ["runtime policy response"],
+        evidence: ["current ruleset policy"],
+      };
+      const mutatePolicy = (
+        gate: Record<string, unknown>,
+        mutation: (policy: Record<string, unknown>) => void,
+      ) => {
+        const readiness = gate.readiness as Record<string, unknown>;
+        const snapshot = readiness.readiness_evidence as Record<string, unknown>;
+        const policy = snapshot.policy as Record<string, unknown>;
+        policy.status = "loaded";
+        policy.sources = [policySource];
+        mutation(policy);
+      };
+      const mutateThreads = (
+        gate: Record<string, unknown>,
+        thread: Record<string, unknown>,
+      ) => {
+        const readiness = gate.readiness as Record<string, unknown>;
+        readiness.review_state = {
+          ...(readiness.review_state as Record<string, unknown>),
+          unresolved_threads: thread.is_resolved === true ? 0 : 1,
+          outdated_threads: thread.is_outdated === true ? 1 : 0,
+        };
+        const snapshot = readiness.readiness_evidence as Record<string, unknown>;
+        const discussions = snapshot.discussions as Record<string, unknown>;
+        discussions.status = "loaded";
+        discussions.threads = [thread];
+        const source = (snapshot.sources as Array<Record<string, unknown>>).find(
+          (entry) => entry.name === "load-pr-discussions",
+        );
+        if (source) source.status = "loaded";
+      };
+
+      const cases: Array<{
+        name: string;
+        command: (context: RuntimeContext) => string;
+        allow: boolean;
+        mutate?: (gate: Record<string, unknown>) => void;
+      }> = [
+        {
+          name: "canonical CLI compare-and-set",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: true,
+        },
+        {
+          name: "missing CLI compare-and-set",
+          command: (value) =>
+            `gh pr merge ${value.pullRequestNumber} --repo ${value.repository} --merge`,
+          allow: false,
+        },
+        {
+          name: "altered CLI compare-and-set",
+          command: (value) =>
+            `gh pr merge ${value.pullRequestNumber} --repo ${value.repository} --merge --match-head-commit ${wrongHead}`,
+          allow: false,
+        },
+        {
+          name: "shortened CLI compare-and-set",
+          command: (value) =>
+            `gh pr merge ${value.pullRequestNumber} --repo ${value.repository} --merge --match-head-commit ${shortenedHead}`,
+          allow: false,
+        },
+        {
+          name: "altered pull-request URL",
+          command: (value) =>
+            `gh pr merge https://github.com/other-org/other-repo/pull/${value.pullRequestNumber} --repo ${value.repository} --merge --match-head-commit ${value.headSha}`,
+          allow: false,
+        },
+        {
+          name: "altered repository",
+          command: (value) =>
+            `gh pr merge ${value.pullRequestNumber} --repo other-org/other-repo --merge --match-head-commit ${value.headSha}`,
+          allow: false,
+        },
+        {
+          name: "altered pull-request number",
+          command: (value) =>
+            `gh pr merge ${value.pullRequestNumber + 1} --repo ${value.repository} --merge --match-head-commit ${value.headSha}`,
+          allow: false,
+        },
+        {
+          name: "altered merge method",
+          command: (value) =>
+            `gh pr merge ${value.pullRequestNumber} --repo ${value.repository} --squash --match-head-commit ${value.headSha}`,
+          allow: false,
+        },
+        {
+          name: "altered branch-deletion effect",
+          command: (value) =>
+            `gh pr merge ${value.pullRequestNumber} --repo ${value.repository} --merge --delete-branch --match-head-commit ${value.headSha}`,
+          allow: false,
+        },
+        {
+          name: "altered commit title",
+          command: (value) =>
+            `gh pr merge ${value.pullRequestNumber} --repo ${value.repository} --merge --subject Wrong-title --match-head-commit ${value.headSha}`,
+          allow: false,
+          mutate: (gate) => {
+            const merge = gate.merge as Record<string, unknown>;
+            merge.commit_title = "Approved-title";
+          },
+        },
+        {
+          name: "altered commit message",
+          command: (value) =>
+            `gh pr merge ${value.pullRequestNumber} --repo ${value.repository} --merge --body Wrong-message --match-head-commit ${value.headSha}`,
+          allow: false,
+          mutate: (gate) => {
+            const merge = gate.merge as Record<string, unknown>;
+            merge.commit_message = "Approved-message";
+          },
+        },
+        {
+          name: "canonical API compare-and-set",
+          command: () => apiCommand,
+          allow: true,
+        },
+        {
+          name: "missing API compare-and-set",
+          command: () => apiWithoutSha,
+          allow: false,
+        },
+        {
+          name: "altered API compare-and-set",
+          command: () => apiWithWrongSha,
+          allow: false,
+        },
+        {
+          name: "shortened API compare-and-set",
+          command: () => apiWithShortSha,
+          allow: false,
+        },
+        {
+          name: "preflight head race",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: false,
+          mutate: (gate) => {
+            const preflight = gate.preflight as Record<string, unknown>;
+            preflight.live_head_sha = wrongHead;
+          },
+        },
+        {
+          name: "changed required check policy",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: false,
+          mutate: (gate) =>
+            mutatePolicy(gate, (policy) => {
+              policy.required_checks = {
+                status: "loaded",
+                checks: [
+                  {
+                    name: "runtime-required-check",
+                    result: "fail",
+                    required: true,
+                    head_sha: context.headSha,
+                    evidence: ["current required check is failing"],
+                  },
+                ],
+                evidence: ["current required-check policy"],
+              };
+            }),
+        },
+        {
+          name: "changed approval threshold",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: false,
+          mutate: (gate) =>
+            mutatePolicy(gate, (policy) => {
+              policy.approvals = {
+                status: "loaded",
+                required_approvals: 1,
+                approvals: [],
+                dismissals: [],
+                change_requests: [],
+                evidence: ["current approval threshold is one"],
+              };
+            }),
+        },
+        {
+          name: "dismissed approval evidence",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: false,
+          mutate: (gate) =>
+            mutatePolicy(gate, (policy) => {
+              policy.approvals = {
+                status: "loaded",
+                required_approvals: 0,
+                approvals: [{ id: "dismissed-approval", dismissed: true }],
+                dismissals: [{ id: "dismissed-approval" }],
+                change_requests: [],
+                evidence: ["current dismissal evidence"],
+              };
+            }),
+        },
+        {
+          name: "current outdated nonblocking thread",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: true,
+          mutate: (gate) =>
+            mutateThreads(gate, {
+              id: "thread-outdated",
+              state: "open",
+              is_resolved: false,
+              is_outdated: true,
+              disposition: "nonblocking",
+              evidence: ["current S03 disposition marks the outdated thread nonblocking"],
+            }),
+        },
+        {
+          name: "blocking thread",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: false,
+          mutate: (gate) =>
+            mutateThreads(gate, {
+              id: "thread-blocking",
+              state: "open",
+              is_resolved: false,
+              is_outdated: false,
+              disposition: "blocking",
+              evidence: ["current request-changes thread remains blocking"],
+            }),
+        },
+        {
+          name: "uncertain thread",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: false,
+          mutate: (gate) =>
+            mutateThreads(gate, {
+              id: "thread-uncertain",
+              state: "open",
+              is_resolved: false,
+              is_outdated: true,
+              disposition: "uncertain",
+              evidence: ["current thread disposition is ambiguous"],
+            }),
+        },
+        {
+          name: "incomplete discussion pagination",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: false,
+          mutate: (gate) => {
+            const readiness = gate.readiness as Record<string, unknown>;
+            const snapshot = readiness.readiness_evidence as Record<string, unknown>;
+            const discussions = snapshot.discussions as Record<string, unknown>;
+            const pagination = discussions.pagination as Record<string, unknown>;
+            pagination.complete = false;
+          },
+        },
+        {
+          name: "stale readiness snapshot",
+          command: (value) => commandFor(value, "pre-merge"),
+          allow: false,
+          mutate: (gate) => {
+            const readiness = gate.readiness as Record<string, unknown>;
+            const snapshot = readiness.readiness_evidence as Record<string, unknown>;
+            snapshot.observed_at = new Date(Date.now() - 120_000).toISOString();
+          },
+        },
+      ];
+
+      for (const testCase of cases) {
+        for (const host of hosts) {
+          prepareRuntimeMode(context, "pre-merge", "allow");
+          if (testCase.mutate) mutateGate(context, "pre-merge", testCase.mutate);
+          const execution = executeProjectedHook(
+            context,
+            host,
+            "pre-merge",
+            "allow",
+            payloadFor(host, testCase.command(context), context.repositoryRoot),
+          );
+          assertRuntimeResponse(execution, testCase.allow);
+          expect(fakeCommandLogs(context).some((entry) => entry.executable === "gh")).toBe(false);
+          assertNoUnexpectedFakeCommands(context);
+        }
+      }
+    });
+  }, 45_000);
+
   it("fails closed for malformed object payloads and compound commands", () => {
     withRuntimeRepository((context) => {
       for (const host of hosts) {

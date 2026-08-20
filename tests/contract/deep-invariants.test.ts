@@ -568,6 +568,44 @@ describe("deep shared-contract invariants", () => {
     expectInvariant("MergeReadiness", blockedThreadReadiness, "ready_condition_unmet");
   });
 
+  it("requires PreMergeGate v3 final preflight identity and pass evidence", () => {
+    const gate = fixture<Record<string, unknown>>("PreMergeGate");
+    expectStructurallyValid("PreMergeGate", gate);
+    expect(validateContractInvariants("PreMergeGate", gate)).toEqual([]);
+
+    const missingPreflight = clone(gate);
+    delete missingPreflight.preflight;
+    expectInvariant("PreMergeGate", missingPreflight, "premerge_preflight_incomplete");
+
+    const stalePreflight = clone(gate);
+    const preflight = stalePreflight.preflight as Record<string, unknown>;
+    preflight.live_head_sha = "c".repeat(40);
+    expectInvariant("PreMergeGate", stalePreflight, "premerge_preflight_identity_mismatch");
+
+    const shortenedHead = clone(gate);
+    shortenedHead.expected_head_sha = "d".repeat(12);
+    expectInvariant("PreMergeGate", shortenedHead, "premerge_preflight_incomplete");
+
+    const staleSnapshot = clone(gate);
+    const staleReadiness = staleSnapshot.readiness as Record<string, unknown>;
+    const staleEvidence = staleReadiness.readiness_evidence as Record<string, unknown>;
+    staleEvidence.observed_at = "2026-08-20T09:00:00.000Z";
+    expectInvariant("PreMergeGate", staleSnapshot, "premerge_preflight_snapshot_stale");
+
+    const failedPolicyPreflight = clone(gate);
+    const failed = failedPolicyPreflight.preflight as Record<string, unknown>;
+    failed.checks_current = "unknown";
+    expectInvariant("PreMergeGate", failedPolicyPreflight, "premerge_preflight_not_pass");
+
+    const approvedMerge = fixture<Record<string, unknown>>("PullRequestMerge");
+    approvedMerge.status = "approved";
+    const mergeAuthorization = approvedMerge.authorization as Record<string, unknown>;
+    mergeAuthorization.exact_target = true;
+    mergeAuthorization.exact_merge_operation = true;
+    mergeAuthorization.merge_authorized = true;
+    expect(validateContractInvariants("PullRequestMerge", approvedMerge)).toEqual([]);
+  });
+
   it("keeps CleanupResult authorization and recoverable targets fail-closed", () => {
     const cleanup = fixture<Record<string, unknown>>("CleanupResult");
     cleanup.status = "completed";

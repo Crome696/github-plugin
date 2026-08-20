@@ -1,5 +1,5 @@
 schema: PreMergeGate
-version: 2
+version: 3
 workspace:
   repository: octo-org/widgets
   path: C:/workspace/github
@@ -25,6 +25,27 @@ authorization:
   evidence: The exact merge operation is authorized.
   approved_by: maintainer
   approved_at: '2026-08-20T10:00:00.000Z'
+preflight:
+  checked_at: '2026-08-20T10:00:01.000Z'
+  repository: octo-org/widgets
+  pull_request_number: 1
+  pull_request_url: https://github.com/octo-org/widgets/pull/1
+  head_branch: feature/readiness
+  live_head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  live_base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  base_branch: master
+  target_match: pass
+  open_state: pass
+  non_draft: pass
+  head_sha_match: pass
+  base_branch_match: pass
+  base_sha_match: pass
+  mergeability: pass
+  reviews_current: pass
+  checks_current: pass
+  method_allowed: pass
+  authorization_match: pass
+  evidence: [The final live merge preflight was verified for the exact target.]
 readiness:
   schema: MergeReadiness
   version: 3
@@ -179,4 +200,4 @@ readiness:
         evidence: [The exact linked issue was covered.]
     failure: null
   assessed_at: '2026-08-20T10:00:00.000Z'
-written_at: '2026-08-20T10:00:00.000Z'
+written_at: '2026-08-20T10:00:02.000Z'

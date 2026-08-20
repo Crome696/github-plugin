@@ -520,7 +520,7 @@ export const skillHandoffs: SkillHandoff[] = [
   {
     name: "merge-pull-request",
     consumes: [contract("PullRequestMerge", 2), contract("MergeReadiness", 3)],
-    produces: [contract("PullRequestMerge", 2), contract("PreMergeGate", 2)],
+    produces: [contract("PullRequestMerge", 2), contract("PreMergeGate", 3)],
   },
   {
     name: "prioritize-product-issues",

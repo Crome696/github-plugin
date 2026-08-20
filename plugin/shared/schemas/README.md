@@ -65,7 +65,7 @@ version changes.
 | `PreRebaseGate` | Version 1 local-only snapshot binding one exact authorized rebase to a verified pull-request branch, clean worktree, current remote context, unique target base, and full `TargetBranchFetch` evidence before the rebase command. |
 | `PrePrCreateGate` | Version 2 local-only snapshot binding one exact Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed version-2 validation before `gh pr create`. |
 | `PreReviewSubmitGate` | Version 1 local-only snapshot binding one exact AI pull-request review publication to structurally complete, deduplicated, explicitly confirmed, and current review evidence before the review write. |
-| `PreMergeGate` | Version 2 local-only snapshot binding one exact approved pull-request merge to version-3 `MergeReadiness` with an embedded immutable version-1 readiness evidence snapshot and explicit merge authorization before the merge write. |
+| `PreMergeGate` | Version 3 local-only snapshot binding one exact approved pull-request merge to a final live preflight, version-3 `MergeReadiness` with an embedded immutable version-1 readiness evidence snapshot, and explicit merge authorization before the merge write. |
 | `PullRequestReady` | Version 1 exact authorization-gated Ready-for-Review intent, optional confirmed reviewer requests, live preflight, and verification for one open Draft pull request with a unique linked issue. |
 | `PrePrReadyGate` | Version 1 local-only snapshot binding one exact Ready-for-Review transition and optional confirmed reviewer set to a current open Draft pull request before `gh pr ready`. |
 | `PostMergeStatus` | Version 1 read-only post-merge status preserving PR and merge-commit verification, expected linked-issue closure, cleanup availability, separate authorization requirements, open actions, and deviations without performing cleanup. |
@@ -508,13 +508,13 @@ flowchart LR
 - `MergeReadiness` version 3 is a pure deterministic transformation of exactly
   one complete snapshot. It retains that snapshot under `readiness_evidence`
   and never refreshes a source or interprets live policy.
-- `PreMergeGate` is a version-2 local-only snapshot written immediately before
+- `PreMergeGate` is a version-3 local-only snapshot written immediately before
   the GitHub merge write. It binds the exact pull request, expected head and
-  base SHAs, selected method, branch-deletion effect, complete version-3
-  `MergeReadiness` with its version-1 snapshot, and explicit merge
-  authorization. Its host hook validates the embedded evidence and exact Git
-  identity only; it executes no GitHub or GraphQL live read and never repairs
-  or authorizes the merge.
+  base SHAs, final live preflight, selected method, branch-deletion effect,
+  complete version-3 `MergeReadiness` with its version-1 snapshot, and explicit
+  merge authorization. Its host hook validates the embedded current policy
+  evidence, final preflight, exact Git identity, and command compare-and-set
+  without executing a GitHub or GraphQL live read or authorizing the merge.
 - `PostMergeStatus` is a version-1 read-only result emitted after one observed
   GitHub pull-request merge. It preserves the live PR state, merge timestamp
   and commit, target-branch containment, expected issue closure and

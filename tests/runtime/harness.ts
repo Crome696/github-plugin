@@ -425,9 +425,9 @@ export const commandFor = (context: RuntimeContext, hook: HookName): string => {
     case "pre-pr-ready":
       return `gh pr ready ${context.pullRequestNumber} --repo ${context.repository}`;
     case "pre-merge":
-      return `gh pr merge ${context.pullRequestNumber} --repo ${context.repository} --merge`;
+      return `gh pr merge ${context.pullRequestNumber} --repo ${context.repository} --merge --match-head-commit ${context.headSha}`;
     case "post-merge":
-      return `gh pr merge ${context.pullRequestNumber} --repo ${context.repository} --merge`;
+      return `gh pr merge ${context.pullRequestNumber} --repo ${context.repository} --merge --match-head-commit ${context.headSha}`;
   }
 };
 
@@ -934,9 +934,12 @@ const readinessEvidence = (context: RuntimeContext) => ({
   failure: null,
 });
 
-const preMergeGate = (context: RuntimeContext) => ({
+const preMergeGate = (context: RuntimeContext) => {
+  const readinessSnapshot = readinessEvidence(context);
+  const preflightCheckedAt = now();
+  return {
   schema: "PreMergeGate",
-  version: 2,
+  version: 3,
   workspace: {
     repository: context.repository,
     path: context.repositoryRoot,
@@ -963,6 +966,28 @@ const preMergeGate = (context: RuntimeContext) => ({
     evidence: "The exact merge operation is authorized.",
     approved_at: now(),
   },
+  preflight: {
+    checked_at: preflightCheckedAt,
+    repository: context.repository,
+    pull_request_number: context.pullRequestNumber,
+    pull_request_url: context.pullRequestUrl,
+    head_branch: context.branch,
+    live_head_sha: context.headSha,
+    live_base_sha: context.baseSha,
+    base_branch: context.baseBranch,
+    target_match: "pass",
+    open_state: "pass",
+    non_draft: "pass",
+    head_sha_match: "pass",
+    base_branch_match: "pass",
+    base_sha_match: "pass",
+    mergeability: "pass",
+    reviews_current: "pass",
+    checks_current: "pass",
+    method_allowed: "pass",
+    authorization_match: "pass",
+    evidence: ["runtime final merge preflight is current"],
+  },
   readiness: {
     schema: "MergeReadiness",
     version: 3,
@@ -984,6 +1009,7 @@ const preMergeGate = (context: RuntimeContext) => ({
       required_approvals: 0,
       required_approvals_met: true,
       unresolved_threads: 0,
+      outdated_threads: 0,
       approval_policy_evidence: ["runtime review policy"],
     },
     issue_coverage: {
@@ -996,10 +1022,11 @@ const preMergeGate = (context: RuntimeContext) => ({
       head_sha: context.headSha,
       sources: [{ name: "runtime", status: "loaded", evidence: ["fixture"] }],
     },
-    readiness_evidence: readinessEvidence(context),
+    readiness_evidence: readinessSnapshot,
   },
   written_at: now(),
-});
+  };
+};
 
 export const buildGate = (
   context: RuntimeContext,
