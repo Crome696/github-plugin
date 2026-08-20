@@ -1,6 +1,6 @@
 schema: LoadedPullRequestDiscussions
-version: 1
-description: Read-only GitHub pull-request discussion snapshot grouped by review thread and affected location.
+version: 2
+description: Read-only, identity-bound GitHub pull-request discussion snapshot grouped by review thread and affected location.
 required:
   - status
   - pull_request
@@ -17,7 +17,7 @@ fields:
     values: [loaded, partial, blocked]
   pull_request:
     type: object
-    required: [repository, number, url]
+    required: [repository, number, node_id, url, head_sha, base_branch, base_sha]
     fields:
       repository:
         type: string | null
@@ -25,9 +25,17 @@ fields:
       number:
         type: integer | null
         minimum: 1
+      node_id:
+        type: string | null
       url:
         type: string | null
         format: uri
+      head_sha:
+        type: string | null
+      base_branch:
+        type: string | null
+      base_sha:
+        type: string | null
   reviews:
     type: list | null
     items:
@@ -275,6 +283,8 @@ fields:
       retryable:
         type: boolean
 invariants:
+  - Version 2 binds every discussion snapshot to the exact PR node ID, canonical URL, head OID, base branch, and base OID observed with the pull request.
+  - A complete discussion snapshot cannot be reused after any bound identity or source retrieval timestamp changes.
   - The snapshot is an immutable source reference for downstream workflows; consumers must not rewrite, rank, or reinterpret retrieved fields.
   - The pull-request identity must come from the supplied repository and number or URL; it is never inferred from the current workspace, branch, or text.
   - Reviews are top-level review submissions, threads are inline review conversations, and conversation_comments are pull-request issue comments outside review threads.

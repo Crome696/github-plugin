@@ -219,7 +219,7 @@ The post-operation checker is read-only.
 | `pre-pr-create.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the commit, push, issue link, description, version-2 validation and explicit evidence requirements, and exact Draft command through `PrePrCreateGate v2`. |
 | `pre-review-submit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the current head, finding evidence, locations, deduplication, confirmation, and exact payload through `PreReviewSubmitGate`. |
 | `pre-pr-ready.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies one exact standalone Ready-for-Review transition or phase-appropriate requested-reviewers POST, complete URL/branch/SHA identity, one linked issue, typed reviewer payload, and `PrePrReadyGate`; rejects incomplete legacy gates and compound commands. |
-| `pre-merge.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies current merge readiness, reviews, threads, approvals, checks, conflicts, base freshness, linkage, strategy, and authorization through `PreMergeGate`. |
+| `pre-merge.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the exact local `PreMergeGate v2`, embedded `MergeReadiness v3`, complete identity-bound `PullRequestReadinessEvidence v1`, strategy, and authorization without live GitHub or GraphQL reads. |
 | `post-merge.mjs` | Cursor `afterShellExecution`; Codex `PostToolUse` for `Bash` | Observes the completed merge and returns `PostMergeStatus`; it never closes issues, deletes branches, or removes worktrees. |
 
 Cursor and Codex use separate projections in

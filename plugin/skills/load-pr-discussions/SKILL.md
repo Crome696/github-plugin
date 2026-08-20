@@ -5,7 +5,7 @@ description: Loads one GitHub pull request's reviews, review threads, replies, c
 
 # Load GitHub Pull-Request Discussions
 
-Load exactly one live pull request into a version-1
+Load exactly one live pull request into a version-2
 `LoadedPullRequestDiscussions` handoff. Group inline review conversations by
 their GitHub thread identity and affected location, preserve the author and
 time relationship of every entry, and keep top-level review submissions and
@@ -254,12 +254,16 @@ error into `pull_request_not_found`.
 
 ```yaml
 schema: LoadedPullRequestDiscussions
-version: 1
+version: 2
 status: loaded
 pull_request:
   repository: octo-org/widgets
   number: 42
+  node_id: PR_kwDOExample
   url: https://github.com/octo-org/widgets/pull/42
+  head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  base_branch: master
+  base_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 reviews:
   - id: "review-100"
     author:

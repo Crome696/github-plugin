@@ -132,16 +132,15 @@ through the matching default prompt.
 
 The explicitly invoked `merge-pull-request` Skill merges exactly one open,
 non-Draft pull request only after independent final authorization from the user
-or a matching target-repository policy and a current
-positive `MergeReadiness` result. It refreshes Draft state, expected head and base
-revisions, reviews, approvals, required checks, conflicts, and the explicitly
-selected repository-permitted strategy immediately before one GitHub merge
-operation. It then verifies the merge commit, strategy, and final pull-request
-state. It writes a current `PreMergeGate` immediately before the write; the
-host Hook refreshes Draft status, reviews, blocking threads, approvals,
-required checks, conflicts, base freshness, and issue linkage, and stops for
-every changed or unavailable condition. It never performs cleanup before
-successful verification.
+or a matching target-repository policy and a current positive version-3
+`MergeReadiness` result. It collects the fixed-order reader chain into one
+complete version-1 `PullRequestReadinessEvidence` snapshot, invalidating the
+whole chain after every rebase or push, then verifies the merge commit,
+strategy, and final pull-request state. It writes a current version-2
+`PreMergeGate` immediately before the write; the host Hook validates only the
+embedded identity-matched snapshot and exact authorization, performs no live
+GitHub or GraphQL refresh, and never performs cleanup before successful
+verification.
 The explicitly invoked `close-github-issue` Skill may close exactly one
 verified issue without a merged pull request after exact authorization of the
 repository, issue, and close reason. Supported reasons are duplicate, not
@@ -235,7 +234,8 @@ them.
 | `wait-required-checks` | Automatic | Wait after a verified pull-request head and report required-check pass, fail, pending, skipped, and missing outcomes without treating pending or unavailable policy evidence as a pass. |
 | `rerun-required-checks` | Explicit invocation | Rerun only exactly authorized required check names, verify new live run identities, and fail closed for optional or unauthorized names. |
 | `check-required-approvals` | Automatic | Inspect explicitly retrieved branch-protection and applicable-ruleset review requirements plus current approvals, change requests, and pending review requests into a `RequiredApprovalInspection`; report satisfied and missing requirements without inventing policy or changing GitHub. |
-| `assess-merge-readiness` | Automatic | Assess one pull request into a version-2 `MergeReadiness` result of `ready`, `needs-attention`, or `blocked` using evidence for draft state, reviews, threads, approvals, checks, conflicts, issue coverage, and remaining blockers; never merge or rebase. |
+| `build-pr-readiness-evidence` | Automatic | Build one complete version-1 `PullRequestReadinessEvidence` snapshot from the fixed-order deterministic reader handoffs, rejecting mixed identities, stale or partial sources, unavailable policy, and incomplete pagination without mutating GitHub. |
+| `assess-merge-readiness` | Automatic | Transform exactly one complete version-1 `PullRequestReadinessEvidence` snapshot into a deterministic version-3 `MergeReadiness` result of `ready`, `needs-attention`, or `blocked`; never acquire live state, merge, or rebase. |
 | `check-open-review-threads` | Automatic | Check one pull request's current review-thread states and return evidence-backed required problems, optional discussions, resolved threads, outdated threads, and unknown states for merge-readiness workflows without modifying GitHub. |
 | `detect-review-findings` | Automatic | Consolidate supplied diff, issue-coverage, required-check, discussion, and applicable external-rule evidence into source-aggregated proposed `ReviewFinding` objects before content-level comparison. |
 | `deduplicate-review-findings` | Automatic | Compare proposed findings with one another and existing pull-request discussion threads, merge identical problem cores, preserve distinct causes, and return an auditable cleaned list without publishing review actions. |
@@ -253,7 +253,7 @@ them.
 | `compose-review` | Automatic | Compose an exact, non-publishing `ReviewDecision` draft from explicitly confirmed user- or policy-backed findings, grouping blockers, required changes, and optional suggestions with evidence and expected corrections. |
 | `submit-pr-review` | Automatic | Publish one exactly authorized `ReviewDecision` as a comment, approval, or request for changes after rechecking the live pull-request head and every inline location, then verify and return the published findings without merging or fixing code. |
 | `reply-to-review-thread` | Automatic | Draft and, after exact authorization of the payload and publication by the user, a matching target-repository policy, or the feedback workflow, publish one evidence-backed reply to exactly one pull-request review-thread comment; verify the resulting reply and never resolve or otherwise mutate the thread. |
-| `load-pr-discussions` | Automatic | Load one pull request's reviews, grouped review threads, replies, conversation comments, authors, timestamps, affected locations, and resolution state into a read-only `LoadedPullRequestDiscussions` snapshot without replying to or resolving discussions. |
+| `load-pr-discussions` | Automatic | Load one pull request's reviews, grouped review threads, replies, conversation comments, authors, timestamps, affected locations, resolution state, and exact PR/head/base retrieval identity into a version-2 read-only `LoadedPullRequestDiscussions` snapshot without replying to or resolving discussions. |
 | `load-linked-issue` | Automatic | Resolve one pull request's issue candidates from closing keywords, explicit references, and GitHub relationships; distinguish linked, mentioned, and ambiguous results; and load the unique linked issue read-only without guessing or writing to GitHub. |
 | `check-linked-issue-status` | Automatic | Check one pull request's uniquely linked issue, state, explicit acceptance criteria, closing relationship, and evidence-backed consistency for integration without changing GitHub. |
 | `verify-linked-issue-closure` | Automatic | Verify after one successful pull-request merge whether the uniquely linked issue closed as expected, preserve merge and relationship attribution evidence, and report an evidence-backed cause or safe next step when it remains open without changing GitHub. |
@@ -416,11 +416,13 @@ Skill never creates a pull request.
 the resulting PR number, URL, head, base, SHA, content, and draft state. It
 never requests review, marks the draft ready, merges, rebases, or edits a
 duplicate pull request.
-`merge-pull-request` consumes one explicitly approved version-1
-`PullRequestMerge` and a current matching version-2 `MergeReadiness` result of
-`ready`. It independently rechecks the live open non-Draft PR, unchanged expected
-head and base revisions, mergeability, required checks, reviews, approvals, and the
-exact repository-permitted strategy immediately before a single GitHub merge.
+`merge-pull-request` consumes one explicitly approved version-2
+`PullRequestMerge` and a current matching version-3 `MergeReadiness` result of
+`ready`, which retains one complete version-1 `PullRequestReadinessEvidence`
+snapshot. It independently rechecks the live open non-Draft PR, unchanged
+expected head and base revisions, mergeability, required checks, reviews,
+approvals, and the exact repository-permitted strategy while rebuilding the
+snapshot immediately before a single GitHub merge.
 It returns `merged` only after verifying the final PR state and merge-commit
 SHA; any state change blocks before the write, while an ambiguous write becomes
 `partial` after one read-only check. It never cleans up, rebases locally,
@@ -451,7 +453,8 @@ instead of inventing missing requirements or treating optional checks as
 required. It never reruns CI or changes GitHub, Git, or local files.
 `load-pr-discussions` reads exactly one pull request's reviews, review
 threads, replies, conversation comments, authors, timestamps, affected
-locations, and resolution state into a version-1
+locations, resolution state, and PR/head/base retrieval identity into a
+version-2
 `LoadedPullRequestDiscussions` handoff. It groups each inline discussion by
 thread and location, preserves exact content and time relationships, reports
 unavailable fields explicitly, and never replies to or resolves a thread.
@@ -909,9 +912,11 @@ non-Draft, one exact requested-reviewers `POST` to the complete pull-request
 URL/branch/SHA identity, unique linked issue, typed reviewer set, and
 independent authorization. It rejects incomplete legacy gates and compound
 commands and never marks the pull request ready or requests reviewers itself.
-`PreMergeGate` is a local-only version-1 snapshot that binds one exact
-approved pull-request merge to current `MergeReadiness` evidence and explicit
-merge authorization; it never grants merge authority or repairs a blocker.
+`PreMergeGate` is a local-only version-2 snapshot that binds one exact
+approved pull-request merge to version-3 `MergeReadiness` with one complete
+version-1 `PullRequestReadinessEvidence` snapshot and explicit merge
+authorization; its Hook performs no live GitHub acquisition and never grants
+merge authority or repairs a blocker.
 `PostMergeStatus` is a version-1 read-only post-merge status containing the
 observed PR state, merge commit and target-branch evidence, expected linked-issue
 closure, cleanup availability, open actions, and deviations. It never performs
@@ -928,7 +933,7 @@ operations after every confirmed create has been attempted.
 
 ## Contract tests
 
-The repository test suite validates all 83 Shared Contract descriptions and
+The repository test suite validates all 84 Shared Contract descriptions and
 their generated minimal fixtures. It checks required fields, enum statuses,
 contract versions, nested handoff compatibility, Skill/Agent/Command
 producers and consumers, implementation-context boundaries, and the deep
@@ -987,7 +992,7 @@ npm test
 | `pre-pr-create` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-PR commands and fail closed before `gh pr create` unless the exact command, created commit, pushed branch, unique issue link, complete description, passed validation, and absence of known blockers are verified. |
 | `pre-review-submit` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-review commands and fail closed before AI review publication unless the exact canonical `gh api` command, authorized payload, finding evidence, valid locations, deduplication, recorded confirmation, blocker support, and current pull-request head are verified. |
 | `pre-pr-ready` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow unrelated commands and fail closed before `gh pr ready` or an authorized requested-reviewers write unless the exact `PrePrReadyGate`, open Draft identity, unique issue, head SHA, and reviewer set match. |
-| `pre-merge` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-merge commands and fail closed before a GitHub pull-request merge unless the exact `PreMergeGate`, current `MergeReadiness`, reviews, blocking threads, approvals, required checks, conflicts, base SHA, issue relationship, selected strategy, and explicit merge authorization are verified. |
+| `pre-merge` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-merge commands and fail closed before a GitHub pull-request merge unless version-2 `PreMergeGate`, version-3 `MergeReadiness`, and one complete identity-bound version-1 `PullRequestReadinessEvidence` snapshot match the exact target, strategy, and authorization; the Hook performs no live GitHub or GraphQL call. |
 | `post-merge` | Cursor `afterShellExecution`; Codex `PostToolUse` for `Bash` | Read-only after-merge verification of PR state, merge commit, target-branch containment, expected issue closure, cleanup availability, open cleanup actions, and deviations; never deletes branches or worktrees and always preserves separate authorization requirements. |
 
 All host events enter through `hooks/dispatch.mjs`. It reads the bounded host

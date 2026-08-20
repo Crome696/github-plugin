@@ -136,10 +136,6 @@ function runGit(workingDirectory, args) {
   return runCommand("git", args, workingDirectory, args[0] ?? "git");
 }
 
-function runGh(workingDirectory, args) {
-  return runCommand("gh", args, workingDirectory, args[0] ?? "gh");
-}
-
 function tokenizeCommand(command) {
   const tokens = [];
   let current = "";
@@ -1066,16 +1062,16 @@ function validateReadiness(readiness, gate, findings) {
     addFinding(
       findings,
       "PreMergeGate.readiness is missing or malformed.",
-      "capture one complete current version-2 MergeReadiness result",
+      "capture one complete current version-3 MergeReadiness result with its readiness snapshot",
     );
     return null;
   }
 
-  if (readiness.schema !== "MergeReadiness" || readiness.version !== 2) {
+  if (readiness.schema !== "MergeReadiness" || readiness.version !== 3) {
     addFinding(
       findings,
-      "PreMergeGate.readiness is not a version-2 MergeReadiness handoff.",
-      "assess the exact pull request and write a fresh version-2 result",
+      "PreMergeGate.readiness is not a version-3 MergeReadiness handoff.",
+      "assess the exact pull request and write a fresh version-3 result",
     );
   }
   if (readiness.status !== "ready") {
@@ -1348,6 +1344,304 @@ function validateReadiness(readiness, gate, findings) {
     }
   }
 
+  const snapshot = readiness.readiness_evidence;
+  const snapshotPullRequest =
+    isRecord(snapshot) && isRecord(snapshot.pull_request)
+      ? snapshot.pull_request
+      : null;
+  const snapshotBase =
+    isRecord(snapshot) && isRecord(snapshot.base) ? snapshot.base : null;
+  const snapshotFreshness =
+    isRecord(snapshot) && isRecord(snapshot.freshness)
+      ? snapshot.freshness
+      : null;
+  const expectedSnapshotIdentity = {
+    repository: gate.repository,
+    number: gate.pull_request.number,
+    node_id: snapshotPullRequest?.node_id ?? null,
+    url: gate.pull_request.url,
+    head_sha: gate.expected_head_sha,
+    base_branch: gate.pull_request.base_branch,
+    base_sha: gate.expected_base_sha,
+  };
+  const identityFieldMatches = (value, expected, kind = "string") => {
+    if (kind === "repository") {
+      return (
+        validateRepositoryName(value) &&
+        normalizeRepository(value) === normalizeRepository(expected)
+      );
+    }
+    if (kind === "url") {
+      return isHttpUrl(value) && normalizeUrl(value) === normalizeUrl(expected);
+    }
+    if (kind === "sha") {
+      return (
+        isSha(value) &&
+        isSha(expected) &&
+        value.toLowerCase() === expected.toLowerCase()
+      );
+    }
+    if (kind === "number") return value === expected;
+    return value === expected;
+  };
+  const sourceIdentityMatches = (identity) =>
+    isRecord(identity) &&
+    identityFieldMatches(identity.repository, expectedSnapshotIdentity.repository, "repository") &&
+    identityFieldMatches(identity.number, expectedSnapshotIdentity.number, "number") &&
+    isNonEmptyString(identity.node_id) &&
+    identity.node_id === expectedSnapshotIdentity.node_id &&
+    isHttpUrl(identity.url) &&
+    identityFieldMatches(identity.url, expectedSnapshotIdentity.url, "url") &&
+    identityFieldMatches(identity.head_sha, expectedSnapshotIdentity.head_sha, "sha") &&
+    identityFieldMatches(identity.base_branch, expectedSnapshotIdentity.base_branch) &&
+    identityFieldMatches(identity.base_sha, expectedSnapshotIdentity.base_sha, "sha");
+  const nonEmptyStringArray = (value) =>
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => isNonEmptyString(entry));
+  const completeSourceStatus = (value) => ["loaded", "empty"].includes(value);
+
+  if (
+    !isRecord(snapshot) ||
+    snapshot.schema !== "PullRequestReadinessEvidence" ||
+    snapshot.version !== 1 ||
+    snapshot.status !== "complete" ||
+    snapshot.failure !== null ||
+    !validateRepositoryName(snapshot.repository) ||
+    !isRecord(snapshotPullRequest) ||
+    !Number.isInteger(snapshotPullRequest.number) ||
+    !isNonEmptyString(snapshotPullRequest.node_id) ||
+    !isHttpUrl(snapshotPullRequest.url) ||
+    snapshotPullRequest.state !== "open" ||
+    snapshotPullRequest.draft !== false ||
+    !isSha(snapshot.head_sha) ||
+    !isRecord(snapshotBase) ||
+    !isSafeBranchName(snapshotBase.name) ||
+    !isSha(snapshotBase.oid) ||
+    !isIsoTimestamp(snapshot.observed_at) ||
+    !isRecord(snapshotFreshness) ||
+    snapshotFreshness.status !== "current" ||
+    !nonEmptyStringArray(snapshotFreshness.evidence) ||
+    !identityFieldMatches(snapshot.repository, expectedSnapshotIdentity.repository, "repository") ||
+    !identityFieldMatches(snapshotPullRequest.number, expectedSnapshotIdentity.number, "number") ||
+    !identityFieldMatches(snapshotPullRequest.url, expectedSnapshotIdentity.url, "url") ||
+    !identityFieldMatches(snapshot.head_sha, expectedSnapshotIdentity.head_sha, "sha") ||
+    !identityFieldMatches(snapshotBase.name, expectedSnapshotIdentity.base_branch) ||
+    !identityFieldMatches(snapshotBase.oid, expectedSnapshotIdentity.base_sha, "sha")
+  ) {
+    addFinding(
+      findings,
+      "PreMergeGate.readiness.readiness_evidence is missing, stale, mixed, or not complete.",
+      "rebuild one complete identity-matched PullRequestReadinessEvidence snapshot for the approved head and base",
+    );
+  } else {
+    const policy = snapshot.policy;
+    const requiredChecks = isRecord(policy) ? policy.required_checks : null;
+    const approvals = isRecord(policy) ? policy.approvals : null;
+    const discussions = snapshot.discussions;
+    const linkedIssue = snapshot.linked_issue;
+    const mergeMethods = snapshot.merge_methods;
+    const sources = snapshot.sources;
+    const requiredSourceNames = [
+      "load-pull-request",
+      "load-pr-discussions",
+      "inspect-pr-checks",
+      "check-required-approvals",
+      "check-open-review-threads",
+      "check-linked-issue-status",
+    ];
+    const sourceNames = new Set();
+    if (!Array.isArray(sources) || sources.length === 0) {
+      addFinding(
+        findings,
+        "PreMergeGate.readiness.readiness_evidence.sources is missing.",
+        "preserve every identity-bound reader source in the complete snapshot",
+      );
+    } else {
+      for (const source of sources) {
+        if (
+          !isRecord(source) ||
+          !isNonEmptyString(source.name) ||
+          sourceNames.has(source.name) ||
+          !completeSourceStatus(source.status) ||
+          !sourceIdentityMatches(source.identity) ||
+          !isIsoTimestamp(source.retrieved_at) ||
+          !isRecord(source.pagination) ||
+          source.pagination.complete !== true ||
+          !Number.isInteger(source.pagination.page_count) ||
+          source.pagination.page_count < 0 ||
+          !nonEmptyStringArray(source.provenance) ||
+          !nonEmptyStringArray(source.evidence)
+        ) {
+          addFinding(
+            findings,
+            "PreMergeGate.readiness.readiness_evidence contains partial, unavailable, or identity-mismatched source evidence.",
+            "reload every reader source for the same pull-request identity and complete pagination",
+          );
+          continue;
+        }
+        sourceNames.add(source.name);
+      }
+      for (const requiredSourceName of requiredSourceNames) {
+        if (!sourceNames.has(requiredSourceName)) {
+          addFinding(
+            findings,
+            `PreMergeGate.readiness.readiness_evidence is missing source ${safeLabel(requiredSourceName)}.`,
+            "rebuild the complete fixed-order readiness evidence chain",
+          );
+        }
+      }
+    }
+
+    if (
+      !isRecord(policy) ||
+      !["loaded", "empty"].includes(policy.status) ||
+      !Array.isArray(policy.sources) ||
+      (policy.status === "loaded" && policy.sources.length === 0) ||
+      !nonEmptyStringArray(policy.evidence) ||
+      !isRecord(requiredChecks) ||
+      !completeSourceStatus(requiredChecks.status) ||
+      !Array.isArray(requiredChecks.checks) ||
+      !nonEmptyStringArray(requiredChecks.evidence) ||
+      !isRecord(approvals) ||
+      !completeSourceStatus(approvals.status) ||
+      !Number.isInteger(approvals.required_approvals) ||
+      approvals.required_approvals < 0 ||
+      !Array.isArray(approvals.approvals) ||
+      !Array.isArray(approvals.dismissals) ||
+      !Array.isArray(approvals.change_requests) ||
+      !nonEmptyStringArray(approvals.evidence)
+    ) {
+      addFinding(
+        findings,
+        "PreMergeGate.readiness.readiness_evidence.policy is incomplete or unavailable.",
+        "record complete policy, required-check, approval, dismissal, and change-request provenance",
+      );
+    } else if (
+      policy.sources.some(
+        (source) =>
+          !isRecord(source) ||
+          !isNonEmptyString(source.kind) ||
+          !isNonEmptyString(source.identity) ||
+          !completeSourceStatus(source.status) ||
+          !nonEmptyStringArray(source.provenance) ||
+          !nonEmptyStringArray(source.evidence),
+      )
+    ) {
+      addFinding(
+        findings,
+        "PreMergeGate.readiness.readiness_evidence.policy contains incomplete provenance.",
+        "preserve the exact retrieved policy source and its evidence",
+      );
+    }
+
+    if (
+      !isRecord(discussions) ||
+      !["loaded", "empty"].includes(discussions.status) ||
+      !isRecord(discussions.pagination) ||
+      discussions.pagination.complete !== true ||
+      !Number.isInteger(discussions.pagination.page_count) ||
+      !nonEmptyStringArray(discussions.pagination.evidence) ||
+      !Array.isArray(discussions.threads) ||
+      !nonEmptyStringArray(discussions.evidence)
+    ) {
+      addFinding(
+        findings,
+        "PreMergeGate.readiness.readiness_evidence.discussions is incomplete or not fully paginated.",
+        "retrieve and preserve every review-thread page for the same pull-request head",
+      );
+    } else {
+      for (const thread of discussions.threads) {
+        if (
+          !isRecord(thread) ||
+          !isNonEmptyString(thread.id) ||
+          !["open", "resolved", "unknown"].includes(thread.state) ||
+          typeof thread.is_resolved !== "boolean" ||
+          typeof thread.is_outdated !== "boolean" ||
+          !["blocking", "nonblocking", "uncertain"].includes(thread.disposition) ||
+          !nonEmptyStringArray(thread.evidence)
+        ) {
+          addFinding(
+            findings,
+            "PreMergeGate.readiness.readiness_evidence contains an uncertain review-thread record.",
+            "rebuild complete evidence-backed resolved, outdated, and disposition fields",
+          );
+          break;
+        }
+      }
+    }
+
+    if (
+      !isRecord(linkedIssue) ||
+      !["covered", "waived"].includes(linkedIssue.status) ||
+      !nonEmptyStringArray(linkedIssue.evidence)
+    ) {
+      addFinding(
+        findings,
+        "PreMergeGate.readiness.readiness_evidence.linked_issue is missing or unavailable.",
+        "preserve one unambiguous linked-issue or explicitly authorized waiver evidence",
+      );
+    } else if (linkedIssue.status === "covered") {
+      const issue = linkedIssue.issue;
+      if (
+        !isRecord(issue) ||
+        !validateRepositoryName(issue.repository) ||
+        normalizeRepository(issue.repository) !== normalizeRepository(gate.repository) ||
+        !Number.isInteger(issue.number) ||
+        issue.number < 1 ||
+        !isHttpUrl(issue.url)
+      ) {
+        addFinding(
+          findings,
+          "PreMergeGate.readiness.readiness_evidence.linked_issue does not prove one exact issue.",
+          "preserve the exact linked issue identity and URL",
+        );
+      }
+      if (
+        issueCoverage?.status === "covered" &&
+        (!isRecord(issueCoverage.issue) ||
+          normalizeRepository(issueCoverage.issue.repository) !== normalizeRepository(issue.repository) ||
+          issueCoverage.issue.number !== issue.number ||
+          normalizeUrl(issueCoverage.issue.url) !== normalizeUrl(issue.url))
+      ) {
+        addFinding(
+          findings,
+          "PreMergeGate.readiness.readiness_evidence.linked_issue does not match readiness.issue_coverage.",
+          "rebuild the snapshot and readiness result from the same linked-issue source",
+        );
+      }
+    } else {
+      const waiver = linkedIssue.waiver;
+      if (
+        !isRecord(waiver) ||
+        !isNonEmptyString(waiver.reason) ||
+        !isNonEmptyString(waiver.source) ||
+        !isNonEmptyString(waiver.evidence)
+      ) {
+        addFinding(
+          findings,
+          "PreMergeGate.readiness.readiness_evidence.linked_issue waiver is incomplete.",
+          "preserve the exact waiver reason, source, and evidence",
+        );
+      }
+    }
+
+    if (
+      !isRecord(mergeMethods) ||
+      !["loaded", "empty", "not_used"].includes(mergeMethods.status) ||
+      !Array.isArray(mergeMethods.allowed) ||
+      !nonEmptyStringArray(mergeMethods.evidence) ||
+      (mergeMethods.selected !== null &&
+        !ALLOWED_MERGE_METHODS.has(mergeMethods.selected))
+    ) {
+      addFinding(
+        findings,
+        "PreMergeGate.readiness.readiness_evidence.merge_methods is incomplete.",
+        "preserve conditional merge-method evidence when readiness uses it",
+      );
+    }
+  }
+
   return {
     reviewState,
     issueCoverage,
@@ -1358,11 +1652,11 @@ function validateGate(gate, repositoryRoot, findings) {
   if (!isRecord(gate)) {
     return null;
   }
-  if (gate.schema !== "PreMergeGate" || gate.version !== 1) {
+  if (gate.schema !== "PreMergeGate" || gate.version !== 2) {
     addFinding(
       findings,
       "PreMergeGate has an unsupported schema version.",
-      "write a fresh version-1 PreMergeGate",
+      "write a fresh version-2 PreMergeGate",
     );
   }
   if (!isIsoTimestamp(gate.written_at)) {
@@ -1574,819 +1868,6 @@ function compareCommandToGate(spec, context, findings) {
   }
 }
 
-function parseJsonOutput(output, description, findings) {
-  try {
-    return JSON.parse(output);
-  } catch {
-    addFinding(
-      findings,
-      `${description} did not return valid JSON.`,
-      "rerun the exact read-only GitHub preflight",
-    );
-    return null;
-  }
-}
-
-function readLivePullRequest(workingDirectory, repository, number, findings) {
-  let output;
-  try {
-    output = runGh(workingDirectory, [
-      "pr",
-      "view",
-      String(number),
-      "--repo",
-      repository,
-      "--json",
-      "number,url,state,isDraft,baseRefName,baseRefOid,headRefName,headRefOid,mergeable,mergeStateStatus,reviews,reviewDecision,statusCheckRollup,body",
-    ]);
-  } catch {
-    addFinding(
-      findings,
-      "The current pull-request state could not be read with gh pr view.",
-      "refresh GitHub access and rerun merge readiness",
-    );
-    return null;
-  }
-  const value = parseJsonOutput(
-    output,
-    "The current pull-request response",
-    findings,
-  );
-  return isRecord(value) ? value : null;
-}
-
-function readBaseBranchSha(workingDirectory, repository, branch, findings) {
-  if (!isSafeBranchName(branch)) {
-    addFinding(
-      findings,
-      "The approved base branch is missing or unsafe.",
-      "use the exact verified base branch",
-    );
-    return null;
-  }
-
-  let output;
-  try {
-    output = runGh(workingDirectory, [
-      "api",
-      `repos/${repository}/branches/${branch}`,
-    ]);
-  } catch {
-    addFinding(
-      findings,
-      "The current base branch SHA could not be read.",
-      "refresh the exact remote base branch and rerun merge readiness",
-    );
-    return null;
-  }
-  const value = parseJsonOutput(
-    output,
-    "The current base branch response",
-    findings,
-  );
-  const sha = isRecord(value) && isRecord(value.commit) ? value.commit.sha : null;
-  if (!isSha(sha)) {
-    addFinding(
-      findings,
-      "The current base branch response has no verifiable commit SHA.",
-      "reload the exact base branch commit identity",
-    );
-    return null;
-  }
-  return sha;
-}
-
-function getGraphqlPages(value, findings, description) {
-  if (!Array.isArray(value) || value.length === 0) {
-    addFinding(
-      findings,
-      `${description} did not return a complete GraphQL page array.`,
-      "retrieve every GraphQL page before merging",
-    );
-    return [];
-  }
-  return value;
-}
-
-function readReviewThreads(workingDirectory, repository, number, findings) {
-  const separatorIndex = repository.indexOf("/");
-  const owner = repository.slice(0, separatorIndex);
-  const name = repository.slice(separatorIndex + 1);
-  const query = `
-    query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
-      repository(owner: $owner, name: $name) {
-        pullRequest(number: $number) {
-          reviewThreads(first: 100, after: $endCursor) {
-            nodes {
-              id
-              isResolved
-              isOutdated
-            }
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  let output;
-  try {
-    output = runGh(workingDirectory, [
-      "api",
-      "graphql",
-      "--paginate",
-      "--slurp",
-      "-F",
-      `owner=${owner}`,
-      "-F",
-      `name=${name}`,
-      "-F",
-      `number=${number}`,
-      "-f",
-      `query=${query}`,
-    ]);
-  } catch {
-    addFinding(
-      findings,
-      "Current pull-request review threads could not be read.",
-      "reload complete review-thread evidence before merging",
-    );
-    return null;
-  }
-
-  const value = parseJsonOutput(
-    output,
-    "The current review-thread response",
-    findings,
-  );
-  if (value === null) {
-    return null;
-  }
-
-  const threads = [];
-  let foundConnection = false;
-  const pages = getGraphqlPages(value, findings, "The review-thread response");
-  pages.forEach((page, pageIndex) => {
-    const connection =
-      page?.data?.repository?.pullRequest?.reviewThreads ?? null;
-    if (
-      !isRecord(connection) ||
-      !Array.isArray(connection.nodes) ||
-      !isRecord(connection.pageInfo) ||
-      typeof connection.pageInfo.hasNextPage !== "boolean" ||
-      (connection.pageInfo.hasNextPage &&
-        (typeof connection.pageInfo.endCursor !== "string" ||
-          connection.pageInfo.endCursor.length === 0))
-    ) {
-      addFinding(
-        findings,
-        "The review-thread response contains a malformed or incomplete page.",
-        "retrieve every current review-thread page before merging",
-      );
-      return;
-    }
-    foundConnection = true;
-    threads.push(...connection.nodes);
-    if (
-      connection.pageInfo.hasNextPage === true &&
-      pageIndex === pages.length - 1
-    ) {
-      addFinding(
-        findings,
-        "The review-thread response is incomplete.",
-        "retrieve every current review-thread page before merging",
-      );
-    }
-    if (
-      connection.pageInfo.hasNextPage === false &&
-      pageIndex !== pages.length - 1
-    ) {
-      addFinding(
-        findings,
-        "The review-thread response contains pages after its terminal page.",
-        "retrieve every current review-thread page before merging",
-      );
-    }
-  });
-  if (!foundConnection) {
-    addFinding(
-      findings,
-      "The current review-thread connection is unavailable.",
-      "retrieve complete review-thread evidence for the exact pull request",
-    );
-    return null;
-  }
-  if (
-    threads.some(
-      (thread) => !isRecord(thread) || typeof thread.isResolved !== "boolean",
-    )
-  ) {
-    addFinding(
-      findings,
-      "A current review thread has unknown resolution state.",
-      "refresh review-thread state before merging",
-    );
-  }
-  return threads;
-}
-
-function readClosingIssues(workingDirectory, repository, number, findings) {
-  const separatorIndex = repository.indexOf("/");
-  const owner = repository.slice(0, separatorIndex);
-  const name = repository.slice(separatorIndex + 1);
-  const query = `
-    query($owner: String!, $name: String!, $number: Int!) {
-      repository(owner: $owner, name: $name) {
-        pullRequest(number: $number) {
-          closingIssuesReferences(first: 100) {
-            nodes {
-              number
-              url
-              repository {
-                nameWithOwner
-              }
-            }
-            pageInfo {
-              hasNextPage
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  let output;
-  try {
-    output = runGh(workingDirectory, [
-      "api",
-      "graphql",
-      "-F",
-      `owner=${owner}`,
-      "-F",
-      `name=${name}`,
-      "-F",
-      `number=${number}`,
-      "-f",
-      `query=${query}`,
-    ]);
-  } catch {
-    addFinding(
-      findings,
-      "The current pull-request issue relationship could not be read.",
-      "reload live linked-issue evidence before merging",
-    );
-    return null;
-  }
-
-  const value = parseJsonOutput(
-    output,
-    "The current linked-issue response",
-    findings,
-  );
-  if (value === null) {
-    return null;
-  }
-
-  const nodes = [];
-  let foundConnection = false;
-  if (Array.isArray(value)) {
-    addFinding(
-      findings,
-      "The linked-issue response has an unexpected paginated shape.",
-      "retrieve one complete linked-issue page before merging",
-    );
-    return null;
-  }
-  for (const page of [value]) {
-    const connection =
-      page?.data?.repository?.pullRequest?.closingIssuesReferences ?? null;
-    if (
-      !isRecord(connection) ||
-      !Array.isArray(connection.nodes) ||
-      !isRecord(connection.pageInfo) ||
-      typeof connection.pageInfo.hasNextPage !== "boolean"
-    ) {
-      addFinding(
-        findings,
-        "The linked-issue response contains a malformed or incomplete page.",
-        "retrieve one complete linked-issue page before merging",
-      );
-      continue;
-    }
-    foundConnection = true;
-    nodes.push(...connection.nodes);
-    if (connection.pageInfo?.hasNextPage === true) {
-      addFinding(
-        findings,
-        "The linked-issue response is incomplete.",
-        "retrieve every current linked-issue page before merging",
-      );
-    }
-  }
-  if (!foundConnection) {
-    addFinding(
-      findings,
-      "The current linked-issue relationship is unavailable.",
-      "retrieve one complete linked-issue relationship",
-    );
-    return null;
-  }
-  return nodes;
-}
-
-function readIssue(workingDirectory, repository, number, findings) {
-  let output;
-  try {
-    output = runGh(workingDirectory, [
-      "api",
-      `repos/${repository}/issues/${number}`,
-    ]);
-  } catch {
-    addFinding(
-      findings,
-      "The linked issue could not be read from GitHub.",
-      "reload the exact linked issue before merging",
-    );
-    return null;
-  }
-  const value = parseJsonOutput(
-    output,
-    "The linked issue response",
-    findings,
-  );
-  if (!isRecord(value) || value.number !== number || !isHttpUrl(value.html_url)) {
-    addFinding(
-      findings,
-      "The linked issue response does not prove the exact issue identity.",
-      "use one exact existing issue relationship",
-    );
-    return null;
-  }
-  return value;
-}
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function extractBodyIssueReferences(body, repository) {
-  if (typeof body !== "string") {
-    return [];
-  }
-  const pattern =
-    /\b(?:refs?|fix(?:es)?|close[sd]?|resolve[sd]?)\s+((?:[^/\s#]+\/[^/\s#]+)?#[1-9]\d*)\b/gi;
-  const references = new Set();
-  for (const match of body.matchAll(pattern)) {
-    const raw = match[1];
-    const qualified = raw.includes("/") ? raw : `${repository}${raw}`;
-    const parts = qualified.match(/^([^/\s]+\/[^/\s#]+)#([1-9]\d*)$/);
-    if (parts !== null) {
-      references.add(`${parts[1].toLowerCase()}#${parts[2]}`);
-    }
-  }
-  return [...references];
-}
-
-function validateLiveIssueRelationship(
-  workingDirectory,
-  repository,
-  number,
-  livePullRequest,
-  issueCoverage,
-  findings,
-) {
-  if (issueCoverage?.status === "waived") {
-    return;
-  }
-  if (
-    !isRecord(issueCoverage) ||
-    !isRecord(issueCoverage.issue) ||
-    !validateRepositoryName(issueCoverage.issue.repository) ||
-    !Number.isInteger(issueCoverage.issue.number) ||
-    issueCoverage.issue.number < 1
-  ) {
-    return;
-  }
-
-  const issueRepository = issueCoverage.issue.repository;
-  const issueNumber = issueCoverage.issue.number;
-  if (
-    normalizeRepository(issueRepository) !== normalizeRepository(repository)
-  ) {
-    addFinding(
-      findings,
-      "The linked issue is not in the verified pull-request repository.",
-      "use one exact issue relationship in the pull-request repository",
-    );
-    return;
-  }
-
-  const issue = readIssue(
-    workingDirectory,
-    issueRepository,
-    issueNumber,
-    findings,
-  );
-  if (
-    issue !== null &&
-    normalizeUrl(issue.html_url) !== normalizeUrl(issueCoverage.issue.url)
-  ) {
-    addFinding(
-      findings,
-      "The live linked-issue URL differs from MergeReadiness.",
-      "refresh the linked issue and write a fresh readiness result",
-    );
-  }
-
-  const closingIssues = readClosingIssues(
-    workingDirectory,
-    repository,
-    number,
-    findings,
-  );
-  if (closingIssues === null) {
-    return;
-  }
-
-  const graphReferences = new Set();
-  for (const closingIssue of closingIssues) {
-    if (
-      isRecord(closingIssue) &&
-      Number.isInteger(closingIssue.number) &&
-      validateRepositoryName(closingIssue.repository?.nameWithOwner)
-    ) {
-      graphReferences.add(
-        `${closingIssue.repository.nameWithOwner.toLowerCase()}#${closingIssue.number}`,
-      );
-    } else {
-      addFinding(
-        findings,
-        "A live linked-issue relationship has incomplete identity evidence.",
-        "reload the complete linked-issue relationship",
-      );
-    }
-  }
-
-  const bodyReferences = new Set(
-    extractBodyIssueReferences(livePullRequest.body, repository),
-  );
-  const targetReference = `${repository.toLowerCase()}#${issueNumber}`;
-  const allReferences = new Set([...graphReferences, ...bodyReferences]);
-  if (allReferences.size !== 1 || !allReferences.has(targetReference)) {
-    addFinding(
-      findings,
-      "The live pull request does not prove exactly one relationship to the approved issue.",
-      "refresh or clarify the exact issue relationship before merging",
-    );
-  }
-
-  if (
-    !graphReferences.has(targetReference) &&
-    !bodyReferences.has(targetReference)
-  ) {
-    addFinding(
-      findings,
-      "The approved issue is not present in the live pull-request relationship evidence.",
-      "use an explicit issue relationship and reassess MergeReadiness",
-    );
-  }
-
-  if (livePullRequest.body === null && !graphReferences.has(targetReference)) {
-    addFinding(
-      findings,
-      "The live pull-request body is unavailable for neutral issue-link verification.",
-      "reload the pull request with its relationship evidence",
-    );
-  }
-}
-
-function classifyCheck(check) {
-  if (!isRecord(check)) {
-    return "unknown";
-  }
-  const conclusion =
-    typeof check.conclusion === "string"
-      ? check.conclusion.toUpperCase()
-      : null;
-  const status = typeof check.status === "string" ? check.status.toUpperCase() : null;
-  const state = typeof check.state === "string" ? check.state.toUpperCase() : null;
-
-  if (conclusion === "SUCCESS" || state === "SUCCESS") {
-    return "pass";
-  }
-  if (conclusion === "SKIPPED") {
-    return "skipped";
-  }
-  if (
-    ["FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED"].includes(
-      conclusion,
-    ) ||
-    ["FAILURE", "ERROR"].includes(state)
-  ) {
-    return "fail";
-  }
-  if (
-    ["QUEUED", "IN_PROGRESS", "REQUESTED", "WAITING", "PENDING"].includes(
-      status,
-    ) ||
-    state === "PENDING"
-  ) {
-    return "pending";
-  }
-  return "unknown";
-}
-
-function checkName(check) {
-  if (!isRecord(check)) {
-    return null;
-  }
-  if (isNonEmptyString(check.name)) {
-    return check.name;
-  }
-  if (isNonEmptyString(check.context)) {
-    return check.context;
-  }
-  return null;
-}
-
-function validateLiveChecks(livePullRequest, readiness, expectedHeadSha, findings) {
-  if (!Array.isArray(livePullRequest.statusCheckRollup)) {
-    addFinding(
-      findings,
-      "The current required-check rollup is unavailable.",
-      "reload current status checks for the exact pull-request head",
-    );
-    return;
-  }
-
-  const requiredChecks = Array.isArray(readiness?.checks)
-    ? readiness.checks.filter((check) => check?.required === true)
-    : [];
-  for (const requiredCheck of requiredChecks) {
-    const liveMatches = livePullRequest.statusCheckRollup.filter(
-      (check) => checkName(check) === requiredCheck.name,
-    );
-    if (liveMatches.length !== 1) {
-      addFinding(
-        findings,
-        `Required check ${safeLabel(requiredCheck.name)} is missing or ambiguous on the live head.`,
-        "reload the exact required-check result before merging",
-      );
-      continue;
-    }
-
-    const liveResult = classifyCheck(liveMatches[0]);
-    if (liveResult !== "pass") {
-      addFinding(
-        findings,
-        `Required check ${safeLabel(requiredCheck.name)} is ${liveResult}, not pass.`,
-        "wait for or resolve the required check and reassess readiness",
-      );
-    }
-    if (
-      liveMatches[0].headSha !== undefined &&
-      liveMatches[0].headSha !== null &&
-      (!isSha(liveMatches[0].headSha) ||
-        liveMatches[0].headSha.toLowerCase() !== expectedHeadSha.toLowerCase())
-    ) {
-      addFinding(
-        findings,
-        `Required check ${safeLabel(requiredCheck.name)} is tied to a different head SHA.`,
-        "refresh required checks for the current pull-request head",
-      );
-    }
-  }
-}
-
-function validateLiveReviews(livePullRequest, reviewState, findings) {
-  if (!Array.isArray(livePullRequest.reviews)) {
-    addFinding(
-      findings,
-      "The current pull-request reviews are unavailable.",
-      "reload current review and approval evidence before merging",
-    );
-    return;
-  }
-
-  const activeReviews = livePullRequest.reviews.filter(
-    (review) =>
-      isRecord(review) &&
-      String(review.state ?? "").toUpperCase() !== "DISMISSED" &&
-      (review.dismissedAt === undefined || review.dismissedAt === null) &&
-      (review.dismissed_at === undefined || review.dismissed_at === null),
-  );
-  const changeRequests = activeReviews.filter(
-    (review) => String(review.state ?? "").toUpperCase() === "CHANGES_REQUESTED",
-  );
-  const approvals = activeReviews.filter(
-    (review) => String(review.state ?? "").toUpperCase() === "APPROVED",
-  );
-  const reviewDecision =
-    typeof livePullRequest.reviewDecision === "string"
-      ? livePullRequest.reviewDecision.toUpperCase()
-      : null;
-
-  if (changeRequests.length > 0 || reviewDecision === "CHANGES_REQUESTED") {
-    addFinding(
-      findings,
-      "The live pull request has an active blocking review request.",
-      "resolve the current change request before merging",
-    );
-  }
-  if (reviewState?.change_request_count !== changeRequests.length) {
-    addFinding(
-      findings,
-      "The live change-request count differs from MergeReadiness.",
-      "refresh reviews and write a new current readiness result",
-    );
-  }
-  if (reviewState?.approval_count !== approvals.length) {
-    addFinding(
-      findings,
-      "The live approval count differs from MergeReadiness.",
-      "refresh approvals and write a new current readiness result",
-    );
-  }
-  if (
-    Number.isInteger(reviewState?.required_approvals) &&
-    approvals.length < reviewState.required_approvals
-  ) {
-    addFinding(
-      findings,
-      "The live pull request does not have all required approvals.",
-      "obtain the missing required approvals before merging",
-    );
-  }
-  if (
-    Number.isInteger(reviewState?.required_approvals) &&
-    reviewState.required_approvals > 0 &&
-    reviewDecision !== "APPROVED"
-  ) {
-    addFinding(
-      findings,
-      "GitHub does not report the required review state as approved.",
-      "refresh the current approval policy and review state",
-    );
-  }
-}
-
-function validateLiveThreads(
-  workingDirectory,
-  repository,
-  number,
-  reviewState,
-  findings,
-) {
-  const threads = readReviewThreads(
-    workingDirectory,
-    repository,
-    number,
-    findings,
-  );
-  if (threads === null) {
-    return;
-  }
-  const openThreads = threads.filter((thread) => thread.isResolved === false);
-  if (reviewState?.unresolved_threads !== openThreads.length) {
-    addFinding(
-      findings,
-      "The live open review-thread count differs from MergeReadiness.",
-      "refresh complete review-thread evidence and write a new readiness result",
-    );
-  }
-  if (openThreads.length > 0) {
-    addFinding(
-      findings,
-      "The live pull request has open review threads that are not proven clear for merge.",
-      "resolve or explicitly reassess every open blocking review thread",
-    );
-  }
-}
-
-function validateLivePullRequest(
-  workingDirectory,
-  repository,
-  context,
-  livePullRequest,
-  findings,
-) {
-  const gate = context.gate;
-  const pullRequest = context.pullRequest;
-  const readiness = gate.readiness;
-  const reviewState = readiness?.review_state;
-  const issueCoverage = readiness?.issue_coverage;
-
-  if (
-    livePullRequest.number !== pullRequest.number ||
-    !isHttpUrl(livePullRequest.url) ||
-    normalizeUrl(livePullRequest.url) !== normalizeUrl(pullRequest.url)
-  ) {
-    addFinding(
-      findings,
-      "The live pull-request identity differs from PreMergeGate.",
-      "reload the exact approved pull request",
-    );
-  }
-  if (String(livePullRequest.state ?? "").toLowerCase() !== "open") {
-    addFinding(
-      findings,
-      "The target pull request is no longer open.",
-      "merge only the exact open pull request",
-    );
-  }
-  if (livePullRequest.isDraft !== false) {
-    addFinding(
-      findings,
-      "The target pull request is Draft or has unknown Draft status.",
-      "mark the exact pull request ready only in its separately authorized workflow",
-    );
-  }
-  if (livePullRequest.baseRefName !== pullRequest.base_branch) {
-    addFinding(
-      findings,
-      "The live base branch differs from PreMergeGate.",
-      "refresh the exact pull-request target",
-    );
-  }
-  if (livePullRequest.headRefName !== pullRequest.head_branch) {
-    addFinding(
-      findings,
-      "The live head branch differs from PreMergeGate.",
-      "refresh the exact pull-request target",
-    );
-  }
-  if (
-    !isSha(livePullRequest.headRefOid) ||
-    livePullRequest.headRefOid.toLowerCase() !== gate.expected_head_sha.toLowerCase()
-  ) {
-    addFinding(
-      findings,
-      "The live pull-request head SHA changed.",
-      "refresh the pull request and obtain new readiness and merge approval",
-    );
-  }
-  if (
-    !isSha(livePullRequest.baseRefOid) ||
-    livePullRequest.baseRefOid.toLowerCase() !== gate.expected_base_sha.toLowerCase()
-  ) {
-    addFinding(
-      findings,
-      "The live pull-request base SHA changed.",
-      "refresh the base branch and obtain new readiness and merge approval",
-    );
-  }
-  if (String(livePullRequest.mergeable ?? "").toUpperCase() !== "MERGEABLE") {
-    addFinding(
-      findings,
-      "The live pull request has conflicts or unknown mergeability.",
-      "resolve the conflict or unknown state before merging",
-    );
-  }
-
-  const liveBaseSha = readBaseBranchSha(
-    workingDirectory,
-    repository,
-    pullRequest.base_branch,
-    findings,
-  );
-  if (
-    !isSha(liveBaseSha) ||
-    liveBaseSha.toLowerCase() !== gate.expected_base_sha.toLowerCase()
-  ) {
-    addFinding(
-      findings,
-      "The remote base branch is no longer at the approved base SHA.",
-      "refresh the exact target base and reassess merge readiness",
-    );
-  }
-
-  validateLiveReviews(livePullRequest, reviewState, findings);
-  validateLiveChecks(
-    livePullRequest,
-    readiness,
-    gate.expected_head_sha,
-    findings,
-  );
-  validateLiveThreads(
-    workingDirectory,
-    repository,
-    pullRequest.number,
-    reviewState,
-    findings,
-  );
-  validateLiveIssueRelationship(
-    workingDirectory,
-    repository,
-    pullRequest.number,
-    livePullRequest,
-    issueCoverage,
-    findings,
-  );
-}
-
 function parseInvocation(invocation, findings) {
   if (invocation.parseError) {
     addFinding(
@@ -2571,22 +2052,6 @@ function evaluate(input) {
     return makeDeny(findings);
   }
 
-  const livePullRequest = readLivePullRequest(
-    invocation.targetDirectory,
-    context.repository,
-    context.pullRequest.number,
-    findings,
-  );
-  if (livePullRequest === null) {
-    return makeDeny(findings);
-  }
-  validateLivePullRequest(
-    invocation.targetDirectory,
-    context.repository,
-    context,
-    livePullRequest,
-    findings,
-  );
   return findings.length > 0 ? makeDeny(findings) : makeAllow();
 }
 

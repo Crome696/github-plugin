@@ -1,22 +1,225 @@
 schema: MergeReadiness
-version: 2
+version: 3
 status: ready
 repository: octo-org/widgets
 pull_request:
   number: 1
-  url: https://github.com/octo-org/widgets
-head_sha: head_sha-value
+  url: https://github.com/octo-org/widgets/pull/1
+  state: open
+  draft: false
+head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+base_branch: master
 mergeability: mergeable
+mergeability_evidence: Exact pull-request payload reports mergeable for the current head.
 blockers: []
 checks: []
 review_state:
-  approval_count: 1
-  change_request_count: 1
+  approval_count: 0
+  change_request_count: 0
+  comment_count: 0
+  required_approvals_met: true
+  required_approvals: 0
+  unresolved_threads: 0
+  outdated_threads: 0
   evidence_status: known
+  approval_inspection_status: inspected
+  approval_policy_evidence:
+    - No applicable approval policy was returned.
+  evidence:
+    - Current approval and change-request state was inspected.
 issue_coverage:
   status: covered
-  evidence: []
+  issue:
+    repository: octo-org/widgets
+    number: 1
+    url: https://github.com/octo-org/widgets/issues/1
+  evidence:
+    - The exact linked issue was verified.
+  acceptance_criteria: []
+  unavailable_reason: null
 evidence:
-  head_sha: head_sha-value
+  head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
   status: complete
-  sources: []
+  sources:
+    - name: readiness-snapshot
+      status: loaded
+      evidence:
+        - Derived from the immutable readiness snapshot.
+      unavailable_reason: null
+readiness_evidence:
+  schema: PullRequestReadinessEvidence
+  version: 1
+  status: complete
+  repository: octo-org/widgets
+  pull_request:
+    number: 1
+    node_id: PR_kwDO123456789
+    url: https://github.com/octo-org/widgets/pull/1
+    state: open
+    draft: false
+  head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  base:
+    name: master
+    oid: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  observed_at: '2026-08-20T10:00:00.000Z'
+  freshness:
+    status: current
+    evidence:
+      - All sources were collected for the same current head and base.
+  policy:
+    status: empty
+    sources: []
+    required_checks:
+      status: empty
+      checks: []
+      evidence:
+        - No required checks were configured.
+    approvals:
+      status: empty
+      required_approvals: 0
+      approvals: []
+      dismissals: []
+      change_requests: []
+      evidence:
+        - No approval threshold was configured.
+    evidence:
+      - Policy sources were retrieved and empty.
+  discussions:
+    status: empty
+    pagination:
+      complete: true
+      page_count: 1
+      evidence:
+        - The complete discussion page was retrieved.
+    threads: []
+    evidence:
+      - No review threads were returned.
+  linked_issue:
+    status: covered
+    issue:
+      repository: octo-org/widgets
+      number: 1
+      url: https://github.com/octo-org/widgets/issues/1
+    acceptance_criteria: []
+    evidence:
+      - The exact issue relationship was verified.
+  merge_methods:
+    status: not_used
+    allowed: []
+    selected: null
+    evidence:
+      - Merge method is checked by the merge operation, not readiness.
+  sources:
+    - name: load-pull-request
+      status: loaded
+      identity:
+        repository: octo-org/widgets
+        number: 1
+        node_id: PR_kwDO123456789
+        url: https://github.com/octo-org/widgets/pull/1
+        head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        base_branch: master
+        base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      retrieved_at: '2026-08-20T10:00:00.000Z'
+      pagination:
+        complete: true
+        page_count: 1
+      provenance:
+        - Exact pull-request payload
+      evidence:
+        - Pull-request identity was loaded.
+    - name: load-pr-discussions
+      status: empty
+      identity:
+        repository: octo-org/widgets
+        number: 1
+        node_id: PR_kwDO123456789
+        url: https://github.com/octo-org/widgets/pull/1
+        head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        base_branch: master
+        base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      retrieved_at: '2026-08-20T10:00:00.000Z'
+      pagination:
+        complete: true
+        page_count: 1
+      provenance:
+        - Complete review-thread pagination
+      evidence:
+        - Discussion source was empty.
+    - name: inspect-pr-checks
+      status: empty
+      identity:
+        repository: octo-org/widgets
+        number: 1
+        node_id: PR_kwDO123456789
+        url: https://github.com/octo-org/widgets/pull/1
+        head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        base_branch: master
+        base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      retrieved_at: '2026-08-20T10:00:00.000Z'
+      pagination:
+        complete: true
+        page_count: 1
+      provenance:
+        - Required-check inspection
+      evidence:
+        - No required checks were configured.
+    - name: check-required-approvals
+      status: empty
+      identity:
+        repository: octo-org/widgets
+        number: 1
+        node_id: PR_kwDO123456789
+        url: https://github.com/octo-org/widgets/pull/1
+        head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        base_branch: master
+        base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      retrieved_at: '2026-08-20T10:00:00.000Z'
+      pagination:
+        complete: true
+        page_count: 1
+      provenance:
+        - Required-approval inspection
+      evidence:
+        - No approval threshold was configured.
+    - name: check-open-review-threads
+      status: empty
+      identity:
+        repository: octo-org/widgets
+        number: 1
+        node_id: PR_kwDO123456789
+        url: https://github.com/octo-org/widgets/pull/1
+        head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        base_branch: master
+        base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      retrieved_at: '2026-08-20T10:00:00.000Z'
+      pagination:
+        complete: true
+        page_count: 1
+      provenance:
+        - Open-review-thread assessment
+      evidence:
+        - No unresolved thread was returned.
+    - name: check-linked-issue-status
+      status: loaded
+      identity:
+        repository: octo-org/widgets
+        number: 1
+        node_id: PR_kwDO123456789
+        url: https://github.com/octo-org/widgets/pull/1
+        head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        base_branch: master
+        base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      retrieved_at: '2026-08-20T10:00:00.000Z'
+      pagination:
+        complete: true
+        page_count: 1
+      provenance:
+        - Linked-issue status assessment
+      evidence:
+        - The exact linked issue was covered.
+  failure: null
+required_conditions: []
+remaining_conditions: []
+uncertainties: []
+assessed_at: '2026-08-20T10:00:00.000Z'

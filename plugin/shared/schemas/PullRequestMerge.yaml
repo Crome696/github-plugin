@@ -1,6 +1,6 @@
 schema: PullRequestMerge
-version: 1
-description: Exact authorization-gated GitHub pull-request merge intent, execution result, and verification record.
+version: 2
+description: Exact authorization-gated GitHub pull-request merge intent, execution result, and verification record bound to immutable readiness evidence.
 required:
   - status
   - repository
@@ -78,29 +78,99 @@ fields:
         format: iso-8601
   readiness:
     type: object
-    required: [schema, version, status, repository, pull_request_number, assessed_head_sha, evidence]
+    required: [schema, version, status, repository, pull_request, head_sha, mergeability, blockers, checks, review_state, issue_coverage, evidence, readiness_evidence]
     fields:
       schema:
         type: string
         value: MergeReadiness
       version:
         type: integer
-        value: 2
+        value: 3
       status:
         type: enum
         values: [ready]
       repository:
         type: string
         format: owner/repository
-      pull_request_number:
-        type: integer
-        minimum: 1
-      assessed_head_sha:
+      pull_request:
+        type: object
+        required: [number, url]
+        fields:
+          number:
+            type: integer
+            minimum: 1
+          url:
+            type: string
+            format: uri
+          state:
+            type: enum
+            values: [open, closed, merged, unknown]
+          draft:
+            type: boolean | null
+      head_sha:
         type: string
         format: full git commit SHA
-      evidence:
+      base_branch:
+        type: string
+      mergeability:
+        type: enum
+        values: [mergeable]
+      blockers:
         type: list
-        items: string
+        items: object
+      checks:
+        type: list
+        items: object
+      review_state:
+        type: object
+        required: [approval_count, change_request_count, evidence_status]
+      issue_coverage:
+        type: object
+        required: [status, evidence]
+      evidence:
+        type: object
+        required: [head_sha, status, sources]
+      readiness_evidence:
+        type: object
+        required: [schema, version, status, repository, pull_request, head_sha, base, observed_at, freshness, policy, discussions, linked_issue, merge_methods, sources, failure]
+        fields:
+          schema:
+            type: string
+            value: PullRequestReadinessEvidence
+          version:
+            type: integer
+            value: 1
+          status:
+            type: enum
+            values: [complete]
+          repository:
+            type: string
+            format: owner/repository
+          pull_request:
+            type: object
+          head_sha:
+            type: string
+            format: full git commit SHA
+          base:
+            type: object
+          observed_at:
+            type: string
+            format: iso-8601
+          freshness:
+            type: object
+          policy:
+            type: object
+          discussions:
+            type: object
+          linked_issue:
+            type: object
+          merge_methods:
+            type: object
+          sources:
+            type: list
+            items: object
+          failure:
+            type: object | null
   preflight:
     type: object
     required: [checked_at, live_head_sha, live_base_sha, target_match, open_state, non_draft, head_sha_match, base_branch_match, base_sha_match, mergeability, reviews_current, checks_current, method_allowed, authorization_match, evidence]
@@ -204,6 +274,7 @@ fields:
         items: string
 invariants:
   - MergeReadiness is diagnostic evidence only and never grants merge authorization.
+  - Version 2 merge handoffs must carry a version-3 MergeReadiness result with one complete version-1 PullRequestReadinessEvidence snapshot.
   - Only status approved with exact_target, exact_merge_operation, and merge_authorized all true may attempt a merge.
   - The approved authorization covers the exact repository, pull request, expected head and base SHAs, base branch, merge method, commit metadata, and branch-deletion effect.
   - A requested branch deletion requires delete_branch_authorized true; no branch is deleted implicitly.

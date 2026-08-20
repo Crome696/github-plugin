@@ -1,0 +1,317 @@
+schema: PullRequestReadinessEvidence
+version: 1
+description: Immutable, complete, head-bound evidence snapshot used as the sole input to pull-request merge-readiness assessment.
+required:
+  - status
+  - repository
+  - pull_request
+  - head_sha
+  - base
+  - observed_at
+  - freshness
+  - policy
+  - discussions
+  - linked_issue
+  - merge_methods
+  - sources
+  - failure
+fields:
+  status:
+    type: enum
+    values: [complete, partial, unavailable]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, node_id, url, state, draft]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      node_id:
+        type: string
+      url:
+        type: string
+        format: uri
+      state:
+        type: enum
+        values: [open, closed, merged, unknown]
+      draft:
+        type: boolean | null
+  head_sha:
+    type: string
+    format: full git commit SHA
+  base:
+    type: object
+    required: [name, oid]
+    fields:
+      name:
+        type: string
+      oid:
+        type: string
+        format: full git commit SHA
+  observed_at:
+    type: string
+    format: iso-8601
+  freshness:
+    type: object
+    required: [status, evidence]
+    fields:
+      status:
+        type: enum
+        values: [current, stale, unknown]
+      evidence:
+        type: list
+        items: string
+  policy:
+    type: object
+    required: [status, sources, required_checks, approvals, evidence]
+    fields:
+      status:
+        type: enum
+        values: [loaded, empty, partial, unavailable]
+      sources:
+        type: list
+        items:
+          type: object
+          required: [kind, identity, status, provenance, evidence]
+          fields:
+            kind:
+              type: enum
+              values: [branch-protection, ruleset]
+            identity:
+              type: string
+            status:
+              type: enum
+              values: [loaded, empty, partial, unavailable]
+            provenance:
+              type: list
+              items: string
+            evidence:
+              type: list
+              items: string
+            unavailable_reason:
+              type: string | null
+      required_checks:
+        type: object
+        required: [status, checks, evidence]
+        fields:
+          status:
+            type: enum
+            values: [loaded, empty, partial, unavailable]
+          checks:
+            type: list
+            items:
+              type: object
+              required: [name, result, required, head_sha, evidence]
+              fields:
+                name:
+                  type: string
+                result:
+                  type: enum
+                  values: [pass, fail, pending, skipped, unknown]
+                required:
+                  type: boolean
+                head_sha:
+                  type: string | null
+                evidence:
+                  type: list
+                  items: string
+          evidence:
+            type: list
+            items: string
+      approvals:
+        type: object
+        required: [status, required_approvals, approvals, dismissals, change_requests, evidence]
+        fields:
+          status:
+            type: enum
+            values: [loaded, empty, partial, unavailable]
+          required_approvals:
+            type: integer | null
+            minimum: 0
+          approvals:
+            type: list
+            items: object
+          dismissals:
+            type: list
+            items: object
+          change_requests:
+            type: list
+            items: object
+          evidence:
+            type: list
+            items: string
+      evidence:
+        type: list
+        items: string
+  discussions:
+    type: object
+    required: [status, pagination, threads, evidence]
+    fields:
+      status:
+        type: enum
+        values: [loaded, empty, partial, unavailable]
+      pagination:
+        type: object
+        required: [complete, page_count, evidence]
+        fields:
+          complete:
+            type: boolean
+          page_count:
+            type: integer
+            minimum: 0
+          evidence:
+            type: list
+            items: string
+      threads:
+        type: list
+        items:
+          type: object
+          required: [id, state, is_resolved, is_outdated, disposition, evidence]
+          fields:
+            id:
+              type: string
+            state:
+              type: enum
+              values: [open, resolved, unknown]
+            is_resolved:
+              type: boolean | null
+            is_outdated:
+              type: boolean | null
+            disposition:
+              type: enum
+              values: [blocking, nonblocking, uncertain]
+            evidence:
+              type: list
+              items: string
+      evidence:
+        type: list
+        items: string
+  linked_issue:
+    type: object
+    required: [status, issue, acceptance_criteria, evidence]
+    fields:
+      status:
+        type: enum
+        values: [covered, waived, missing, ambiguous, not_applicable, unavailable]
+      issue:
+        type: object | null
+        fields:
+          repository:
+            type: string
+            format: owner/repository
+          number:
+            type: integer
+            minimum: 1
+          url:
+            type: string
+            format: uri
+      acceptance_criteria:
+        type: list
+        items: string
+      evidence:
+        type: list
+        items: string
+      waiver:
+        type: object | null
+        fields:
+          reason:
+            type: string
+          source:
+            type: string
+          evidence:
+            type: string
+  merge_methods:
+    type: object
+    required: [status, allowed, selected, evidence]
+    fields:
+      status:
+        type: enum
+        values: [loaded, empty, not_used, partial, unavailable]
+      allowed:
+        type: list
+        items:
+          type: enum
+          values: [merge, squash, rebase]
+      selected:
+        type: enum
+        values: [merge, squash, rebase, null]
+      evidence:
+        type: list
+        items: string
+  sources:
+    type: list
+    items:
+      type: object
+      required: [name, status, identity, retrieved_at, pagination, provenance, evidence]
+      fields:
+        name:
+          type: string
+        status:
+          type: enum
+          values: [loaded, empty, partial, unavailable]
+        identity:
+          type: object
+          required: [repository, number, node_id, url, head_sha, base_branch, base_sha]
+          fields:
+            repository:
+              type: string
+              format: owner/repository
+            number:
+              type: integer
+              minimum: 1
+            node_id:
+              type: string
+            url:
+              type: string
+              format: uri
+            head_sha:
+              type: string
+            base_branch:
+              type: string
+            base_sha:
+              type: string
+        retrieved_at:
+          type: string | null
+          format: iso-8601
+        pagination:
+          type: object
+          required: [complete, page_count]
+          fields:
+            complete:
+              type: boolean
+            page_count:
+              type: integer
+              minimum: 0
+        provenance:
+          type: list
+          items: string
+        evidence:
+          type: list
+          items: string
+        unavailable_reason:
+          type: string | null
+  failure:
+    type: object | null
+    required: [code, message, evidence]
+    fields:
+      code:
+        type: enum
+        values: [missing_identity, mixed_identity, stale_source, incomplete, unavailable_policy, unavailable_threads, invalid_input]
+      message:
+        type: string
+      evidence:
+        type: list
+        items: string
+invariants:
+  - A complete snapshot is immutable input data; no consumer may refresh, merge, rebase, or mutate it.
+  - Every identity object has the same repository, pull-request number, PR node ID, canonical URL, head OID, base name, and base OID as the snapshot envelope.
+  - Complete requires current freshness, complete pagination, and no partial or unavailable source that is applicable to readiness.
+  - Empty means a source was retrieved successfully and contained no entries; unavailable means retrieval or interpretation failed.
+  - Missing, unavailable, ambiguous, stale, partially paginated, or mixed-identity policy or discussion evidence cannot produce status complete.
+  - The exact required-check set and approval requirements come only from the recorded policy sources; no requirement is invented when policy is unavailable.
+  - Thread disposition is evidence-backed and distinguishes blocking, nonblocking, and uncertain states without model-only interpretation in hooks.
+  - Merge-method evidence is required only when readiness uses merge-method requirements; otherwise merge_methods.status is not_used.
+  - The snapshot is evidence, not merge authorization.

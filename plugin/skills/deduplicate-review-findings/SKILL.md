@@ -48,7 +48,7 @@ Accept one required version-1 `DetectedReviewFindings` handoff. Its status must
 be `detected` or `partial`, and its findings must be usable. A blocked,
 unsupported, malformed, or missing source cannot be deduplicated reliably.
 
-Accept one optional version-1 `LoadedPullRequestDiscussions` handoff. It must
+Accept one optional version-2 `LoadedPullRequestDiscussions` handoff. It must
 identify the same repository, pull request, and canonical URL when those
 values are available. A `loaded` snapshot enables complete discussion
 matching. A `partial` snapshot may be used for the fields it retrieved, but

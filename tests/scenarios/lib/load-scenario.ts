@@ -312,6 +312,115 @@ export const deepMerge = (base: unknown, patch: unknown): unknown => {
   return result;
 };
 
+const synchronizeScenarioReadinessSnapshot = (
+  readiness: unknown,
+  target: Record<string, unknown>,
+): void => {
+  if (!isRecord(readiness)) return;
+  if (readiness.readiness_evidence === null) return;
+  if (!isRecord(readiness.readiness_evidence)) return;
+
+  const pullRequest = isRecord(readiness.pull_request)
+    ? readiness.pull_request
+    : {};
+  const repository =
+    typeof readiness.repository === "string"
+      ? readiness.repository
+      : target.repository;
+  const number =
+    Number.isInteger(pullRequest.number)
+      ? pullRequest.number
+      : target.pull_request_number;
+  const url =
+    typeof pullRequest.url === "string"
+      ? pullRequest.url
+      : `https://github.com/${String(repository)}/pull/${String(number)}`;
+  const headSha =
+    typeof readiness.head_sha === "string"
+      ? readiness.head_sha
+      : target.head_sha;
+  const baseBranch =
+    typeof readiness.base_branch === "string"
+      ? readiness.base_branch
+      : typeof pullRequest.base_branch === "string"
+        ? pullRequest.base_branch
+        : "master";
+  const baseSha =
+    typeof target.base_sha === "string"
+      ? target.base_sha
+      : isRecord(readiness.readiness_evidence.base) &&
+          typeof readiness.readiness_evidence.base.oid === "string"
+        ? readiness.readiness_evidence.base.oid
+        : null;
+  const snapshot = readiness.readiness_evidence;
+  const snapshotPullRequest = isRecord(snapshot.pull_request)
+    ? snapshot.pull_request
+    : {};
+  const snapshotBase = isRecord(snapshot.base) ? snapshot.base : {};
+  snapshot.repository = repository;
+  snapshot.pull_request = {
+    ...snapshotPullRequest,
+    number,
+    url,
+    state: pullRequest.state ?? "open",
+    draft: pullRequest.draft ?? false,
+  };
+  snapshot.head_sha = headSha;
+  snapshot.base = {
+    ...snapshotBase,
+    name: baseBranch,
+    ...(typeof baseSha === "string" ? { oid: baseSha } : {}),
+  };
+  if (Array.isArray(snapshot.sources)) {
+    for (const source of snapshot.sources) {
+      if (!isRecord(source)) continue;
+      const identity = isRecord(source.identity) ? source.identity : {};
+      source.identity = {
+        ...identity,
+        repository,
+        number,
+        node_id: snapshotPullRequest.node_id,
+        url,
+        head_sha: headSha,
+        base_branch: baseBranch,
+        ...(typeof baseSha === "string" ? { base_sha: baseSha } : {}),
+      };
+    }
+  }
+};
+
+const synchronizeScenarioHandoffs = (
+  scenario: ScenarioDefinition,
+  handoffs: Map<string, unknown>,
+): void => {
+  const target = scenario.target as Record<string, unknown>;
+  const readiness = handoffs.get("MergeReadiness");
+  synchronizeScenarioReadinessSnapshot(readiness, target);
+
+  for (const name of ["PullRequestMerge", "PreMergeGate"]) {
+    const handoff = handoffs.get(name);
+    if (!isRecord(handoff)) continue;
+    const nestedReadiness = handoff.readiness;
+    if (!isRecord(nestedReadiness)) continue;
+    delete nestedReadiness.pull_request_number;
+    delete nestedReadiness.assessed_head_sha;
+    if (Array.isArray(nestedReadiness.evidence)) {
+      nestedReadiness.evidence = {
+        head_sha: nestedReadiness.head_sha ?? target.head_sha,
+        status: "complete",
+        sources: [
+          {
+            name: "readiness-snapshot",
+            status: "loaded",
+            evidence: ["Current readiness is bound to the rebased head."],
+          },
+        ],
+      };
+    }
+    synchronizeScenarioReadinessSnapshot(nestedReadiness, target);
+  }
+};
+
 export const loadScenarioHandoffs = async (
   scenario: ScenarioDefinition,
   schemas?: SchemaDocument[],
@@ -333,5 +442,6 @@ export const loadScenarioHandoffs = async (
     const fixture = load(await readFile(fixturePath, "utf8"));
     handoffs.set(name, spec.patch ? deepMerge(fixture, spec.patch) : fixture);
   }
+  synchronizeScenarioHandoffs(scenario, handoffs);
   return handoffs;
 };

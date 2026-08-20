@@ -13,7 +13,7 @@ authorization state so the next Skill can make a bounded decision.
 
 ## Contract families
 
-The plugin currently defines 83 versioned contracts.
+The plugin currently defines 84 versioned contracts.
 
 ### Issue and linkage contracts
 
@@ -84,14 +84,15 @@ The plugin currently defines 83 versioned contracts.
 | `CiFixPlan` | Host-neutral confirmed plan of remaining failed required checks on an existing PR head. |
 | `CiFixRun` | Lifecycle record for wait, authorized rerun, and bounded CI-fix iterations. |
 | `RequiredApprovalInspection` | Explicit review requirements, effective approvals, change requests, pending requests, and missing conditions. |
-| `LoadedPullRequestDiscussions` | Reviews, grouped threads, replies, comments, authors, locations, timestamps, and resolution state. |
+| `LoadedPullRequestDiscussions` | Version-2 reviews, grouped threads, replies, comments, authors, locations, timestamps, resolution state, and exact PR/head/base identity with retrieval provenance. |
 | `OpenReviewThreadAssessment` | Open, resolved, outdated, and unknown thread states, required problems, optional discussions, and uncertainties. |
 | `DetectedReviewFindings` | Source-level aggregation of diff, issue, check, discussion, and external-rule evidence. |
 | `DeduplicatedReviewFindings` | Content-level comparison that merges equivalent findings and records auditable suppressions. |
 | `ClassifiedReviewFindings` | Evidence-supported severity and domain classification of every deduplicated finding. |
 | `ReviewFinding` | One evidence-backed finding with location, impact, recommendation, severity, and verification. |
 | `ReviewDecision` | Composition or authorized publication payload for a comment, approval, or request for changes. |
-| `MergeReadiness` | Diagnostic readiness from current draft state, reviews, threads, approvals, checks, conflicts, linkage, and blockers. |
+| `MergeReadiness` | Version-3 deterministic diagnostic readiness derived from exactly one complete immutable `PullRequestReadinessEvidence` snapshot. |
+| `PullRequestReadinessEvidence` | Version-1 immutable, identity-bound snapshot of PR/head/base identity, policy, checks, approvals, discussions, linkage, conditional merge method, freshness, and source provenance. |
 
 ### Feedback and thread-action contracts
 
@@ -111,7 +112,7 @@ The plugin currently defines 83 versioned contracts.
 
 | Contract | Purpose |
 | --- | --- |
-| `PullRequestMerge` | Exact authorized merge intent, current readiness, live preflight, selected strategy, and result. |
+| `PullRequestMerge` | Version-2 exact authorized merge intent, snapshot-backed version-3 readiness, preflight, selected strategy, and result. |
 | `PullRequestIntegration` | Lifecycle record for readiness, target refresh, rebase, validation, push, merge, closure verification, and cleanup decisions. |
 | `LifecycleRun` | Autonomous issue-to-draft-PR record through create or existing-issue refine, then preparation, external implementation, and Draft PR delivery. |
 | `ProductPlannerRun` | Interactive parent-issue product-planning record through analysis, interview, mapping, decomposition, atomicity, dependencies, prioritization, sub-issue drafting, and publication handoff only after exact user approval. |
@@ -122,7 +123,7 @@ The plugin currently defines 83 versioned contracts.
 | `PrePrCreateGate` | Version-2 local snapshot binding one exact Draft PR publication to commit, push, issue link, description, and version-2 validation. |
 | `PreReviewSubmitGate` | Local snapshot binding one exact review payload to current evidence, deduplication, confirmation, and authorization. |
 | `PrePrReadyGate` | Version-1 local snapshot binding one standalone Ready-for-Review transition and, only when authorized after that transition, one exact requested-reviewers POST to complete Draft/URL/branch/SHA identity, unique issue, typed reviewer set, and authorization. |
-| `PreMergeGate` | Local snapshot binding one exact merge to current readiness and exact merge authorization. |
+| `PreMergeGate` | Version-2 local snapshot binding one exact merge to version-3 readiness with an embedded version-1 immutable snapshot and exact merge authorization. |
 | `PostMergeStatus` | Read-only post-merge PR, merge-commit, linked-issue, and cleanup status. |
 
 The grouping is explanatory. A contract's authoritative fields, versions,
@@ -213,7 +214,7 @@ producer and consumer.
 
 The plugin's contract tests validate:
 
-- all 83 schema descriptions and minimal valid fixtures;
+- all 84 schema descriptions and minimal valid fixtures;
 - required fields, versions, enums, and nested payloads;
 - producer/consumer compatibility;
 - Command-to-Agent ownership and forbidden operation graphs;

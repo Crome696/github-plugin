@@ -10,8 +10,10 @@ diagnostic evidence, never merge authorization.
 
 ## Required merge conditions
 
-Before the merge write, reload the exact pull request and verify all of the
-following against the current head SHA:
+Before the merge write, collect the complete fixed-order reader chain for the
+exact pull request and build one immutable `PullRequestReadinessEvidence`
+snapshot. Verify all of the following against the snapshot's bound head and
+base identities:
 
 - The pull request is open and not a Draft.
 - No unresolved merge conflicts remain.
@@ -29,17 +31,19 @@ following against the current head SHA:
 
 The merge is blocked when any condition is failed, stale, unavailable, or
 ambiguous. Recheck branch protection, applicable rulesets, required reviews,
-required checks, mergeability, and base-branch state immediately before the
-write.
+required checks, mergeability, and base-branch state while building the
+snapshot. A new snapshot is required after every rebase or push; no individual
+source may be reused in isolation.
 
 ## Deterministic pre-merge gate
 
 Immediately before the GitHub merge write, `merge-pull-request` MUST write a
-current local version-1 `PreMergeGate` containing the exact pull-request
+current local version-2 `PreMergeGate` containing the exact pull-request
 identity, expected head and base SHAs, selected strategy, branch-deletion
-effect, complete current `MergeReadiness`, and explicit merge authorization.
-The host-specific `pre-merge` Hook MUST fail closed unless the local gate and
-live read-only evidence agree for:
+effect, version-3 `MergeReadiness`, its complete version-1
+`PullRequestReadinessEvidence`, and explicit merge authorization. The
+host-specific `pre-merge` Hook MUST fail closed unless the local gate and
+embedded snapshot agree for:
 
 - open, non-Draft status;
 - active reviews and change requests;
@@ -51,6 +55,9 @@ live read-only evidence agree for:
 - exactly one linked issue relationship OR a waived unique-link condition;
   and
 - the exact user or repository-policy merge authorization and selected strategy.
+
+The Hook does not execute `gh`, GraphQL, or any other live GitHub acquisition;
+policy interpretation belongs to the reader Skills and the snapshot builder.
 
 The Hook must stop when any identity, readiness, authorization, review,
 thread, approval, check, conflict, base, or issue condition changes or is
@@ -68,9 +75,10 @@ revisions, selected strategy, commit metadata, and any branch-deletion effect.
 
 Rebase and merge are independent operations with independent authorizations.
 Authorization for one never authorizes the other. After an authorized rebase,
-invalidate prior readiness and validation evidence, then revalidate the new
-head's identity, history, diff scope, tests, checks, reviews, issue linkage,
-conflicts, and merge readiness before requesting or performing a merge.
+invalidate all prior source handoffs, readiness snapshots, and validation
+evidence, then revalidate the new head's identity, history, diff scope, tests,
+checks, reviews, issue linkage, conflicts, and merge readiness before
+requesting or performing a merge.
 
 ## Post-merge boundary
 

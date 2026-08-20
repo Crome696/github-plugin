@@ -149,12 +149,9 @@ scenarios:
             delete_branch_authorized: false
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
-            pull_request_number: *pr
-            assessed_head_sha: *head
-            evidence: [Current readiness is bound to the rebased head.]
       PreMergeGate:
         patch:
           pull_request:
@@ -171,7 +168,7 @@ scenarios:
             merge_authorized: true
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
             pull_request:
@@ -263,6 +260,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -282,7 +282,10 @@ scenarios:
         effect: write
         phase: integration
         handoff: BranchPush
-      - operation: assess-final-merge-readiness
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
+      - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
       - operation: merge-pull-request
@@ -298,7 +301,6 @@ scenarios:
         effect: write
       - operation: cleanup-worktree
         effect: write
-
   - id: integrate-pr-refs-opt-out
     command: integrate-pr
     description: Preserves an explicitly neutral Refs relationship instead of closing the issue.
@@ -443,12 +445,9 @@ scenarios:
             delete_branch_authorized: false
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
-            pull_request_number: *pr
-            assessed_head_sha: *head
-            evidence: [Current readiness is bound to the rebased head.]
       PreMergeGate:
         patch:
           pull_request:
@@ -465,7 +464,7 @@ scenarios:
             merge_authorized: true
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
             pull_request:
@@ -516,6 +515,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -535,7 +537,10 @@ scenarios:
         effect: write
         phase: integration
         handoff: BranchPush
-      - operation: assess-final-merge-readiness
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
+      - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
       - operation: merge-pull-request
@@ -568,6 +573,8 @@ scenarios:
     handoffs: {}
     actions:
       - operation: verify-repository
+        effect: read
+      - operation: build-pr-readiness-evidence
         effect: read
       - operation: assess-merge-readiness
         effect: read
@@ -621,6 +628,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -680,6 +690,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -739,6 +752,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -833,6 +849,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -962,12 +981,9 @@ scenarios:
             merge_authorized: true
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
-            pull_request_number: *pr
-            assessed_head_sha: *head
-            evidence: [Current readiness]
       PreMergeGate:
         patch:
           pull_request:
@@ -984,7 +1000,7 @@ scenarios:
             merge_authorized: true
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
             pull_request:
@@ -994,6 +1010,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -1013,7 +1032,10 @@ scenarios:
         effect: write
         phase: integration
         handoff: BranchPush
-      - operation: assess-final-merge-readiness
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
+      - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
       - operation: merge-pull-request
@@ -1133,12 +1155,9 @@ scenarios:
             merge_authorized: true
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
-            pull_request_number: *pr
-            assessed_head_sha: *head
-            evidence: [Current readiness]
       PreMergeGate:
         patch:
           pull_request:
@@ -1155,7 +1174,7 @@ scenarios:
             merge_authorized: true
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
             pull_request:
@@ -1165,6 +1184,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -1184,7 +1206,10 @@ scenarios:
         effect: write
         phase: integration
         handoff: BranchPush
-      - operation: assess-final-merge-readiness
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
+      - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
       - operation: merge-pull-request
@@ -1249,6 +1274,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -1370,12 +1398,9 @@ scenarios:
             delete_branch_authorized: false
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
-            pull_request_number: *pr
-            assessed_head_sha: *head
-            evidence: [Current readiness is bound to the rebased head.]
       PreMergeGate:
         patch:
           pull_request:
@@ -1392,7 +1417,7 @@ scenarios:
             merge_authorized: true
           readiness:
             schema: MergeReadiness
-            version: 2
+            version: 3
             status: ready
             repository: *repo
             pull_request:
@@ -1402,6 +1427,9 @@ scenarios:
     actions:
       - operation: verify-repository
         effect: read
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
       - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
@@ -1421,7 +1449,10 @@ scenarios:
         effect: write
         phase: integration
         handoff: BranchPush
-      - operation: assess-final-merge-readiness
+      - operation: build-pr-readiness-evidence
+        effect: read
+        handoff: PullRequestReadinessEvidence
+      - operation: assess-merge-readiness
         effect: read
         handoff: MergeReadiness
       - operation: merge-pull-request

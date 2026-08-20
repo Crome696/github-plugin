@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.113
+
+- Added immutable version-1 `PullRequestReadinessEvidence` snapshots bound to
+  one repository, pull request node, head OID, base branch, and base OID.
+- Added the deterministic `build-pr-readiness-evidence` orchestration stage,
+  upgraded `MergeReadiness` to version 3, and upgraded the pre-merge and merge
+  handoffs to consume the complete embedded snapshot.
+- Removed live GitHub and GraphQL acquisition from the pre-merge Hook; H05 now
+  validates only normalized, complete, identity-matched readiness evidence and
+  preserves the existing exact-target and authorization gates.
+- Added contract, scenario, and runtime coverage for mixed heads, stale or
+  unavailable sources, pagination completeness, empty versus unavailable
+  evidence, thread dispositions, deterministic repeatability, and no-network
+  pre-merge validation.
+
 ## 0.3.112
 
 - Replaced inferred UI screenshot enforcement with explicit evidence

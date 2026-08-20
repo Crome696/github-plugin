@@ -7,7 +7,7 @@ disable-model-invocation: true
 # Merge Pull Request
 
 Merge exactly one GitHub pull request through the GitHub pull-request merge
-operation and return a version-1
+operation and return a version-2
 [`PullRequestMerge`](../../shared/schemas/PullRequestMerge.yaml) result.
 This Skill is explicitly invoked. A `MergeReadiness.status: ready` result is
 diagnostic evidence and never invokes or authorizes this Skill.
@@ -15,7 +15,7 @@ diagnostic evidence and never invokes or authorizes this Skill.
 ## Boundaries
 
 - Merge only one exact, open, non-Draft pull request with a current
-  `MergeReadiness` version 2 result of `ready`.
+  `MergeReadiness` version 3 result of `ready`.
 - Require exact final authorization for the exact repository, pull-request
   number and URL, expected head SHA, base branch, merge method, commit title
   and message, and branch-deletion effect. The authorization may be an explicit
@@ -44,8 +44,8 @@ diagnostic evidence and never invokes or authorizes this Skill.
 
 ## Input contract
 
-Require one version-1 [`PullRequestMerge`](../../shared/schemas/PullRequestMerge.yaml)
-handoff in `status: approved` and one current version-2
+Require one version-2 [`PullRequestMerge`](../../shared/schemas/PullRequestMerge.yaml)
+handoff in `status: approved` and one current version-3
 [`MergeReadiness`](../../shared/schemas/MergeReadiness.yaml) result nested in
 `readiness` or supplied alongside it.
 
@@ -64,7 +64,7 @@ is absent, malformed, stale, or inconsistent:
 4. `merge.delete_branch: true` also has
    `authorization.delete_branch_authorized: true`. With either field false,
    omit branch deletion.
-5. `readiness.schema` is `MergeReadiness`, `version` is `2`, `status` is
+5. `readiness.schema` is `MergeReadiness`, `version` is `3`, `status` is
    `ready`, its repository, pull-request number, and assessed head SHA
    equal the merge target, and its `issue_coverage.status` is either
    `covered` or `waived` (with complete waiver evidence). A partial
@@ -109,8 +109,9 @@ endpoint, and relevant returned field for each check.
    base-branch lookup equal `expected_base_sha`. Preserve the returned SHA in
    `preflight.live_base_sha`. A changed, unavailable, or ambiguous base state
    blocks before merging.
-5. Re-run the `assess-merge-readiness` evidence workflow for the live PR head.
-   It must return `ready` for the same repository, PR, and current head SHA,
+5. Re-run the dedicated source readers, `build-pr-readiness-evidence`, and
+   `assess-merge-readiness` for the live PR head. The resulting version-3
+   assessment must return `ready` for the same repository, PR, and current head SHA,
    and its `issue_coverage.status` must still be either `covered` or
    `waived` (with complete waiver evidence).
    Refresh required-check policy and outcomes, approval policy and reviews,
@@ -155,7 +156,7 @@ writing.
 ## Local pre-merge gate
 
 After the final live race check and immediately before the one GitHub merge
-write, write exactly one current version-1
+write, write exactly one current version-2
 [`PreMergeGate`](../../shared/schemas/PreMergeGate.yaml) snapshot to
 `.cursor/hooks/state/pre-merge.json`. The state directory is local-only and is
 already ignored by the repository. Do not reuse an old, partial, stale, or
@@ -168,7 +169,7 @@ The snapshot must preserve the exact values from the approved
 ```json
 {
   "schema": "PreMergeGate",
-  "version": 1,
+  "version": 2,
   "workspace": {
     "repository": "<BranchWorkspace.repository>",
     "path": "<BranchWorkspace.worktree_path>"
@@ -184,7 +185,7 @@ The snapshot must preserve the exact values from the approved
   "expected_base_sha": "<PullRequestMerge.expected_base_sha>",
   "merge": "<exact PullRequestMerge.merge>",
   "authorization": "<exact PullRequestMerge.authorization>",
-  "readiness": "<current version-2 MergeReadiness>",
+  "readiness": "<current version-3 MergeReadiness with embedded version-1 PullRequestReadinessEvidence>",
   "written_at": "<current ISO-8601 timestamp>"
 }
 ```
@@ -192,6 +193,8 @@ The snapshot must preserve the exact values from the approved
 Verify that the file parses, identifies the same repository, pull request,
 base and head SHAs, selected method, commit metadata, and branch-deletion
 effect, and contains explicit authorization. The host-specific `pre-merge`
+checker validates the complete snapshot deterministically and performs no live
+GitHub acquisition or policy interpretation.
 Hook then performs its own deterministic read-only validation. It must fail
 closed when Draft status, reviews, open blocking threads, approvals, required
 checks, mergeability, base freshness, issue linkage, readiness, or explicit
@@ -272,7 +275,7 @@ cleanup workflow only after `status: merged`.
 ## Final checklist
 
 - [ ] Exact final merge authorization covers target, head, base, method, metadata, and deletion effect, with user or `AGENTS.md` evidence.
-- [ ] Current version-2 `MergeReadiness` is `ready` for the exact live head.
+- [ ] Current version-3 `MergeReadiness` is `ready` for the exact live head and embeds one complete version-1 `PullRequestReadinessEvidence` snapshot.
 - [ ] Live PR is open, non-Draft, mergeable, and unchanged directly before the write.
 - [ ] Required checks, reviews, approvals, threads, and policy evidence are current and passing.
 - [ ] The exact method is currently allowed and explicitly selected.
