@@ -620,6 +620,7 @@ language in chat while keeping durable issue artifacts in English.
 | `commit-policy.mdc` | Always active | Require focused commits with validated exact scope, secret checks, traceable messages, documented validation, explicit authorization, and stop conditions for foreign changes or failed checks. |
 | `pull-request-policy.mdc` | Always active | Require new AI implementations to use validated Draft pull requests with complete evidence, exact issue linkage, duplicate prevention, and separate Ready-for-Review or merge workflows. |
 | `merge-policy.mdc` | Always active | Require current evidence for non-Draft status, reviews, approvals, required checks, conflicts, unique issue linkage, and clear scope before a separately authorized merge; require fresh validation after rebases and verified merges before issue closure or cleanup. |
+| `cli-transport-file-lifecycle.mdc` | Always active | Require one cross-platform, byte-exact, restrictive, uniquely named temporary-file lifecycle with guaranteed safe cleanup and redacted diagnostics for commit, Draft PR, review, and issue CLI payloads. |
 | `product-decomposition-policy.mdc` | Always active | Split large GitHub product issues into nearly atomic sub-issues that each have one bounded outcome, verifiable acceptance criteria, and independent product value, while blocking technical task splits, hidden compound requirements, and artificial fragmentation. |
 | `product-interview-policy.mdc` | Always active | Gather the product decisions needed for that split through a granular, adaptive user interview covering problem, outcome, actors, use cases, behavior, business rules, variants, edge cases, priorities, dependencies, constraints, and out-of-scope, without re-asking evidenced answers or inventing essential product choices. |
 | `issue-priority-title-policy.mdc` | Always active | Encode unique consecutive P-number title prefixes for the current open-issue inventory only through the dedicated reprioritization workflow, require exact-set approval and a live identity check before title writes, and forbid other issue Skills from silently adding those prefixes. |
@@ -1142,6 +1143,7 @@ rules/interactive-approval.mdc
 rules/commit-policy.mdc
 rules/pull-request-policy.mdc
 rules/merge-policy.mdc
+rules/cli-transport-file-lifecycle.mdc
 rules/product-decomposition-policy.mdc
 rules/product-interview-policy.mdc
 rules/issue-priority-title-policy.mdc

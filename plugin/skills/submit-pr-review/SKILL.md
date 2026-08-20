@@ -103,8 +103,12 @@ Parse the snapshot again and verify its identity before continuing. Never use
 an old, partial, or mismatched snapshot as evidence. The local snapshot is
 read-only hook input and does not grant publication authority.
 
-Prepare one temporary JSON payload from the approved decision without
-rewriting its body, event, commit SHA, or inline-comment content:
+Apply the shared [`cli-transport-file-lifecycle` Rule](../../rules/cli-transport-file-lifecycle.mdc)
+and prepare one temporary JSON payload from the approved decision without
+rewriting its body, event, commit SHA, or inline-comment content. The exact
+payload bytes, the one direct API invocation, and its handled result belong to
+one `try/finally` lifecycle; cleanup is guaranteed before later read-only
+verification:
 
 ```json
 {
@@ -140,6 +144,11 @@ finding evidence, locations, deduplication, recorded finding confirmation,
 blocker support, and current pull-request identity, and fails closed on missing,
 stale, ambiguous, or structurally invalid evidence. It does not reanalyze the
 diff or change the approved review.
+
+The temporary JSON file is deleted by the shared lifecycle after the direct
+API call returns, including non-zero exit, timeout, parse failure, or handled
+exception. A cleanup warning is sanitized and separate from the review
+publication result.
 
 ## Publication
 

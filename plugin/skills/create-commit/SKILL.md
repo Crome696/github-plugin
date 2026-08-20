@@ -215,9 +215,11 @@ Do not rewrite or delete a stale snapshot as a repair step.
 
 ### 5. Check status immediately before committing
 
-Prepare the exact temporary message file outside the worktree before this
-check, using only the approved message fields as described in the next
-section. Then
+Apply the shared [`cli-transport-file-lifecycle` Rule](../../rules/cli-transport-file-lifecycle.mdc)
+to the exact temporary message file before this check, using only the approved
+message fields as described in the next section. The file is transport-only;
+the gate snapshot may bind its exact path and bytes for the one commit
+invocation, but it must not turn the file into retained workflow state. Then
 run the final pre-commit check:
 
 ```text
@@ -252,9 +254,12 @@ leave normal hooks enabled:
 git -C <worktree_path> commit --cleanup=verbatim --file=<exact-message-file>
 ```
 
-Remove the temporary file only after Git returns. If the commit command fails,
-do not retry with another message or bypass flag. No commit SHA may be
-reported unless Git verifies that a new commit exists.
+Run the one direct commit invocation inside the Rule's `try/finally` lifecycle.
+Its `finally` path performs the validated, non-recursive best-effort cleanup
+after Git returns, including non-zero exit, timeout, or handled exception. A
+cleanup failure is reported separately and must not replace the Git result. If
+the commit command fails, do not retry with another message or bypass flag. No
+commit SHA may be reported unless Git verifies that a new commit exists.
 
 ### 7. Verify the commit and final status
 

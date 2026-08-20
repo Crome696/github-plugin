@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.111
+
+- Added the host-neutral `cli-transport-file-lifecycle` Rule for the exact
+  temporary payload files used by `create-commit`, `create-draft-pr`,
+  `submit-pr-review`, `create-github-issue`, and `update-github-issue`.
+- Standardized unique OS-temp placement, restrictive creation, exact-byte
+  transport, one direct payload-consuming CLI operation, guaranteed
+  `try/finally` cleanup, safe target revalidation, and separate sanitized
+  cleanup diagnostics without masking the primary result.
+- Added cross-platform test-workspace coverage for success, non-zero exit,
+  timeout, parse failure, handled exceptions, missing files, collisions,
+  unsafe targets, cleanup failures, and Windows locked-file behavior when
+  supported.
+- No Shared Contract migration, Hook gate, generator, or retained workflow
+  state change was required.
+
 ## 0.3.110
 
 - Added the versioned `RepositoryPolicy` contract and shared runtime loader for

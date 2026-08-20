@@ -1,0 +1,58 @@
+---
+description: Enforce one cross-platform lifecycle for temporary CLI transport files used by GitHub publishing Skills.
+alwaysApply: true
+---
+
+# CLI Transport File Lifecycle
+
+## Scope
+
+This Rule applies to the temporary commit-message, Draft pull-request-body,
+pull-request-review JSON, issue-create-body, and issue-update-body files used
+by `create-commit`, `create-draft-pr`, `submit-pr-review`,
+`create-github-issue`, and `update-github-issue`. It is host-neutral policy;
+Hook gates, gate receipts, generator staging, and Shared Contracts remain
+owned by their existing components.
+
+## Required lifecycle
+
+For each payload file, the Skill MUST:
+
+1. Resolve the operating-system temporary directory and the candidate path to
+   absolute paths. The candidate must be a uniquely named regular-file target
+   below that verified directory, outside the worktree, and different from the
+   temporary directory itself. Do not accept a worktree, repository, directory,
+   or path-traversal target.
+2. Create the file exclusively (`wx` or the platform equivalent), never silently
+   overwrite a collision, and use restrictive creation semantics. POSIX files
+   require owner-only permissions; Windows must use the strongest private
+   semantics available from the OS temporary directory. Block the CLI operation
+   when the required privacy guarantee cannot be verified.
+3. Write the approved bytes directly and exactly. Do not normalize line endings,
+   whitespace, encoding, Markdown, JSON, fields, or trailing newlines.
+4. Invoke exactly one direct CLI operation that consumes the file. Do not use a
+   wrapper, pipeline, redirection, command substitution, second external write,
+   or alternate payload source. A later read-only diagnostic must not consume or
+   rewrite the transport file.
+5. Interpret success, non-zero exit, timeout, parse failure, cancellation, and
+   handled exceptions inside one `try/finally` lifecycle. The primary result is
+   complete before cleanup is reported.
+6. In `finally`, best-effort delete only the exact resolved target. Revalidate
+   temp-directory containment, worktree exclusion, and regular non-symlink file
+   type immediately before deletion. Use one non-recursive file unlink; never
+   use directory globs, recursive deletion, temp scans, or deletion of unknown
+   historical files.
+
+Cleanup failure is a separate, sanitized diagnostic. It MUST preserve the
+primary CLI/Git/GitHub result, use only safe metadata such as a fixed reason
+code, and never include payload bytes, transport contents, secrets, or an
+unsanitized exception message. An already absent file is a successful
+best-effort cleanup outcome; an unsafe target is not deleted.
+
+## Boundary
+
+The temporary file is transport implementation detail, not retained workflow
+state. Do not add a Shared Contract field, persistent status record, Hook gate,
+or cleanup scan for this lifecycle. Uncatchable process termination, machine
+crash recovery, shell history, and pre-existing orphan files are outside this
+Rule.

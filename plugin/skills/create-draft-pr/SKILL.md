@@ -217,9 +217,13 @@ write. Do not overwrite a concurrent pull request.
 
 ### 5. Write the local pre-publication gate
 
-Immediately before the external write, after the final duplicate check,
-prepare the approved `body` in an operating-system temporary file without
-translation or normalization. Then write exactly one local version-1
+Immediately before the external write, after the final duplicate check, apply
+the shared [`cli-transport-file-lifecycle` Rule](../../rules/cli-transport-file-lifecycle.mdc)
+and prepare the approved `body` in an operating-system temporary file without
+translation or normalization. The body file and the one direct
+payload-consuming `gh pr create` invocation belong to the same `try/finally`
+lifecycle; cleanup also runs if gate preparation or verification is handled as
+a failure. Then write exactly one local version-1
 `PrePrCreateGate` snapshot to
 `.cursor/hooks/state/pre-pr-create.json`. Create the ignored state directory
 only when it does not exist. Do not use an old, partial, or stale snapshot as
@@ -262,8 +266,10 @@ an alternate body source, or a rewritten payload.
 
 ### 6. Create the exact draft pull request
 
-Use the already prepared temporary body file, remove it after the CLI returns
-when safe, and use the approved title and verified target exactly:
+Use the already prepared temporary body file and the approved title and
+verified target exactly. The shared Rule performs its guaranteed cleanup after
+the direct CLI invocation returns, before any permitted read-only failure
+diagnostic:
 
 ```text
 gh pr create --repo <owner>/<repo> --base <base_branch> --head <head_branch> --title "<approved title>" --body-file <temporary-body-file> --draft
@@ -275,8 +281,8 @@ the issue, commit, or a previous PR. The only allowed external effect is
 creation of this one draft pull request.
 
 If the command fails, perform one read-only `gh pr list` lookup for the exact
-target to determine whether a PR was created despite the error. If none is
-verified, return `blocked`; if a PR may exist or was created, return
+target after the transport `finally` path has completed, to determine whether
+a PR was created despite the error. If none is verified, return `blocked`; if a PR may exist or was created, return
 `partial` with the available evidence. Never retry with a modified payload.
 
 ### 7. Read and verify the resulting pull request
