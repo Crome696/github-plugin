@@ -197,6 +197,7 @@ Skills retain their explicit invocation boundary.
 | `commit-policy.mdc` | Defines exact-scope, validation, authorization, secret, and commit-history checks. |
 | `pull-request-policy.mdc` | Defines Draft PR content, validation, linkage, duplicate, and ready-state boundaries. |
 | `merge-policy.mdc` | Defines current merge evidence, strategy, authorization, and post-merge boundaries. |
+| `cli-transport-file-lifecycle.mdc` | Defines the shared cross-platform, byte-exact temporary CLI transport lifecycle, safe cleanup, and sanitized diagnostics. |
 | `product-decomposition-policy.mdc` | Defines nearly atomic GitHub product-issue splits with one outcome, verifiable acceptance criteria, independent value, and justified dependency limits. |
 | `product-interview-policy.mdc` | Requires an adaptive user interview to gather product-decomposition decisions without inventing essential product choices or ending while unaccepted uncertainties remain. |
 | `issue-priority-title-policy.mdc` | Defines unique consecutive P-number title prefixes for the current open-issue inventory, exact-set write authorization, and the exclusive write boundary for those prefixes. |

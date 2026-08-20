@@ -122,8 +122,11 @@ the same issue/task.
 
 ### 3. Publish the approved payload
 
-Use one temporary operating-system file for the exact multiline body and
-remove it after the operation when safe. Never place secrets in the file.
+Apply the shared [`cli-transport-file-lifecycle` Rule](../../rules/cli-transport-file-lifecycle.mdc)
+to one temporary operating-system file for the exact multiline body. The
+approved bytes and exactly one direct create or edit CLI operation belong to
+one `try/finally` lifecycle; cleanup is guaranteed for success and every
+handled failure. Never place secrets in the file.
 
 For create mode, run the equivalent of:
 
@@ -142,9 +145,10 @@ gh issue edit <number> --repo <owner>/<repo> --title "<title>" --body-file <body
 ```
 
 Include only explicitly approved label additions and removals. Do not pass
-state or unrelated metadata flags. A transient CLI failure may be retried
-once after a non-destructive diagnostic refresh; stop on authentication,
-authorization, validation, or policy errors.
+state or unrelated metadata flags. Do not retry the payload write inside this
+lifecycle; report a transient CLI failure after the shared cleanup completes.
+Stop on authentication, authorization, validation, or policy errors. Cleanup
+diagnostics remain separate from the issue result and contain no body bytes.
 
 ### 4. Verify the published result
 

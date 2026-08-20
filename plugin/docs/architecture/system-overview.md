@@ -197,6 +197,7 @@ prose.
 | [`commit-policy.mdc`](../../rules/commit-policy.mdc) | Requires exact-scope, validated, secret-free, authorized commits. |
 | [`pull-request-policy.mdc`](../../rules/pull-request-policy.mdc) | Requires validated Draft PRs, complete descriptions, exact issue linkage, and duplicate prevention. |
 | [`merge-policy.mdc`](../../rules/merge-policy.mdc) | Requires current merge evidence, selected strategy, exact authorization, and post-merge boundaries. |
+| [`cli-transport-file-lifecycle.mdc`](../../rules/cli-transport-file-lifecycle.mdc) | Requires byte-exact, restrictive, uniquely named temporary CLI transport files and guaranteed validated cleanup with separate sanitized diagnostics. |
 | [`product-decomposition-policy.mdc`](../../rules/product-decomposition-policy.mdc) | Requires nearly atomic GitHub product issues with one outcome, verifiable acceptance criteria, independent value, and justified dependency limits. |
 | [`product-interview-policy.mdc`](../../rules/product-interview-policy.mdc) | Requires an adaptive user interview to gather those product decisions without inventing essential choices or ending while unaccepted uncertainties remain. |
 

@@ -156,9 +156,11 @@ verify the result and report any incomplete or conflicting effect as
 
 ### 5. Apply only requested fields
 
-Use the GitHub CLI and an operating-system temporary file for an exact
-multiline body. Remove the file after the operation when safe. Do not place
-secrets in it.
+Apply the shared [`cli-transport-file-lifecycle` Rule](../../rules/cli-transport-file-lifecycle.mdc)
+when using the GitHub CLI and an operating-system temporary file for an exact
+multiline body. The approved bytes and one direct edit operation belong to one
+`try/finally` lifecycle; cleanup is guaranteed for success and every handled
+failure. Do not place secrets in it.
 
 For non-state fields, run the equivalent of one edit operation containing only
 the requested flags:
@@ -184,10 +186,10 @@ gh issue close <number> --repo <owner>/<repo>
 gh issue reopen <number> --repo <owner>/<repo>
 ```
 
-Do not pass state or unrelated metadata flags to `gh issue edit`. A transient
-CLI failure may be retried once after a non-destructive diagnostic refresh only
-when no external write occurred. Stop on authentication, permission,
-validation, policy, or conflict errors.
+Do not pass state or unrelated metadata flags to `gh issue edit`. Do not retry
+the payload write inside this lifecycle; report a transient CLI failure after
+the shared cleanup completes. Stop on authentication, permission, validation,
+policy, or conflict errors. Cleanup diagnostics are separate and sanitized.
 
 ### 6. Verify and summarize
 
