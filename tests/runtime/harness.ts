@@ -849,9 +849,94 @@ const prePrReadyGate = (context: RuntimeContext) => ({
   written_at: now(),
 });
 
+const readinessSnapshotIdentity = (context: RuntimeContext) => ({
+  repository: context.repository,
+  number: context.pullRequestNumber,
+  node_id: "PR_kwDO_RUNTIME_ORACLE",
+  url: context.pullRequestUrl,
+  head_sha: context.headSha,
+  base_branch: context.baseBranch,
+  base_sha: context.baseSha,
+});
+
+const readinessSnapshotSource = (
+  context: RuntimeContext,
+  name: string,
+  status: "loaded" | "empty",
+  evidence: string,
+) => ({
+  name,
+  status,
+  identity: readinessSnapshotIdentity(context),
+  retrieved_at: now(),
+  pagination: { complete: true, page_count: 1 },
+  provenance: [`runtime:${name}`],
+  evidence: [evidence],
+  unavailable_reason: null,
+});
+
+const readinessEvidence = (context: RuntimeContext) => ({
+  schema: "PullRequestReadinessEvidence",
+  version: 1,
+  status: "complete",
+  repository: context.repository,
+  pull_request: {
+    number: context.pullRequestNumber,
+    node_id: "PR_kwDO_RUNTIME_ORACLE",
+    url: context.pullRequestUrl,
+    state: "open",
+    draft: false,
+  },
+  head_sha: context.headSha,
+  base: { name: context.baseBranch, oid: context.baseSha },
+  observed_at: now(),
+  freshness: { status: "current", evidence: ["runtime snapshot is current"] },
+  policy: {
+    status: "empty",
+    sources: [],
+    required_checks: { status: "empty", checks: [], evidence: ["no required checks"] },
+    approvals: {
+      status: "empty",
+      required_approvals: 0,
+      approvals: [],
+      dismissals: [],
+      change_requests: [],
+      evidence: ["no approval policy"],
+    },
+    evidence: ["no applicable policy"],
+  },
+  discussions: {
+    status: "empty",
+    pagination: { complete: true, page_count: 1, evidence: ["no threads"] },
+    threads: [],
+    evidence: ["discussion source empty"],
+  },
+  linked_issue: {
+    status: "covered",
+    issue: issueIdentity(context),
+    acceptance_criteria: [],
+    evidence: ["linked issue covered"],
+  },
+  merge_methods: {
+    status: "not_used",
+    allowed: [],
+    selected: null,
+    evidence: ["merge method checked by merge operation"],
+  },
+  sources: [
+    readinessSnapshotSource(context, "load-pull-request", "loaded", "pull request loaded"),
+    readinessSnapshotSource(context, "load-pr-discussions", "empty", "no discussions"),
+    readinessSnapshotSource(context, "inspect-pr-checks", "empty", "no required checks"),
+    readinessSnapshotSource(context, "check-required-approvals", "empty", "no approval policy"),
+    readinessSnapshotSource(context, "check-open-review-threads", "empty", "no blocking threads"),
+    readinessSnapshotSource(context, "check-linked-issue-status", "loaded", "linked issue covered"),
+  ],
+  failure: null,
+});
+
 const preMergeGate = (context: RuntimeContext) => ({
   schema: "PreMergeGate",
-  version: 1,
+  version: 2,
   workspace: {
     repository: context.repository,
     path: context.repositoryRoot,
@@ -880,7 +965,7 @@ const preMergeGate = (context: RuntimeContext) => ({
   },
   readiness: {
     schema: "MergeReadiness",
-    version: 2,
+    version: 3,
     status: "ready",
     repository: context.repository,
     pull_request: pullRequestIdentity(context),
@@ -911,6 +996,7 @@ const preMergeGate = (context: RuntimeContext) => ({
       head_sha: context.headSha,
       sources: [{ name: "runtime", status: "loaded", evidence: ["fixture"] }],
     },
+    readiness_evidence: readinessEvidence(context),
   },
   written_at: now(),
 });
@@ -1073,83 +1159,8 @@ const prePrReadyLivePullRequest = (context: RuntimeContext, mode: RuntimeMode = 
     ],
   });
 
-const preMergeLivePullRequest = (context: RuntimeContext) =>
-  JSON.stringify({
-    number: context.pullRequestNumber,
-    url: context.pullRequestUrl,
-    state: "OPEN",
-    isDraft: false,
-    baseRefName: context.baseBranch,
-    baseRefOid: context.baseSha,
-    headRefName: context.branch,
-    headRefOid: context.headSha,
-    mergeable: "MERGEABLE",
-    mergeStateStatus: "CLEAN",
-    reviews: [],
-    reviewDecision: null,
-    statusCheckRollup: [],
-    body: `Fixes ${context.repository}#${context.issueNumber}`,
-  });
-
-const preMergeReviewThreadsGraphql = {
-  data: {
-    repository: {
-      pullRequest: {
-        reviewThreads: {
-          nodes: [],
-          pageInfo: { hasNextPage: false, endCursor: null },
-        },
-      },
-    },
-  },
-};
-
-const preMergeClosingIssuesGraphql = (context: RuntimeContext) => ({
-  data: {
-    repository: {
-      pullRequest: {
-        closingIssuesReferences: {
-          nodes: [
-            {
-              number: context.issueNumber,
-              url: context.issueUrl,
-              repository: { nameWithOwner: context.repository },
-            },
-          ],
-          pageInfo: { hasNextPage: false, endCursor: null },
-        },
-      },
-    },
-  },
-});
-
 const preMergeRules = (context: RuntimeContext): FakeCommandRule[] => [
   ...gitIdentityRules(context, false),
-  exact(
-    "gh",
-    [
-      "pr",
-      "view",
-      String(context.pullRequestNumber),
-      "--repo",
-      context.repository,
-      "--json",
-      "number,url,state,isDraft,baseRefName,baseRefOid,headRefName,headRefOid,mergeable,mergeStateStatus,reviews,reviewDecision,statusCheckRollup,body",
-    ],
-    preMergeLivePullRequest(context),
-  ),
-  exact(
-    "gh",
-    ["api", `repos/${context.repository}/branches/${context.baseBranch}`],
-    JSON.stringify({ commit: { sha: context.baseSha } }),
-  ),
-  graphql("reviewThreads", [preMergeReviewThreadsGraphql]),
-  graphql("closingIssuesReferences", preMergeClosingIssuesGraphql(context)),
-  exact(
-    "gh",
-    ["api", `repos/${context.repository}/issues/${context.issueNumber}`],
-    JSON.stringify({ number: context.issueNumber, html_url: context.issueUrl, state: "open" }),
-  ),
 ];
 
 const preRebaseRules = (context: RuntimeContext, activeOperation = false): FakeCommandRule[] => [

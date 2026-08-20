@@ -331,6 +331,19 @@ describe("deep shared-contract invariants", () => {
       state: "open",
       draft: false,
     };
+    const readinessEvidence = valid.readiness_evidence as Record<string, unknown>;
+    readinessEvidence.pull_request = {
+      number: 42,
+      node_id: "PR_kwDO123456789",
+      url: "https://github.com/octo-org/widgets/pull/42",
+      state: "open",
+      draft: false,
+    };
+    for (const source of readinessEvidence.sources as Array<Record<string, unknown>>) {
+      const identity = source.identity as Record<string, unknown>;
+      identity.number = 42;
+      identity.url = "https://github.com/octo-org/widgets/pull/42";
+    }
     valid.checks = [
       {
         name: "required-test",
@@ -424,9 +437,135 @@ describe("deep shared-contract invariants", () => {
     authorization.delete_branch_authorized = false;
     const readiness = authorized.readiness as Record<string, unknown>;
     readiness.schema = "MergeReadiness";
-    readiness.version = 2;
+    readiness.version = 3;
     readiness.status = "ready";
     expect(validateContractInvariants("PullRequestMerge", authorized)).toEqual([]);
+  });
+
+  it("keeps readiness evidence immutable, identity-bound, and deterministic", () => {
+    const valid = fixture<Record<string, unknown>>(
+      "PullRequestReadinessEvidence",
+    );
+    expectStructurallyValid("PullRequestReadinessEvidence", valid);
+    expect(validateContractInvariants("PullRequestReadinessEvidence", valid)).toEqual([]);
+
+    const repeated = clone(valid);
+    expect(JSON.stringify(repeated)).toBe(JSON.stringify(valid));
+
+    const mixedHead = clone(valid);
+    const mixedSource = (mixedHead.sources as Array<Record<string, unknown>>)[0]!;
+    (mixedSource.identity as Record<string, unknown>).head_sha = "c".repeat(40);
+    expectStructurallyValid("PullRequestReadinessEvidence", mixedHead);
+    expectInvariant("PullRequestReadinessEvidence", mixedHead, "snapshot_mixed_identity");
+
+    const stale = clone(valid);
+    (stale.freshness as Record<string, unknown>).status = "stale";
+    expectStructurallyValid("PullRequestReadinessEvidence", stale);
+    expectInvariant("PullRequestReadinessEvidence", stale, "snapshot_stale");
+
+    const emptyChecks = clone(valid);
+    const emptyPolicy = emptyChecks.policy as Record<string, unknown>;
+    const emptyRequiredChecks = emptyPolicy.required_checks as Record<string, unknown>;
+    emptyRequiredChecks.status = "empty";
+    expect(validateContractInvariants("PullRequestReadinessEvidence", emptyChecks)).toEqual([]);
+
+    const unavailableChecks = clone(valid);
+    const unavailablePolicy = unavailableChecks.policy as Record<string, unknown>;
+    const unavailableRequiredChecks = unavailablePolicy.required_checks as Record<string, unknown>;
+    unavailableRequiredChecks.status = "unavailable";
+    expectStructurallyValid("PullRequestReadinessEvidence", unavailableChecks);
+    expectInvariant("PullRequestReadinessEvidence", unavailableChecks, "snapshot_policy_unavailable");
+
+    const loadedPolicyWithoutSource = clone(valid);
+    const loadedPolicy = loadedPolicyWithoutSource.policy as Record<string, unknown>;
+    loadedPolicy.status = "loaded";
+    expectStructurallyValid("PullRequestReadinessEvidence", loadedPolicyWithoutSource);
+    expectInvariant(
+      "PullRequestReadinessEvidence",
+      loadedPolicyWithoutSource,
+      "snapshot_policy_unavailable",
+    );
+
+    const uncertainThread = clone(valid);
+    const discussions = uncertainThread.discussions as Record<string, unknown>;
+    discussions.status = "loaded";
+    discussions.threads = [
+      {
+        id: "thread-1",
+        state: "open",
+        is_resolved: false,
+        is_outdated: false,
+        disposition: "uncertain",
+        evidence: ["thread was fully retrieved"],
+      },
+    ];
+    expectStructurallyValid("PullRequestReadinessEvidence", uncertainThread);
+    expect(validateContractInvariants("PullRequestReadinessEvidence", uncertainThread)).toEqual([]);
+
+    const paginatedThreads = clone(valid);
+    const paginatedDiscussions = paginatedThreads.discussions as Record<string, unknown>;
+    paginatedDiscussions.status = "loaded";
+    paginatedDiscussions.pagination = {
+      complete: true,
+      page_count: 3,
+      evidence: ["all review-thread pages were retrieved"],
+    };
+    paginatedDiscussions.threads = [
+      {
+        id: "thread-resolved",
+        state: "resolved",
+        is_resolved: true,
+        is_outdated: false,
+        disposition: "nonblocking",
+        evidence: ["resolved state was returned by GitHub"],
+      },
+      {
+        id: "thread-current",
+        state: "open",
+        is_resolved: false,
+        is_outdated: false,
+        disposition: "blocking",
+        evidence: ["current request-changes thread remains open"],
+      },
+      {
+        id: "thread-outdated",
+        state: "open",
+        is_resolved: false,
+        is_outdated: true,
+        disposition: "uncertain",
+        evidence: ["outdated thread actionability is uncertain"],
+      },
+    ];
+    expectStructurallyValid("PullRequestReadinessEvidence", paginatedThreads);
+    expect(validateContractInvariants("PullRequestReadinessEvidence", paginatedThreads)).toEqual([]);
+
+    const unavailableThreads = clone(paginatedThreads);
+    (unavailableThreads.discussions as Record<string, unknown>).status = "unavailable";
+    expectStructurallyValid("PullRequestReadinessEvidence", unavailableThreads);
+    expectInvariant("PullRequestReadinessEvidence", unavailableThreads, "snapshot_threads_incomplete");
+
+    const unavailableApprovals = clone(valid);
+    const unavailableApprovalPolicy = unavailableApprovals.policy as Record<string, unknown>;
+    (unavailableApprovalPolicy.approvals as Record<string, unknown>).status = "unavailable";
+    expectStructurallyValid("PullRequestReadinessEvidence", unavailableApprovals);
+    expectInvariant("PullRequestReadinessEvidence", unavailableApprovals, "snapshot_policy_unavailable");
+
+    const missingLinkedIssue = clone(valid);
+    (missingLinkedIssue.linked_issue as Record<string, unknown>).status = "missing";
+    expectStructurallyValid("PullRequestReadinessEvidence", missingLinkedIssue);
+    expectInvariant("PullRequestReadinessEvidence", missingLinkedIssue, "snapshot_linked_issue_unavailable");
+
+    const deterministicReadiness = fixture<Record<string, unknown>>("MergeReadiness");
+    const firstAssessment = validateContractInvariants("MergeReadiness", deterministicReadiness);
+    const secondAssessment = validateContractInvariants("MergeReadiness", clone(deterministicReadiness));
+    expect(JSON.stringify(secondAssessment)).toBe(JSON.stringify(firstAssessment));
+
+    const blockedThreadReadiness = clone(deterministicReadiness);
+    const blockedThreadSnapshot = blockedThreadReadiness.readiness_evidence as Record<string, unknown>;
+    (blockedThreadSnapshot.discussions as Record<string, unknown>).status = "loaded";
+    (blockedThreadSnapshot.discussions as Record<string, unknown>).threads = paginatedDiscussions.threads;
+    expectStructurallyValid("MergeReadiness", blockedThreadReadiness);
+    expectInvariant("MergeReadiness", blockedThreadReadiness, "ready_condition_unmet");
   });
 
   it("keeps CleanupResult authorization and recoverable targets fail-closed", () => {

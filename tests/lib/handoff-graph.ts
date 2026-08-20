@@ -84,15 +84,22 @@ export const skillHandoffs: SkillHandoff[] = [
   },
   {
     name: "assess-merge-readiness",
+    consumes: [contract("PullRequestReadinessEvidence", 1)],
+    produces: [contract("MergeReadiness", 3)],
+    identityInput: true,
+  },
+  {
+    name: "build-pr-readiness-evidence",
     consumes: [
       contract("LoadedPullRequest", 1),
-      contract("LoadedPullRequestDiscussions", 1),
+      contract("LoadedPullRequestDiscussions", 2),
       contract("OpenReviewThreadAssessment", 1),
       contract("LinkedIssue", 1),
+      contract("LinkedIssueStatusAssessment", 1),
       contract("PullRequestCheckInspection", 1),
       contract("RequiredApprovalInspection", 1),
     ],
-    produces: [contract("MergeReadiness", 2)],
+    produces: [contract("PullRequestReadinessEvidence", 1)],
     identityInput: true,
   },
   {
@@ -180,7 +187,7 @@ export const skillHandoffs: SkillHandoff[] = [
     name: "check-open-review-threads",
     consumes: [
       contract("LoadedPullRequest", 1),
-      contract("LoadedPullRequestDiscussions", 1),
+      contract("LoadedPullRequestDiscussions", 2),
       contract("ClassifiedReviewFindings", 1),
       contract("FeedbackResolutionValidation", 1),
     ],
@@ -221,7 +228,7 @@ export const skillHandoffs: SkillHandoff[] = [
   },
   {
     name: "cleanup-worktree",
-    consumes: [contract("PullRequestMerge", 1), contract("CleanupResult", 1)],
+      consumes: [contract("PullRequestMerge", 2), contract("CleanupResult", 1)],
     produces: [contract("CleanupResult", 1)],
   },
   {
@@ -233,7 +240,7 @@ export const skillHandoffs: SkillHandoff[] = [
   {
     name: "close-linked-issue",
     consumes: [
-      contract("PullRequestMerge", 1),
+      contract("PullRequestMerge", 2),
       contract("LinkedIssueClosureVerification", 1),
       contract("LinkedIssueStatusAssessment", 1),
       contract("PullRequestIssueLink", 1),
@@ -244,7 +251,7 @@ export const skillHandoffs: SkillHandoff[] = [
   {
     name: "collect-review-feedback",
     consumes: [
-      contract("LoadedPullRequestDiscussions", 1),
+      contract("LoadedPullRequestDiscussions", 2),
       contract("ClassifiedReviewFindings", 1),
       contract("PullRequestCheckInspection", 1),
     ],
@@ -366,7 +373,7 @@ export const skillHandoffs: SkillHandoff[] = [
   },
   {
     name: "delete-merged-branch",
-    consumes: [contract("PullRequestMerge", 1), contract("CleanupResult", 1)],
+      consumes: [contract("PullRequestMerge", 2), contract("CleanupResult", 1)],
     produces: [contract("CleanupResult", 1)],
   },
   {
@@ -395,7 +402,7 @@ export const skillHandoffs: SkillHandoff[] = [
       contract("PullRequestDiffAnalysis", 1),
       contract("LinkedIssue", 1),
       contract("PullRequestCheckInspection", 1),
-      contract("LoadedPullRequestDiscussions", 1),
+      contract("LoadedPullRequestDiscussions", 2),
     ],
     produces: [contract("DetectedReviewFindings", 1)],
     identityInput: true,
@@ -495,7 +502,7 @@ export const skillHandoffs: SkillHandoff[] = [
   },
   {
     ...identity("load-pr-discussions"),
-    produces: [contract("LoadedPullRequestDiscussions", 1)],
+    produces: [contract("LoadedPullRequestDiscussions", 2)],
   },
   {
     ...identity("load-pull-request"),
@@ -512,8 +519,8 @@ export const skillHandoffs: SkillHandoff[] = [
   },
   {
     name: "merge-pull-request",
-    consumes: [contract("PullRequestMerge", 1), contract("MergeReadiness", 2)],
-    produces: [contract("PullRequestMerge", 1), contract("PreMergeGate", 1)],
+    consumes: [contract("PullRequestMerge", 2), contract("MergeReadiness", 3)],
+    produces: [contract("PullRequestMerge", 2), contract("PreMergeGate", 2)],
   },
   {
     name: "prioritize-product-issues",
@@ -662,7 +669,7 @@ export const skillHandoffs: SkillHandoff[] = [
   },
   {
     name: "verify-linked-issue-closure",
-    consumes: [contract("PullRequestMerge", 1), contract("LinkedIssue", 1)],
+      consumes: [contract("PullRequestMerge", 2), contract("LinkedIssue", 1)],
     produces: [contract("LinkedIssueClosureVerification", 1)],
     identityInput: true,
   },
@@ -747,7 +754,7 @@ export const agentHandoffs: AgentHandoff[] = [
     produces: [
       contract("LoadedPullRequest", 1),
       contract("LinkedIssue", 1),
-      contract("LoadedPullRequestDiscussions", 1),
+      contract("LoadedPullRequestDiscussions", 2),
       contract("PullRequestCheckInspection", 1),
       contract("PullRequestDiffAnalysis", 1),
       contract("DetectedReviewFindings", 1),
@@ -798,13 +805,13 @@ export const agentHandoffs: AgentHandoff[] = [
     name: "integration-agent",
     consumes: [
       contract("LoadedPullRequest", 1),
-      contract("MergeReadiness", 2),
+      contract("MergeReadiness", 3),
     ],
     produces: [
       contract("PullRequestIntegration", 1),
       contract("ValidationResult", 2),
       contract("BranchRebase", 1),
-      contract("PullRequestMerge", 1),
+      contract("PullRequestMerge", 2),
       contract("LinkedIssueClosureVerification", 1),
       contract("LinkedIssueClosure", 2),
       contract("CleanupResult", 1),
@@ -994,7 +1001,7 @@ export const commandHandoffs: CommandHandoff[] = [
   {
     name: "integrate-pr",
     agent: "integration-agent",
-    contracts: [contract("PullRequestIntegration", 1), contract("MergeReadiness", 2)],
+    contracts: [contract("PullRequestIntegration", 1), contract("MergeReadiness", 3)],
   },
   {
     name: "generate-project-hooks",

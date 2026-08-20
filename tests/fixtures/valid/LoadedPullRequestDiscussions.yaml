@@ -1,10 +1,14 @@
 schema: LoadedPullRequestDiscussions
-version: 1
+version: 2
 status: loaded
 pull_request:
   repository: octo-org/widgets
   number: 1
-  url: https://github.com/octo-org/widgets
+  node_id: PR_kwDO123456789
+  url: https://github.com/octo-org/widgets/pull/1
+  head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  base_branch: master
+  base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 reviews: []
 threads: []
 conversation_comments: []

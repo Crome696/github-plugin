@@ -1,6 +1,6 @@
 schema: MergeReadiness
-version: 2
-description: Evidence-based read-only assessment of whether one pull request satisfies explicitly retrieved merge conditions.
+version: 3
+description: Deterministic, evidence-based read-only transformation of one immutable pull-request readiness evidence snapshot.
 required:
   - status
   - repository
@@ -12,6 +12,7 @@ required:
   - review_state
   - issue_coverage
   - evidence
+  - readiness_evidence
 fields:
   status:
     type: enum
@@ -177,6 +178,47 @@ fields:
               items: string
             unavailable_reason:
               type: string | null
+  readiness_evidence:
+    type: object
+    required: [schema, version, status, repository, pull_request, head_sha, base, observed_at, freshness, policy, discussions, linked_issue, merge_methods, sources, failure]
+    fields:
+      schema:
+        type: string
+        value: PullRequestReadinessEvidence
+      version:
+        type: integer
+        value: 1
+      status:
+        type: enum
+        values: [complete]
+      repository:
+        type: string
+        format: owner/repository
+      pull_request:
+        type: object
+      head_sha:
+        type: string
+        format: full git commit SHA
+      base:
+        type: object
+      observed_at:
+        type: string
+        format: iso-8601
+      freshness:
+        type: object
+      policy:
+        type: object
+      discussions:
+        type: object
+      linked_issue:
+        type: object
+      merge_methods:
+        type: object
+      sources:
+        type: list
+        items: object
+      failure:
+        type: object | null
   required_conditions:
     type: list
     items: string
@@ -190,7 +232,8 @@ fields:
     type: string | null
     format: iso-8601
 invariants:
-  - Version 2 uses only ready, needs-attention, and blocked as assessment statuses.
+  - Version 3 uses only ready, needs-attention, and blocked as assessment statuses.
+  - Exactly one complete PullRequestReadinessEvidence snapshot is the only input to the assessment; the assessment never refreshes a source or combines handoffs from different observations.
   - Ready means only that every applicable, explicitly retrieved condition is satisfied; it never authorizes merging.
   - Needs-attention means the PR is assessable but one or more evidenced conditions require action or confirmation.
   - Blocked means the exact PR or required evidence cannot support a reliable assessment.
@@ -198,5 +241,5 @@ invariants:
   - "For `issue_coverage.status: waived`, the `issue_coverage.waiver` object must be present and include a reason, a waiver source, and evidence."
   - Approval counts and required review conditions are copied only from a current, identity-matched RequiredApprovalInspection or equivalent explicit policy evidence; raw review counts never establish a requirement.
   - Every blocker and material status decision includes reproducible evidence tied to the identified pull request and current head SHA.
-  - The assessment is tied to the recorded head SHA and must be refreshed after it changes.
+  - The assessment is tied to the recorded snapshot identity and must be rebuilt in full after its head, base, applicable policy, reviews, threads, or required-check state changes.
   - The assessment never performs or authorizes merge, rebase, conflict resolution, check rerun, review publication, or thread mutation.

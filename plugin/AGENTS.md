@@ -108,7 +108,8 @@ Skills retain their explicit invocation boundary.
 | `apply-issue-priority-titles` | Apply one confirmed unique P1-through-Pn ranking as title prefixes on the current open issues after exact-set authorization and a live identity check. |
 | `assess-issue-atomicity` | Classify each proposed sub-issue candidate from a `ProductCapabilityDecomposition` as `too-large`, `atomic-enough`, or `over-fragmented` without creating sub-issues. |
 | `assess-issue-quality` | Assess issue completeness, understandability, implementability, testability, scope, and contradictions. |
-| `assess-merge-readiness` | Aggregate current merge-relevant evidence into diagnostic `MergeReadiness`. |
+| `assess-merge-readiness` | Transform one complete immutable `PullRequestReadinessEvidence` snapshot into deterministic diagnostic `MergeReadiness`. |
+| `build-pr-readiness-evidence` | Normalize the fixed-order pull-request reader handoffs into one complete, identity-bound `PullRequestReadinessEvidence` snapshot. |
 | `build-feedback-resolution-plan` | Build a bounded external implementation handoff for selected feedback. |
 | `build-review-fix-plan` | Confirm current findings and open feedback as a host-neutral `ReviewFixPlan`. |
 | `build-ci-fix-plan` | Confirm remaining failed required checks as a host-neutral `CiFixPlan`. |
@@ -215,7 +216,7 @@ their full safety or approval lists.
 | `pre-pr-create.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before `gh pr create` unless the exact Draft gate passes. |
 | `pre-review-submit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before the canonical review API write unless the exact review gate passes. |
 | `pre-pr-ready.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before `gh pr ready` or an authorized reviewer-request write unless the exact `PrePrReadyGate` passes. |
-| `pre-merge.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before a PR merge unless current merge evidence and `PreMergeGate` pass. |
+| `pre-merge.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` | Fail closed before a PR merge unless `PreMergeGate` contains version-3 readiness with a complete identity-bound snapshot; it performs no live GitHub reads. |
 | `post-merge.mjs` | Cursor `afterShellExecution`; Codex `PostToolUse` | Observe a completed merge and return read-only `PostMergeStatus`. |
 
 `cursor-hooks.json` and `codex-hooks.json` are separate host projections.
@@ -231,7 +232,7 @@ evidence and missing or mismatched snapshots continue to fail closed.
 ## Contracts
 
 `shared/schemas/README.md` is the contract inventory and handoff-graph source
-of truth. It must contain exactly the 83 versioned YAML contracts under
+of truth. It must contain exactly the 84 versioned YAML contracts under
 `shared/schemas/`: issue snapshots and drafts, repository and planning
 handoffs, worktree and delivery handoffs, review and feedback handoffs,
 integration and cleanup handoffs, host gate snapshots, the autonomous

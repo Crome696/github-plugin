@@ -38,7 +38,9 @@ flowchart LR
   ready[PullRequestReady]
   review[ReviewDecision]
   feedback[FeedbackResolution]
-  readiness[MergeReadiness]
+  sourceReaders[PR evidence readers]
+  snapshot[PullRequestReadinessEvidence]
+  readiness[MergeReadiness v3]
   rebase[ValidatedRebase]
   merged[VerifiedMerge]
   closure[IssueClosureVerification]
@@ -53,9 +55,11 @@ flowchart LR
   draft --> ready
   ready --> review
   review --> feedback
-  feedback --> readiness
+  feedback --> sourceReaders
+  sourceReaders --> snapshot
+  snapshot --> readiness
   readiness --> rebase
-  rebase --> readiness
+  rebase --> sourceReaders
   readiness --> merged
   merged --> closure
   closure --> cleanup
@@ -380,8 +384,14 @@ independent authorization for each hard operation:
 
 ```text
 verify exact pull request
-  -> assess current MergeReadiness
-  -> inspect linked-issue status when required
+  -> load-pull-request
+  -> load-pr-discussions
+  -> inspect-pr-checks
+  -> check-required-approvals
+  -> check-open-review-threads
+  -> check-linked-issue-status
+  -> build-pr-readiness-evidence
+  -> assess one complete current MergeReadiness
   -> obtain exact target-branch authorization
   -> fetch and verify selected target SHA
   -> analyze planned or stopped rebase conflicts
@@ -391,7 +401,10 @@ verify exact pull request
   -> validate post-rebase history, scope, tests, and checks
   -> obtain exact push authorization when the remote head changed
   -> push verified branch
-  -> reassess MergeReadiness on the new head
+  -> invalidate every earlier reader handoff
+  -> reload the complete reader chain for the new head
+  -> build a new PullRequestReadinessEvidence snapshot
+  -> reassess MergeReadiness from that snapshot
   -> obtain exact merge authorization and select allowed strategy
   -> perform one merge and verify the merge commit
   -> verify expected linked-issue closure
@@ -426,7 +439,7 @@ is the executable summary of Command sequencing and forbidden operations.
 | `ready-pr` | PR load, unique linked issue, diagnostic checks, optional reviewer proposals | Authorized Ready-for-Review and optional reviewer requests | Review publication, rebase, merge, cleanup |
 | `review-pr` | PR load, linked issue, discussions, checks, diff, finding analysis | Authorized review publication | Code edits, feedback reply, rebase, merge |
 | `address-pr-feedback` | Feedback collection, resolution candidate analysis, classification, validation | Authorized thread reply or resolution | Review publication, rebase, merge, cleanup |
-| `integrate-pr` | Readiness, conflict analysis, post-rebase validation, closure verification | Separately authorized refresh, rebase, push, merge, closure, cleanup | Implementation and review finding changes |
+| `integrate-pr` | Complete fixed-order PR reader chain, immutable snapshot, deterministic readiness, conflict analysis, post-rebase validation, closure verification | Separately authorized refresh, rebase, push, merge, closure, cleanup | Implementation and review finding changes |
 | `implement-auto-issue` | Repository verification plus the create, refine, prepare, and delivery reads | Issue create and refine, worktree, commit, non-force push, Draft PR | Review publication, Ready-for-Review, feedback follow-up, rebase, merge, cleanup |
 | `refine-auto-issue` | Issue verification plus the refine, prepare, and delivery reads | Issue refine, worktree, commit, non-force push, Draft PR | Issue create, review publication, Ready-for-Review, feedback follow-up, rebase, merge, cleanup |
 | `plan-product` | Repository and parent-issue verification plus product analysis, interview, mapping, decomposition, graphing, and prioritization | Approved create of confirmed product sub-issues | Technical implementation planning, worktree, commit, pull request, parent overwrite |
@@ -451,8 +464,8 @@ Skill's own scope and authorization contract.
 | Review finding is uncertain, duplicated, resolved, or style-only | Changed location, source evidence, discussion state, and confidence | Suppress, clarify, or retain as uncertainty; do not publish an unsupported blocker. |
 | Feedback is only partially addressed or unverifiable | Per-item current diff, commit, test, check, and thread evidence | Keep the item open or blocked; do not reply or resolve it as completed. |
 | Rebase or merge conflict occurs | Base/ours/theirs revisions, files, hunks, and stopped Git state | Leave the operation stopped, analyze and resolve it through an external capability, and use only the existing-gate/active-metadata Hook guard for a later standalone continue, skip, or abort; never choose or perform that recovery automatically. |
-| Rebase changes the head | Pre- and post-rebase revisions and changed scope | Invalidate old readiness, revalidate, reassess, and obtain any required push authorization. |
-| Merge readiness is stale or incomplete | Current head, draft state, reviews, threads, approvals, checks, conflicts, linkage | Do not merge; refresh the affected evidence. |
+| Rebase changes the head | Pre- and post-rebase revisions and changed scope | Invalidate every reader handoff and snapshot, revalidate, rebuild the complete chain, reassess, and obtain any required push authorization. |
+| Merge readiness is stale or incomplete | Snapshot identity, freshness, source provenance, pagination, draft state, reviews, threads, approvals, checks, conflicts, linkage | Do not merge; rebuild the complete snapshot and deterministic assessment. |
 | Automatic issue closure does not occur | Verified merge, relationship, default branch, issue state, and timeline evidence | Report the cause or next step; manual closure remains separate and exact-authorized. |
 | Cleanup sees uncommitted or uncertain work | Worktree status, attributable paths, merge state, and recoverability | Preserve the workspace or branch; do not delete recoverable work. |
 

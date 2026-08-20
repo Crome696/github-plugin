@@ -1,6 +1,6 @@
 schema: PreMergeGate
-version: 1
-description: Local, read-only snapshot binding one exact approved GitHub pull-request merge to current merge-readiness evidence and an explicit merge authorization.
+version: 2
+description: Local, read-only snapshot binding one exact approved GitHub pull-request merge to one immutable readiness evidence snapshot and explicit merge authorization.
 required:
   - workspace
   - pull_request
@@ -87,7 +87,7 @@ fields:
         format: iso-8601
   readiness:
     type: object
-    description: Complete version-2 MergeReadiness handoff captured for the exact pull request and expected head SHA.
+    description: Complete version-3 MergeReadiness handoff captured for the exact pull request and expected head SHA.
     required:
       - schema
       - version
@@ -102,13 +102,14 @@ fields:
       - review_state
       - issue_coverage
       - evidence
+      - readiness_evidence
     fields:
       schema:
         type: string
         const: MergeReadiness
       version:
         type: integer
-        const: 2
+        const: 3
       status:
         type: enum
         values: [ready]
@@ -143,12 +144,53 @@ fields:
       evidence:
         type: object
         required: [head_sha, status, sources]
+      readiness_evidence:
+        type: object
+        required: [schema, version, status, repository, pull_request, head_sha, base, observed_at, freshness, policy, discussions, linked_issue, merge_methods, sources, failure]
+        fields:
+          schema:
+            type: string
+            value: PullRequestReadinessEvidence
+          version:
+            type: integer
+            value: 1
+          status:
+            type: enum
+            values: [complete]
+          repository:
+            type: string
+            format: owner/repository
+          pull_request:
+            type: object
+          head_sha:
+            type: string
+            format: full git commit SHA
+          base:
+            type: object
+          observed_at:
+            type: string
+            format: iso-8601
+          freshness:
+            type: object
+          policy:
+            type: object
+          discussions:
+            type: object
+          linked_issue:
+            type: object
+          merge_methods:
+            type: object
+          sources:
+            type: list
+            items: object
+          failure:
+            type: object | null
   written_at:
     type: string
     format: iso-8601
 invariants:
   - The snapshot is local-only and is written immediately before one exact GitHub pull-request merge command; it never performs or authorizes a merge by itself.
-  - The hook must validate the complete version-2 MergeReadiness handoff and refresh the live pull-request, review, thread, approval, required-check, conflict, base, and issue evidence before allowing the merge.
+  - The hook validates the complete version-3 MergeReadiness handoff and its embedded version-1 PullRequestReadinessEvidence without acquiring or interpreting live GitHub policy.
   - readiness.status is ready, readiness.head_sha equals expected_head_sha, and readiness evidence is complete and identity-matched; readiness never substitutes for explicit merge authorization.
   - readiness.issue_coverage.status must be either `covered` or `waived`; when `waived`, the embedded `issue_coverage.waiver` object must be present and complete.
   - authorization.exact_target, authorization.exact_merge_operation, and authorization.merge_authorized are true and cover the exact repository, pull request, head and base SHAs, base branch, method, commit metadata, and branch-deletion effect.

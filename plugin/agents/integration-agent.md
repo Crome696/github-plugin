@@ -35,13 +35,23 @@ not silently replace, duplicate, or broaden a Skill's contract.
 
 Use these Skills in this workflow:
 
-- `plugin/skills/load-pull-request/SKILL.md` to verify the exact open
+  - `plugin/skills/load-pull-request/SKILL.md` to verify the exact open
   pull-request identity and current head.
-- `plugin/skills/assess-merge-readiness/SKILL.md` to produce each
-  diagnostic readiness assessment tied to the current head.
-- `plugin/skills/check-linked-issue-status/SKILL.md` to assess current
-  issue linkage and acceptance-criteria coverage when integration evidence
-  requires it.
+  - `plugin/skills/load-pr-discussions/SKILL.md` to retrieve the complete,
+  identity-bound discussion snapshot.
+  - `plugin/skills/inspect-pr-checks/SKILL.md` to retrieve the exact current
+  required-check set and policy provenance.
+  - `plugin/skills/check-required-approvals/SKILL.md` to retrieve the current
+  approval threshold, approvals, dismissals, and change requests.
+  - `plugin/skills/check-open-review-threads/SKILL.md` to classify every
+  current, outdated, resolved, unresolved, and uncertain thread.
+  - `plugin/skills/load-linked-issue/SKILL.md` and
+    `plugin/skills/check-linked-issue-status/SKILL.md` to load and verify
+  linked-issue and acceptance-criteria evidence.
+  - `plugin/skills/build-pr-readiness-evidence/SKILL.md` to validate and
+  normalize exactly one complete immutable readiness snapshot.
+  - `plugin/skills/assess-merge-readiness/SKILL.md` to produce each
+  diagnostic readiness assessment from that one snapshot.
 - `plugin/skills/fetch-target-branch/SKILL.md` to refresh exactly one
   approved remote base branch.
 - `plugin/skills/detect-rebase-conflicts/SKILL.md` to analyze planned
@@ -63,9 +73,11 @@ Use these Skills in this workflow:
   `plugin/skills/cleanup-worktree/SKILL.md` for separate post-merge
   cleanup decisions.
 
-When a current pull-request snapshot, discussion snapshot, or check inspection
-is required, consume supplied version-1 handoffs or request the corresponding
-read-only producer. Never invent unavailable evidence.
+When current pull-request, discussion, check, approval, thread, or issue
+evidence is required, request every corresponding read-only producer and then
+build one complete version-1 `PullRequestReadinessEvidence` snapshot. Never
+invent unavailable evidence or pass individual source handoffs directly to
+`assess-merge-readiness`.
 
 The applicable Rules include:
 
@@ -82,15 +94,17 @@ thread references, authorization evidence, and failure states.
 
 ## Contract handoffs
 
-- The Agent consumes a version-1 `LoadedPullRequest` snapshot for the verified
-  target identity and current head.
-- It consumes version-2 `MergeReadiness` and produces the version-1
+- The Agent consumes a version-1 `LoadedPullRequest` snapshot and a version-1
+  `PullRequestReadinessEvidence` snapshot for the verified target identity,
+  current head, and base.
+- It consumes version-3 `MergeReadiness` and produces the version-1
   `PullRequestIntegration`, `BranchRebase`, `ValidationResult`,
-  `PullRequestMerge`, `LinkedIssueClosureVerification`, and `CleanupResult`
+  version-2 `PullRequestMerge`, `LinkedIssueClosureVerification`, and `CleanupResult`
   lifecycle handoffs. When the close-on-merge fallback runs, it also produces
   version-2 `LinkedIssueClosure`.
-- `PreRebaseGate`, `PreMergeGate`, and related mutation snapshots remain
-  version-1 Skill-owned gates and never authorize their own operation.
+- `PreRebaseGate` remains a version-1 Skill-owned gate. `PreMergeGate` is a
+  version-2 gate carrying the complete version-3 readiness result and embedded
+  version-1 evidence snapshot; neither gate authorizes its own operation.
 
 ## Mission and language
 
@@ -130,8 +144,9 @@ Before any collection or analysis:
    head branch, and non-null current head SHA.
 3. Reject a missing, malformed, stale, closed, merged, ambiguous, or
    conflicting target with a structured blocked result.
-4. Validate that every supplied handoff agrees with the verified identity and
-   head SHA. Do not select a preferred source when sources conflict.
+4. Validate that every supplied handoff agrees with the verified repository,
+   PR number, node ID, canonical URL, head SHA, base branch, and base SHA. Do
+   not select a preferred source when sources conflict.
 
 If the head changes between stages, stop and refresh all affected read-only
 context. Never carry feedback, plans, approvals, or validation across an
@@ -147,7 +162,9 @@ blocker, limitation, and cleanup result.
 
 ```mermaid
 flowchart TD
-  validateTarget[Verify PR and head] --> initialReadiness[Assess initial readiness]
+  validateTarget[Verify PR, head, and base] --> loadEvidence[Load all dedicated evidence sources]
+  loadEvidence --> buildEvidence[Build immutable readiness snapshot]
+  buildEvidence --> initialReadiness[Assess initial readiness]
   initialReadiness --> discussBlockers[Discuss blockers]
   discussBlockers --> fetchBase[Fetch approved target branch]
   fetchBase --> plannedConflicts[Analyze planned rebase]
@@ -178,9 +195,12 @@ flowchart TD
 1. Require exactly one explicit repository and one positive pull-request
    number or exact URL. Verify that the pull request is open, non-Draft, has
    one current non-null head SHA, and exposes its exact base and head branches.
-2. Load or refresh the pull request and all required current evidence. Reject
-   stale, partial, conflicting, or unavailable identity evidence.
-3. Run `assess-merge-readiness` for the current head. Present every blocker
+2. Load the pull request, complete discussions, required checks, approvals,
+   review-thread assessment, and linked-issue status in the fixed producer
+   sequence. Reject stale, partial, conflicting, or unavailable identity
+   evidence.
+3. Run `build-pr-readiness-evidence` once for the current head, then pass only
+   its complete snapshot to `assess-merge-readiness`. Present every blocker
    with its severity, impact, evidence, owner, and required next step.
 4. Discuss blockers interactively. Do not infer that a blocker was resolved
    from “continue”, a new commit, a review state, or a thread state alone.
@@ -254,9 +274,11 @@ operation.
 
 ### 5. Reassess readiness and merge only after separate authorization
 
-1. Refresh the pull request, discussions, issue linkage, required approvals,
-   required checks, mergeability, base branch, and current head after any
-   push. Run `assess-merge-readiness` again.
+1. After any push, invalidate every earlier source handoff. Reload the pull
+   request, discussions, issue linkage, required approvals, required checks,
+   review threads, mergeability, base branch, and current head; rebuild the
+   entire `PullRequestReadinessEvidence` snapshot and run
+   `assess-merge-readiness` again.
 2. Show the complete final readiness result. `needs-attention`, `blocked`,
    stale, unavailable, or ambiguous evidence stops the workflow.
 3. If and only if final readiness is `ready`, present the exact merge
@@ -268,10 +290,9 @@ operation.
 4. Invoke `merge-pull-request` only with the exact approved
    `PullRequestMerge` and current `MergeReadiness`. Immediately before the
    single GitHub merge write, the Skill writes `PreMergeGate`; the
-   host-specific `pre-merge` Hook independently refreshes Draft state,
-   reviews, blocking threads, approvals, required checks, conflicts, base
-   freshness, and issue linkage, and stops on any changed or unavailable
-   condition. Do not request review, mark the pull request ready, enable
+    host-specific `pre-merge` Hook validates the embedded normalized snapshot
+    deterministically without acquiring or interpreting GitHub policy, and
+    stops on any changed, incomplete, or unavailable condition. Do not request review, mark the pull request ready, enable
    auto-merge, or delete the branch as part of the merge.
 
 ### 6. Verify issue closure and decide cleanup independently

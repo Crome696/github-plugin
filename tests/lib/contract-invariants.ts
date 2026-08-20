@@ -349,6 +349,283 @@ const validateValidationResult = (
   return issues;
 };
 
+const isFullSha = (value: unknown): value is string =>
+  typeof value === "string" && /^[0-9a-f]{40,64}$/i.test(value);
+
+const isNonNegativeInteger = (value: unknown): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value >= 0;
+
+const isIsoTimestamp = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0 && Number.isFinite(Date.parse(value));
+
+const isNonEmptyStringList = (value: unknown): value is string[] =>
+  Array.isArray(value) &&
+  value.length > 0 &&
+  value.every((entry) => typeof entry === "string" && entry.trim().length > 0);
+
+const normalizeSnapshotUrl = (value: unknown): string | null =>
+  typeof value === "string" ? value.replace(/\/+$/, "").toLowerCase() : null;
+
+const validatePullRequestReadinessEvidence = (
+  payload: Record<string, unknown>,
+): InvariantIssue[] => {
+  const issues: InvariantIssue[] = [];
+  const requiredSourceNames = [
+    "load-pull-request",
+    "load-pr-discussions",
+    "inspect-pr-checks",
+    "check-required-approvals",
+    "check-open-review-threads",
+    "check-linked-issue-status",
+  ];
+
+  if (payload.schema !== "PullRequestReadinessEvidence" || payload.version !== 1) {
+    issues.push(
+      issue(
+        "snapshot_version_mismatch",
+        "$",
+        "Readiness evidence must use PullRequestReadinessEvidence version 1.",
+      ),
+    );
+  }
+  if (payload.status !== "complete") {
+    issues.push(
+      issue(
+        "snapshot_not_complete",
+        "$.status",
+        "Only a complete readiness evidence snapshot can be consumed by merge readiness.",
+      ),
+    );
+    return issues;
+  }
+
+  const pullRequest = objectAt(payload.pull_request, "$.pull_request");
+  const base = objectAt(payload.base, "$.base");
+  const freshness = objectAt(payload.freshness, "$.freshness");
+  const policy = objectAt(payload.policy, "$.policy");
+  const requiredChecks = objectAt(policy?.required_checks, "$.policy.required_checks");
+  const approvals = objectAt(policy?.approvals, "$.policy.approvals");
+  const discussions = objectAt(payload.discussions, "$.discussions");
+  const linkedIssue = objectAt(payload.linked_issue, "$.linked_issue");
+  const mergeMethods = objectAt(payload.merge_methods, "$.merge_methods");
+  const snapshotIdentity = {
+    repository: payload.repository,
+    number: pullRequest?.number,
+    nodeId: pullRequest?.node_id,
+    url: pullRequest?.url,
+    headSha: payload.head_sha,
+    baseBranch: base?.name,
+    baseSha: base?.oid,
+  };
+
+  if (
+    typeof payload.repository !== "string" ||
+    payload.repository.trim().length === 0 ||
+    !isRecord(pullRequest) ||
+    !isNonNegativeInteger(pullRequest.number) ||
+    pullRequest.number < 1 ||
+    typeof pullRequest.node_id !== "string" ||
+    pullRequest.node_id.trim().length === 0 ||
+    typeof pullRequest.url !== "string" ||
+    normalizeSnapshotUrl(pullRequest.url) === null ||
+    pullRequest.state !== "open" ||
+    pullRequest.draft !== false ||
+    !isFullSha(payload.head_sha) ||
+    !isRecord(base) ||
+    typeof base.name !== "string" ||
+    base.name.trim().length === 0 ||
+    !isFullSha(base.oid) ||
+    !isIsoTimestamp(payload.observed_at) ||
+    !isRecord(freshness) ||
+    freshness.status !== "current" ||
+    !isNonEmptyStringList(freshness.evidence)
+  ) {
+    issues.push(
+      issue(
+        "snapshot_identity_incomplete",
+        "$",
+        "A complete snapshot must carry one canonical PR, head, base, observation, and current-freshness identity.",
+      ),
+    );
+  }
+  if (freshness !== null && freshness.status !== "current") {
+    issues.push(
+      issue(
+        "snapshot_stale",
+        "$.freshness.status",
+        "A complete snapshot must explicitly prove current freshness.",
+      ),
+    );
+  }
+
+  if (payload.failure !== null) {
+    issues.push(
+      issue(
+        "snapshot_failure_present",
+        "$.failure",
+        "A complete readiness evidence snapshot cannot retain a failure object.",
+      ),
+    );
+  }
+
+  const sources = arrayAt(payload.sources, "$.sources").filter(isRecord);
+  const sourceNames = new Set<string>();
+  if (sources.length === 0) {
+    issues.push(
+      issue(
+        "snapshot_sources_incomplete",
+        "$.sources",
+        "A complete snapshot must preserve every reader source and its provenance.",
+      ),
+    );
+  }
+  for (const [index, source] of sources.entries()) {
+    const path = `$.sources[${index}]`;
+    const identity = objectAt(source.identity, `${path}.identity`);
+    const pagination = objectAt(source.pagination, `${path}.pagination`);
+    if (typeof source.name !== "string" || source.name.trim().length === 0 || sourceNames.has(source.name)) {
+      issues.push(issue("snapshot_source_identity_invalid", `${path}.name`, "Snapshot source names must be non-empty and unique."));
+    } else {
+      sourceNames.add(source.name);
+    }
+    if (!["loaded", "empty"].includes(String(source.status))) {
+      issues.push(issue("snapshot_source_unavailable", `${path}.status`, "Partial or unavailable sources cannot be part of a complete snapshot."));
+    }
+    if (
+      !isRecord(identity) ||
+      identity.repository !== snapshotIdentity.repository ||
+      identity.number !== snapshotIdentity.number ||
+      identity.node_id !== snapshotIdentity.nodeId ||
+      normalizeSnapshotUrl(identity.url) !== normalizeSnapshotUrl(snapshotIdentity.url) ||
+      typeof identity.head_sha !== "string" ||
+      identity.head_sha.toLowerCase() !== String(snapshotIdentity.headSha).toLowerCase() ||
+      identity.base_branch !== snapshotIdentity.baseBranch ||
+      typeof identity.base_sha !== "string" ||
+      identity.base_sha.toLowerCase() !== String(snapshotIdentity.baseSha).toLowerCase()
+    ) {
+      issues.push(issue("snapshot_mixed_identity", `${path}.identity`, "Every source must bind to the exact snapshot repository, PR node, head, and base."));
+    }
+    if (
+      !isIsoTimestamp(source.retrieved_at) ||
+      !isRecord(pagination) ||
+      pagination.complete !== true ||
+      !isNonNegativeInteger(pagination.page_count) ||
+      !isNonEmptyStringList(source.provenance) ||
+      !isNonEmptyStringList(source.evidence)
+    ) {
+      issues.push(issue("snapshot_source_incomplete", path, "Every source must carry retrieval, pagination, provenance, and evidence details."));
+    }
+  }
+  for (const name of requiredSourceNames) {
+    if (!sourceNames.has(name)) {
+      issues.push(issue("snapshot_source_missing", "$.sources", `The fixed readiness chain is missing ${name}.`));
+    }
+  }
+
+  if (
+    !isRecord(policy) ||
+    !["loaded", "empty"].includes(String(policy.status)) ||
+    !Array.isArray(policy.sources) ||
+    (policy.status === "loaded" && policy.sources.length === 0) ||
+    !isNonEmptyStringList(policy.evidence) ||
+    !isRecord(requiredChecks) ||
+    !["loaded", "empty"].includes(String(requiredChecks.status)) ||
+    !Array.isArray(requiredChecks.checks) ||
+    !isNonEmptyStringList(requiredChecks.evidence) ||
+    !isRecord(approvals) ||
+    !["loaded", "empty"].includes(String(approvals.status)) ||
+    !isNonNegativeInteger(approvals.required_approvals) ||
+    !Array.isArray(approvals.approvals) ||
+    !Array.isArray(approvals.dismissals) ||
+    !Array.isArray(approvals.change_requests) ||
+    !isNonEmptyStringList(approvals.evidence)
+  ) {
+    issues.push(issue("snapshot_policy_unavailable", "$.policy", "Complete evidence must distinguish retrieved-empty policy from unavailable policy."));
+  }
+  if (
+    Array.isArray(policy?.sources) &&
+    policy.sources.some(
+      (source) =>
+        !isRecord(source) ||
+        !isNonEmptyStringList(source.provenance) ||
+        !isNonEmptyStringList(source.evidence) ||
+        !["loaded", "empty"].includes(String(source.status)),
+    )
+  ) {
+    issues.push(issue("snapshot_policy_provenance_incomplete", "$.policy.sources", "Every policy source must be loaded or validly empty with provenance."));
+  }
+
+  if (
+    !isRecord(discussions) ||
+    !["loaded", "empty"].includes(String(discussions.status)) ||
+    !isRecord(discussions.pagination) ||
+    discussions.pagination.complete !== true ||
+    !Number.isInteger(discussions.pagination.page_count) ||
+    !isNonEmptyStringList(discussions.pagination.evidence) ||
+    !Array.isArray(discussions.threads) ||
+    !isNonEmptyStringList(discussions.evidence)
+  ) {
+    issues.push(issue("snapshot_threads_incomplete", "$.discussions", "Complete evidence requires fully paginated discussion data."));
+  } else {
+    for (const [index, thread] of discussions.threads.entries()) {
+      if (
+        !isRecord(thread) ||
+        typeof thread.id !== "string" ||
+        thread.id.trim().length === 0 ||
+        !["open", "resolved", "unknown"].includes(String(thread.state)) ||
+        typeof thread.is_resolved !== "boolean" ||
+        typeof thread.is_outdated !== "boolean" ||
+        !["blocking", "nonblocking", "uncertain"].includes(String(thread.disposition)) ||
+        !isNonEmptyStringList(thread.evidence)
+      ) {
+        issues.push(issue("snapshot_thread_disposition_uncertain", `$.discussions.threads[${index}]`, "Every thread needs evidence-backed resolution, currentness, and disposition."));
+      }
+    }
+  }
+
+  if (
+    !isRecord(linkedIssue) ||
+    !["covered", "waived"].includes(String(linkedIssue.status)) ||
+    !isNonEmptyStringList(linkedIssue.evidence)
+  ) {
+    issues.push(issue("snapshot_linked_issue_unavailable", "$.linked_issue", "Complete evidence requires covered or explicitly waived linked-issue evidence."));
+  } else if (linkedIssue.status === "covered") {
+    const linked = objectAt(linkedIssue.issue, "$.linked_issue.issue");
+    if (
+      linked === null ||
+      typeof linked.repository !== "string" ||
+      !isNonNegativeInteger(linked.number) ||
+      linked.number < 1 ||
+      typeof linked.url !== "string"
+    ) {
+      issues.push(issue("snapshot_linked_issue_ambiguous", "$.linked_issue.issue", "Covered linked-issue evidence must identify one exact issue."));
+    }
+  } else {
+    const waiver = objectAt(linkedIssue.waiver, "$.linked_issue.waiver");
+    if (
+      !isRecord(waiver) ||
+      typeof waiver.reason !== "string" ||
+      waiver.reason.trim().length === 0 ||
+      typeof waiver.source !== "string" ||
+      waiver.source.trim().length === 0 ||
+      typeof waiver.evidence !== "string" ||
+      waiver.evidence.trim().length === 0
+    ) {
+      issues.push(issue("snapshot_linked_issue_waiver_incomplete", "$.linked_issue.waiver", "Waived linked-issue evidence must preserve a reason, source, and evidence."));
+    }
+  }
+
+  if (
+    !isRecord(mergeMethods) ||
+    !["loaded", "empty", "not_used"].includes(String(mergeMethods.status)) ||
+    !Array.isArray(mergeMethods.allowed) ||
+    !isNonEmptyStringList(mergeMethods.evidence)
+  ) {
+    issues.push(issue("snapshot_merge_method_incomplete", "$.merge_methods", "Merge-method evidence must be complete when readiness uses it and explicitly not_used otherwise."));
+  }
+  return issues;
+};
+
 const validateMergeReadiness = (
   payload: Record<string, unknown>,
 ): InvariantIssue[] => {
@@ -360,6 +637,30 @@ const validateMergeReadiness = (
   const issueCoverage = objectAt(payload.issue_coverage, "$.issue_coverage");
   const evidence = objectAt(payload.evidence, "$.evidence");
   const checks = arrayAt(payload.checks, "$.checks").filter(isRecord);
+  const readinessEvidence = objectAt(
+    payload.readiness_evidence,
+    "$.readiness_evidence",
+  );
+  issues.push(
+    ...validatePullRequestReadinessEvidence(readinessEvidence ?? {}),
+  );
+
+  const snapshotPullRequest = objectAt(
+    readinessEvidence?.pull_request,
+    "$.readiness_evidence.pull_request",
+  );
+  const snapshotBase = objectAt(
+    readinessEvidence?.base,
+    "$.readiness_evidence.base",
+  );
+  const snapshotDiscussions = objectAt(
+    readinessEvidence?.discussions,
+    "$.readiness_evidence.discussions",
+  );
+  const snapshotThreads = arrayAt(
+    snapshotDiscussions?.threads,
+    "$.readiness_evidence.discussions.threads",
+  ).filter(isRecord);
 
   const requiredConditions: Array<[boolean, string, string]> = [
     [
@@ -414,6 +715,41 @@ const validateMergeReadiness = (
       arrayAt(payload.blockers, "$.blockers").length === 0,
       "$.blockers",
       "Ready cannot retain an actionable blocker.",
+    ],
+    [
+      readinessEvidence?.schema === "PullRequestReadinessEvidence" &&
+        readinessEvidence.version === 1 &&
+        readinessEvidence.status === "complete" &&
+        readinessEvidence.repository === payload.repository &&
+        snapshotPullRequest?.number === pullRequest?.number &&
+        normalizeSnapshotUrl(snapshotPullRequest?.url) ===
+          normalizeSnapshotUrl(pullRequest?.url) &&
+        typeof readinessEvidence.head_sha === "string" &&
+        readinessEvidence.head_sha === payload.head_sha &&
+        snapshotBase?.name === payload.base_branch,
+      "$.readiness_evidence",
+      "Ready requires one complete snapshot bound to the same pull-request, head, and base branch.",
+    ],
+    [
+      snapshotThreads.every(
+        (thread) =>
+          thread.is_resolved === true || thread.disposition === "nonblocking",
+      ),
+      "$.readiness_evidence.discussions.threads",
+      "Ready cannot retain an unresolved blocking or uncertain review thread.",
+    ],
+    [
+      issueCoverage?.status !== "covered" ||
+        (isRecord(issueCoverage.issue) &&
+          isRecord(readinessEvidence?.linked_issue) &&
+          readinessEvidence.linked_issue.status === "covered" &&
+          isRecord(readinessEvidence.linked_issue.issue) &&
+          issueCoverage.issue.repository === readinessEvidence.linked_issue.issue.repository &&
+          issueCoverage.issue.number === readinessEvidence.linked_issue.issue.number &&
+          normalizeSnapshotUrl(issueCoverage.issue.url) ===
+            normalizeSnapshotUrl(readinessEvidence.linked_issue.issue.url)),
+      "$.readiness_evidence.linked_issue",
+      "Ready requires the embedded linked-issue evidence to match the diagnostic issue coverage.",
     ],
   ];
 
@@ -492,14 +828,14 @@ const validatePullRequestMerge = (
   const readiness = objectAt(payload.readiness, "$.readiness");
   if (
     readiness?.schema !== "MergeReadiness" ||
-    readiness.version !== 2 ||
+    readiness.version !== 3 ||
     readiness.status !== "ready"
   ) {
     issues.push(
       issue(
         "merge_readiness_mismatch",
         "$.readiness",
-        "A merge handoff requires a current version-2 ready MergeReadiness.",
+        "A merge handoff requires a current version-3 ready MergeReadiness with one complete readiness snapshot.",
       ),
     );
   }
@@ -687,6 +1023,8 @@ export const validateContractInvariants = (
       return validateClassifiedFindings(payload);
     case "ValidationResult":
       return validateValidationResult(payload);
+    case "PullRequestReadinessEvidence":
+      return validatePullRequestReadinessEvidence(payload);
     case "MergeReadiness":
       return validateMergeReadiness(payload);
     case "PullRequestMerge":

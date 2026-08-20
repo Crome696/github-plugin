@@ -1,5 +1,5 @@
 schema: PullRequestMerge
-version: 1
+version: 2
 status: draft
 repository: octo-org/widgets
 pull_request:
@@ -20,13 +20,54 @@ authorization:
   source: explicit_user
   evidence: evidence-value
 readiness:
-  schema: schema-value
-  version: 1
+  schema: MergeReadiness
+  version: 3
   status: ready
   repository: octo-org/widgets
-  pull_request_number: 1
-  assessed_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  evidence: []
+  pull_request:
+    number: 1
+    url: https://github.com/octo-org/widgets/pull/1
+    state: open
+    draft: false
+  head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  base_branch: master
+  mergeability: mergeable
+  blockers: []
+  checks: []
+  review_state:
+    approval_count: 0
+    change_request_count: 0
+    evidence_status: known
+  issue_coverage:
+    status: covered
+    evidence: [The exact linked issue was verified.]
+  evidence:
+    head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    status: complete
+    sources: []
+  readiness_evidence:
+    schema: PullRequestReadinessEvidence
+    version: 1
+    status: complete
+    repository: octo-org/widgets
+    pull_request:
+      number: 1
+      node_id: PR_kwDO123456789
+      url: https://github.com/octo-org/widgets/pull/1
+      state: open
+      draft: false
+    head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    base:
+      name: master
+      oid: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    observed_at: '2026-08-20T10:00:00.000Z'
+    freshness: {status: current, evidence: [fixture]}
+    policy: {}
+    discussions: {}
+    linked_issue: {}
+    merge_methods: {}
+    sources: []
+    failure: null
 preflight:
   checked_at: '2026-01-01T00:00:00.000Z'
   live_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

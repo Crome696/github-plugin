@@ -41,7 +41,7 @@ owner and repository name; the number must be a positive integer. Do not guess
 identity from the current checkout, branch, remote, issue, or most recently
 viewed pull request.
 
-An optional version-1 `LoadedPullRequestDiscussions` handoff may provide the
+An optional version-2 `LoadedPullRequestDiscussions` handoff may provide the
 thread source. Validate its repository, number, canonical URL, retrieval
 status, and head relationship. A partial, stale, conflicting, or unavailable
 source cannot support `clear` when it could hide open threads.

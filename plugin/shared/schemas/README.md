@@ -17,7 +17,7 @@ version changes.
 | `DetectedReviewFindings` | Version 1 read-only source aggregation of diff, issue-coverage, check, discussion, and external-rule evidence into proposed `ReviewFinding`-compatible findings. |
 | `DeduplicatedReviewFindings` | Version 1 read-only content-level comparison of proposed findings with one another and retrieved pull-request discussion threads, preserving distinct causes and auditable suppression records. |
 | `ClassifiedReviewFindings` | Version 1 read-only classification of every deduplicated review finding by evidence-supported severity and domain category, with preserved thread metadata and no publication. |
-| `LoadedPullRequestDiscussions` | Version 1 read-only pull-request discussion snapshot grouped by review thread and affected location, preserving reviews, replies, comments, authors, timestamps, and resolution state. |
+| `LoadedPullRequestDiscussions` | Version 2 read-only pull-request discussion snapshot grouped by review thread and affected location, preserving reviews, replies, comments, authors, timestamps, resolution state, and the exact pull-request, head, and base identity with retrieval provenance. |
 | `CollectedReviewFeedback` | Version 1 read-only grouped follow-up handoff for open, resolved, outdated, or addressed review feedback, request-changes findings, relevant comments, and failed or missing required checks. |
 | `ClassifiedReviewFeedback` | Version 1 read-only classification of collected feedback by cause, severity, affected component, and required follow-up action. |
 | `FeedbackResolutionCapabilities` | Version 1 read-only resolution of external skills and rules needed by explicitly confirmed open feedback, including technology, architecture, testing, security, documentation, availability, and blocking or manual gaps. |
@@ -65,7 +65,7 @@ version changes.
 | `PreRebaseGate` | Version 1 local-only snapshot binding one exact authorized rebase to a verified pull-request branch, clean worktree, current remote context, unique target base, and full `TargetBranchFetch` evidence before the rebase command. |
 | `PrePrCreateGate` | Version 2 local-only snapshot binding one exact Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed version-2 validation before `gh pr create`. |
 | `PreReviewSubmitGate` | Version 1 local-only snapshot binding one exact AI pull-request review publication to structurally complete, deduplicated, explicitly confirmed, and current review evidence before the review write. |
-| `PreMergeGate` | Version 1 local-only snapshot binding one exact approved pull-request merge to current `MergeReadiness` evidence and explicit merge authorization before the merge write. |
+| `PreMergeGate` | Version 2 local-only snapshot binding one exact approved pull-request merge to version-3 `MergeReadiness` with an embedded immutable version-1 readiness evidence snapshot and explicit merge authorization before the merge write. |
 | `PullRequestReady` | Version 1 exact authorization-gated Ready-for-Review intent, optional confirmed reviewer requests, live preflight, and verification for one open Draft pull request with a unique linked issue. |
 | `PrePrReadyGate` | Version 1 local-only snapshot binding one exact Ready-for-Review transition and optional confirmed reviewer set to a current open Draft pull request before `gh pr ready`. |
 | `PostMergeStatus` | Version 1 read-only post-merge status preserving PR and merge-commit verification, expected linked-issue closure, cleanup availability, separate authorization requirements, open actions, and deviations without performing cleanup. |
@@ -73,7 +73,7 @@ version changes.
 | `BranchPush` | Version 1 verified branch-push result with repository, branch, remote, upstream, local-status, authorization, and post-push verification evidence. |
 | `PullRequestDraft` | Version 1 evidence-backed English draft pull-request description with issue linkage, branch identity, validation evidence, authorization state, and publication verification fields. |
 | `PullRequestIssueLink` | Version 1 read-only, evidence-backed relationship between exactly one Draft pull request and exactly one issue, including explicit closing-keyword intent without closing the issue. |
-| `PullRequestMerge` | Version 1 exact authorization-gated pull-request merge intent, current-readiness and live-preflight evidence, executed strategy, and post-merge verification result. |
+| `PullRequestMerge` | Version 2 exact authorization-gated pull-request merge intent, version-3 snapshot-backed readiness and preflight evidence, executed strategy, and post-merge verification result. |
 | `PullRequestIntegration` | Version 1 lifecycle record for one pull request through readiness, target refresh, conflict analysis, rebase, validation, push, merge, issue-closure verification, and separately authorized cleanup decisions. |
 | `LifecycleRun` | Version 1 task-authorized record of one autonomous issue-to-draft-PR run through create or an existing-issue refine entry, then preparation, external implementation, and Draft pull-request delivery, stopping before review. Absent `entry_phase` means `issue_create`. |
 | `ReviewFinding` | Evidence-based finding with severity, location, impact, recommendation, and verification. |
@@ -84,7 +84,8 @@ version changes.
 | `ProductSubIssuePublication` | Version 1 exact-set publication result that maps approved product-plan unit IDs to GitHub issue numbers and URLs, records parent and hard-dependency relationship outcomes, and preserves failed operations after creating every confirmed sub-issue before finalizing relationships. |
 | `ReviewThreadReply` | Version 2 exact, evidence-backed reply to one pull-request review-thread comment with direct user or repository-policy authorization or exact feedback-mode authorization and post-publication verification, without resolving the thread. |
 | `ReviewThreadResolution` | Version 2 scoped or authorization-gated resolution of exactly one open pull-request review thread after current validation proves the feedback was addressed. |
-| `MergeReadiness` | Version 2 read-only assessment of one pull request's mergeability, draft and review state, open threads, approvals, required checks, conflicts, issue coverage (including an optional waived unique-link exception with recorded waiver reason/source/evidence), evidence availability, blockers, and remaining conditions. |
+| `MergeReadiness` | Version 3 deterministic read-only transformation of exactly one complete version-1 `PullRequestReadinessEvidence` snapshot into mergeability, draft and review state, open-thread, approval, required-check, issue-coverage, blocker, and remaining-condition diagnostics. |
+| `PullRequestReadinessEvidence` | Version 1 immutable, identity-bound snapshot of one pull request's repository, PR node, URL, head/base OIDs, freshness, policy, required checks, approvals, dismissals, change requests, fully paginated discussions, linked issue, acceptance criteria, conditional merge-method evidence, and per-source provenance. |
 | `RequiredApprovalInspection` | Version 1 read-only inspection of explicitly retrieved branch-protection and ruleset review requirements, effective approvals, active change requests, pending review requests, and satisfied or missing approval conditions. |
 | `OpenReviewThreadAssessment` | Version 1 read-only assessment of one pull request's open, resolved, outdated, and unknown review-thread states, separating evidence-backed required problems from optional discussions and uncertainties. |
 | `CleanupResult` | Version 1 explicitly authorized worktree/branch cleanup actions and evidence, including preserved unsafe or recoverable targets and separate local/remote outcomes. |
@@ -219,13 +220,18 @@ flowchart LR
   loadedPullRequest[LoadedPullRequest] --> pullRequestDiffAnalysis[PullRequestDiffAnalysis]
   pullRequestDiffAnalysis --> reviewFinding[ReviewFinding]
   loadedPullRequest --> pullRequestCheckInspection[PullRequestCheckInspection]
-  pullRequestCheckInspection --> mergeReadiness[MergeReadiness]
   loadedPullRequest --> requiredApprovalInspection[RequiredApprovalInspection]
-  requiredApprovalInspection --> mergeReadiness
   loadedPullRequestDiscussions --> openReviewThreadAssessment[OpenReviewThreadAssessment]
-  openReviewThreadAssessment --> mergeReadiness
-  loadedPullRequestDiscussions --> mergeReadiness
-  linkedIssue --> mergeReadiness
+  buildReadinessEvidence[build-pr-readiness-evidence]
+  readinessSnapshot[PullRequestReadinessEvidence]
+  loadedPullRequest --> buildReadinessEvidence
+  loadedPullRequestDiscussions --> buildReadinessEvidence
+  pullRequestCheckInspection --> buildReadinessEvidence
+  requiredApprovalInspection --> buildReadinessEvidence
+  openReviewThreadAssessment --> buildReadinessEvidence
+  linkedIssueStatusAssessment --> buildReadinessEvidence
+  buildReadinessEvidence --> readinessSnapshot
+  readinessSnapshot --> mergeReadiness[MergeReadiness v3]
   loadedPullRequestDiscussions[LoadedPullRequestDiscussions] --> reviewFinding[ReviewFinding]
   publishedPullRequest --> reviewFinding[ReviewFinding]
   pullRequestDiffAnalysis --> detectedReviewFindings[DetectedReviewFindings]
@@ -266,9 +272,7 @@ flowchart LR
   feedbackResolutionValidation --> separateThreadResolution["Separate thread-resolution workflow"]
   feedbackResolutionValidation --> reviewThreadResolution[ReviewThreadResolution]
   feedbackResolutionValidation --> feedbackResolutionSummary[FeedbackResolutionSummary]
-  feedbackResolutionSummary --> mergeReadiness[MergeReadiness]
-  reviewDecision --> mergeReadiness[MergeReadiness]
-  mergeReadiness --> pullRequestMerge[PullRequestMerge]
+  mergeReadiness --> pullRequestMerge[PullRequestMerge v2]
   mergeReadiness --> preMergeGate[PreMergeGate]
   pullRequestMerge --> preMergeGate
   preMergeGate --> mergePullRequest[\"merge-pull-request\"]
@@ -288,7 +292,6 @@ flowchart LR
   linkedIssue --> linkedIssueStatusAssessment[LinkedIssueStatusAssessment]
   loadedPullRequest --> linkedIssueStatusAssessment
   pullRequestDiffAnalysis --> linkedIssueStatusAssessment
-  linkedIssueStatusAssessment --> mergeReadiness[MergeReadiness]
   mergeReadiness --> pullRequestIntegration[PullRequestIntegration]
   branchRebase --> pullRequestIntegration
   rebasedValidation --> pullRequestIntegration
@@ -371,10 +374,11 @@ flowchart LR
   authorization; direct invocation requires user or repository-policy authorization. It never resolves
   disputed, outdated, ambiguous, or insufficiently evidenced threads and never
   performs replies or unrelated mutations.
-- `LoadedPullRequestDiscussions` is a read-only immutable discussion snapshot.
-  It groups inline review comments and replies by thread and affected
-  location, keeps conversation comments separate, preserves authors and
-  timestamps, and records retrieved resolution and outdated state without
+- `LoadedPullRequestDiscussions` is a version-2 read-only immutable discussion
+  snapshot. It groups inline review comments and replies by thread and
+  affected location, keeps conversation comments separate, preserves authors
+  and timestamps, records retrieved resolution and outdated state, and carries
+  the exact PR node, head, base, retrieval, and pagination identity without
   inferring relationships or making GitHub writes.
 - `CollectedReviewFeedback` is a read-only follow-up handoff. It groups only
   equivalent problem cores, preserves separate review and check items, and
@@ -483,9 +487,10 @@ flowchart LR
   for a merge into the repository's default branch, and returns the
   relationship kind and evidence without editing GitHub or closing the issue.
   Ambiguous or conflicting issue candidates remain `ambiguous` or `blocked`.
-- `PullRequestMerge` is the version-1 authorization-gated handoff for exactly one
+- `PullRequestMerge` is the version-2 authorization-gated handoff for exactly one
   GitHub pull-request merge. It requires a current, identity- and SHA-matched
-  version-2 `MergeReadiness` result of `ready` and independent exact final
+  version-3 `MergeReadiness` result of `ready` carrying one complete version-1
+  `PullRequestReadinessEvidence` snapshot and independent exact final
   authorization for the repository, pull request, expected head and base SHAs,
   base branch, method, commit metadata, and requested remote branch deletion. It records
   the immediate live preflight, uses only the explicitly selected
@@ -493,14 +498,23 @@ flowchart LR
   final PR state and merge-commit SHA. Readiness never authorizes a merge;
   state changes block before the write, and cleanup remains a separate
   authorized workflow after successful verification.
-- `PreMergeGate` is a version-1 local-only snapshot written immediately before
+- `PullRequestReadinessEvidence` is the version-1 immutable snapshot built only
+  from the fixed-order reader handoffs. It binds repository, PR number, node
+  ID, URL, head OID, base branch/OID, freshness, policy, checks, approvals,
+  dismissals, change requests, fully paginated discussions, linked issue,
+  acceptance criteria, conditional merge-method evidence, and each source's
+  provenance. Empty and unavailable sources remain distinct; mixed, stale,
+  partial, unavailable, or ambiguous evidence cannot be complete.
+- `MergeReadiness` version 3 is a pure deterministic transformation of exactly
+  one complete snapshot. It retains that snapshot under `readiness_evidence`
+  and never refreshes a source or interprets live policy.
+- `PreMergeGate` is a version-2 local-only snapshot written immediately before
   the GitHub merge write. It binds the exact pull request, expected head and
-  base SHAs, selected method, branch-deletion effect, complete current
-  `MergeReadiness`, and explicit merge authorization. Its host hook refreshes
-  Draft status, reviews, blocking threads, approvals, required checks,
-  conflicts, base freshness, and issue coverage, then fails closed on any
-  changed, missing, stale, unavailable, or ambiguous condition without
-  repairing or authorizing the merge.
+  base SHAs, selected method, branch-deletion effect, complete version-3
+  `MergeReadiness` with its version-1 snapshot, and explicit merge
+  authorization. Its host hook validates the embedded evidence and exact Git
+  identity only; it executes no GitHub or GraphQL live read and never repairs
+  or authorizes the merge.
 - `PostMergeStatus` is a version-1 read-only result emitted after one observed
   GitHub pull-request merge. It preserves the live PR state, merge timestamp
   and commit, target-branch containment, expected issue closure and

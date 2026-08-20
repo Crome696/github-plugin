@@ -14,6 +14,7 @@ import {
   deleteGeneratedEntrypoint,
   dispatchLogs,
   executeProjectedHook,
+  fakeCommandLogs,
   irrelevantCommandFor,
   malformedCommandFor,
   mutateGate,
@@ -122,11 +123,38 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
           expect(allowed.dispatches).toEqual([
             { checker: `${hook}.mjs`, operation: hook === "pre-pr-create" ? "pr-create" : hook === "pre-review-submit" ? "review" : hook === "pre-pr-ready" ? "ready" : hook === "pre-rebase" ? "rebase" : hook.replace("pre-", ""), decision: "route" },
           ]);
+          if (hook === "pre-merge") {
+            expect(fakeCommandLogs(context).some((entry) => entry.executable === "gh")).toBe(false);
+          }
           assertNoUnexpectedFakeCommands(context);
         }
       });
     }, 30_000);
   }
+
+  it("fails closed on stale snapshot evidence without any live GitHub call", () => {
+    withRuntimeRepository((context) => {
+      for (const host of hosts) {
+        prepareRuntimeMode(context, "pre-merge", "allow");
+        mutateGate(context, "pre-merge", (gate) => {
+          const readiness = gate.readiness as Record<string, unknown>;
+          const snapshot = readiness.readiness_evidence as Record<string, unknown>;
+          const freshness = snapshot.freshness as Record<string, unknown>;
+          freshness.status = "stale";
+        });
+        const denied = executeProjectedHook(
+          context,
+          host,
+          "pre-merge",
+          "allow",
+          payloadFor(host, commandFor(context, "pre-merge"), context.repositoryRoot),
+        );
+        assertRuntimeResponse(denied, false);
+        expect(fakeCommandLogs(context).some((entry) => entry.executable === "gh")).toBe(false);
+        assertNoUnexpectedFakeCommands(context);
+      }
+    });
+  });
 
   it("fails closed for malformed object payloads and compound commands", () => {
     withRuntimeRepository((context) => {
@@ -590,7 +618,6 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
       const cases: Array<{ hook: HookName; mode: RuntimeMode; allow: boolean }> = [
         { hook: "pre-review-submit", mode: "cli-auth-failure", allow: false },
         { hook: "pre-pr-ready", mode: "cli-invalid-json", allow: false },
-        { hook: "pre-merge", mode: "cli-failure", allow: false },
         { hook: "pre-pr-ready", mode: "cli-delay", allow: true },
       ];
       for (const testCase of cases) {
@@ -621,8 +648,6 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
         { hook: "pre-pr-ready", mode: "cli-oversized-output" },
         { hook: "pre-pr-ready", mode: "cli-network-failure" },
         { hook: "pre-commit", mode: "credential-helper-delay" },
-        { hook: "pre-merge", mode: "graphql-incomplete" },
-        { hook: "pre-merge", mode: "graphql-malformed" },
       ];
       for (const testCase of preCases) {
         for (const host of hosts) {
@@ -690,7 +715,7 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
         assertNoUnexpectedFakeCommands(context);
       }
     });
-  });
+  }, 30_000);
 
   it("detects disposable projection faults instead of accepting a broken oracle target", () => {
     const faultCases = [

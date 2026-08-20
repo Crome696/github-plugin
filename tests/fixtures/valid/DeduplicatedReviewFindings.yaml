@@ -16,7 +16,7 @@ source:
   evidence: []
 discussions:
   schema: LoadedPullRequestDiscussions
-  version: 1
+  version: 2
   availability: loaded
   thread_count: 1
   evidence: []

@@ -199,8 +199,10 @@ Immediately before the merge write, the workflow must still verify:
 - exactly one issue is linked with evidence;
 - the selected strategy is allowed and explicitly authorized.
 
-After a rebase, previous readiness and validation evidence is stale. The
-branch must be validated and readiness must be assessed again.
+After a rebase or push, every source handoff and the complete readiness
+snapshot are invalidated. The branch must be validated, all reader sources
+must be collected again, a new `PullRequestReadinessEvidence` must be built,
+and `MergeReadiness` must be assessed again.
 
 ## Host gate snapshots
 
@@ -215,7 +217,7 @@ repair missing prerequisites or make a product judgment.
 | [`PrePrCreateGate`](../../shared/schemas/PrePrCreateGate.yaml) | `gh pr create` | Version-2 gate with version-2 validation, every explicit evidence requirement satisfied (or an explicitly empty list), verified commit and push, complete Draft body, unique issue link, and exact command. | Allow only the approved Draft PR creation; unmet explicit evidence fails closed. |
 | [`PreReviewSubmitGate`](../../shared/schemas/PreReviewSubmitGate.yaml) | canonical review API write | Current head, exact findings, valid locations, deduplication, confirmation, and publication authorization. | Allow only the exact review payload. |
 | [`PrePrReadyGate`](../../shared/schemas/PrePrReadyGate.yaml) | one canonical `gh pr ready` followed, only when authorized, by one `requested_reviewers POST` | Complete version-1 gate, exact URL/branches/SHA, open Draft or post-ready phase, exactly one linked issue, and typed reviewer set. | Allow only the standalone phase-appropriate operation; reject legacy/incomplete gates, compound commands, identity drift, and payload mismatch. |
-| [`PreMergeGate`](../../shared/schemas/PreMergeGate.yaml) | merge API write | Current `MergeReadiness`, live freshness checks, approvals, checks, threads, issue link, strategy, and merge authorization. | Fail closed on any changed, missing, stale, or unavailable condition. |
+| [`PreMergeGate`](../../shared/schemas/PreMergeGate.yaml) | merge API write | Version-2 gate with version-3 `MergeReadiness`, one complete version-1 `PullRequestReadinessEvidence` snapshot, exact strategy, and merge authorization. | Fail closed on any missing, mixed, stale, partial, unavailable, or identity-mismatched snapshot; the Hook performs no live GitHub policy or GraphQL read. |
 | [`PostMergeStatus`](../../shared/schemas/PostMergeStatus.yaml) | after merge | Completed command, PR state, merge commit, target branch, issue closure, and cleanup availability. | Return read-only status and open actions; never mutate cleanup state. |
 
 The six pre-operation checkers are reached through the shared

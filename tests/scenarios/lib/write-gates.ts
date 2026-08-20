@@ -482,6 +482,12 @@ const reviewDecisionGate = (context: GateContext): GateDecision | null => {
 };
 
 const readinessGate = (context: GateContext): GateDecision | null => {
+  if (!context.completedOperations.has("build-pr-readiness-evidence")) {
+    return decision(
+      "readiness_snapshot_step_missing",
+      "MergeReadiness requires the complete build-pr-readiness-evidence step first.",
+    );
+  }
   const readiness = handoff(context, "MergeReadiness");
   if (!readiness) return requireHandoff(context, "MergeReadiness");
   const identity = requireRepositoryAndPullRequest(context, readiness);
@@ -490,6 +496,19 @@ const readinessGate = (context: GateContext): GateDecision | null => {
     return decision(
       "merge_not_ready",
       "Only a current ready MergeReadiness may be handed to merge.",
+    );
+  }
+  const snapshot = recordAt(readiness, "readiness_evidence");
+  if (
+    snapshot === null ||
+    stringAt(snapshot, "schema") !== "PullRequestReadinessEvidence" ||
+    numberAt(snapshot, "version") !== 1 ||
+    stringAt(snapshot, "status") !== "complete" ||
+    snapshot.failure !== null
+  ) {
+    return decision(
+      "readiness_snapshot_incomplete",
+      "MergeReadiness must carry one complete version-1 readiness snapshot.",
     );
   }
   if (readiness.mergeability !== "mergeable") {
@@ -857,14 +876,14 @@ const preMergeGate = (context: GateContext): GateDecision | null => {
   const readiness = recordAt(gate, "readiness");
   if (
     stringAt(readiness, "schema") !== "MergeReadiness" ||
-    numberAt(readiness, "version") !== 2 ||
+    numberAt(readiness, "version") !== 3 ||
     stringAt(readiness, "status") !== "ready" ||
     (context.scenario.target.head_sha &&
       stringAt(readiness, "head_sha") !== context.scenario.target.head_sha)
   ) {
     return decision(
       "premerge_readiness_mismatch",
-      "PreMergeGate must bind current version-2 ready merge-readiness evidence.",
+      "PreMergeGate must bind current version-3 ready merge-readiness evidence and its immutable readiness snapshot.",
     );
   }
   return null;
@@ -1365,11 +1384,11 @@ export const evaluateWriteGate = (
     if (auth) return auth;
     if (
       !context.successfulWrites.has("rebase-branch") ||
-      !context.completedOperations.has("assess-final-merge-readiness")
+      !context.completedOperations.has("assess-merge-readiness")
     ) {
       return decision(
         "rebase_required",
-        "Integration must complete rebase and final readiness validation before merge.",
+        "Integration must complete the rebase and rebuilt snapshot-bound readiness validation before merge.",
       );
     }
     const readiness = readinessGate(context);
@@ -1711,10 +1730,7 @@ export const evaluateReadGate = (
   context: GateContext,
   action: ScenarioAction,
 ): GateDecision => {
-  if (
-    action.operation === "assess-merge-readiness" ||
-    action.operation === "assess-final-merge-readiness"
-  ) {
+  if (action.operation === "assess-merge-readiness") {
     return readinessGate(context) ?? allowed();
   }
   if (action.operation === "validate-rebased-branch") {

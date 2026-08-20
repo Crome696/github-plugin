@@ -216,7 +216,7 @@ describe("Skill, Agent, and Command handoffs", () => {
   });
 
   it("keeps the registry aligned with every Skill, Agent, and Command file", () => {
-    expect(skillHandoffs).toHaveLength(82);
+    expect(skillHandoffs).toHaveLength(83);
     expect(namesFromFiles(skillSources)).toEqual(
       skillHandoffs.map((handoff) => handoff.name).sort(),
     );
