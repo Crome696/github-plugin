@@ -30,6 +30,13 @@ export type RuntimeMode =
   | "cli-invalid-json"
   | "cli-auth-failure"
   | "cli-delay"
+  | "cli-timeout"
+  | "cli-hang"
+  | "cli-oversized-output"
+  | "cli-network-failure"
+  | "graphql-incomplete"
+  | "graphql-malformed"
+  | "credential-helper-delay"
   | "reviewer-allow"
   | "reviewer-draft"
   | "reviewer-live-drift";
@@ -55,6 +62,8 @@ export interface RuntimeContext {
   runtimeFileRelativePath: string;
   fakeConfigPath: string;
   fakeLogPath: string;
+  dispatchLogPath: string;
+  fakePidLogPath: string;
   shimDirectory: string;
   fakeRunnerPath: string;
 }
@@ -66,6 +75,7 @@ export interface ExactCommandRule {
   stderr?: string;
   exitCode?: number;
   delayMs?: number;
+  hang?: boolean;
 }
 
 export interface GraphqlCommandRule {
@@ -76,6 +86,7 @@ export interface GraphqlCommandRule {
   stderr?: string;
   exitCode?: number;
   delayMs?: number;
+  hang?: boolean;
 }
 
 export type FakeCommandRule = ExactCommandRule | GraphqlCommandRule;
@@ -94,6 +105,15 @@ export interface FakeCommandLogEntry {
   exitCode: number;
   delayMs: number;
   matched: boolean;
+  completed?: boolean;
+  stdoutBytes?: number;
+  stderrBytes?: number;
+}
+
+export interface DispatchLogEntry {
+  checker: string | null;
+  operation: string | null;
+  decision: string;
 }
 
 export interface RuntimeExecution {
@@ -108,6 +128,8 @@ export interface RuntimeExecution {
   stderr: string;
   timedOut: boolean;
   logs: FakeCommandLogEntry[];
+  dispatches: DispatchLogEntry[];
+  checker?: string | null;
 }
 
 export interface GateOptions {

@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
 const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-merge.json";
 const MAX_GATE_BYTES = 2 * 1024 * 1024;
@@ -121,11 +121,11 @@ function makeAllow() {
 
 function runCommand(executable, args, workingDirectory, operation) {
   try {
-    return execFileSync(executable, args, {
+    return runBoundedCommand(executable, args, {
       cwd: workingDirectory,
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
       maxBuffer: 16 * 1024 * 1024,
+      operation,
     }).trim();
   } catch {
     throw new CommandError(operation);
@@ -1656,8 +1656,16 @@ function readBaseBranchSha(workingDirectory, repository, branch, findings) {
   return sha;
 }
 
-function getGraphqlPages(value) {
-  return Array.isArray(value) ? value : [value];
+function getGraphqlPages(value, findings, description) {
+  if (!Array.isArray(value) || value.length === 0) {
+    addFinding(
+      findings,
+      `${description} did not return a complete GraphQL page array.`,
+      "retrieve every GraphQL page before merging",
+    );
+    return [];
+  }
+  return value;
 }
 
 function readReviewThreads(workingDirectory, repository, number, findings) {
@@ -1720,22 +1728,49 @@ function readReviewThreads(workingDirectory, repository, number, findings) {
 
   const threads = [];
   let foundConnection = false;
-  for (const page of getGraphqlPages(value)) {
+  const pages = getGraphqlPages(value, findings, "The review-thread response");
+  pages.forEach((page, pageIndex) => {
     const connection =
       page?.data?.repository?.pullRequest?.reviewThreads ?? null;
-    if (!isRecord(connection) || !Array.isArray(connection.nodes)) {
-      continue;
+    if (
+      !isRecord(connection) ||
+      !Array.isArray(connection.nodes) ||
+      !isRecord(connection.pageInfo) ||
+      typeof connection.pageInfo.hasNextPage !== "boolean" ||
+      (connection.pageInfo.hasNextPage &&
+        (typeof connection.pageInfo.endCursor !== "string" ||
+          connection.pageInfo.endCursor.length === 0))
+    ) {
+      addFinding(
+        findings,
+        "The review-thread response contains a malformed or incomplete page.",
+        "retrieve every current review-thread page before merging",
+      );
+      return;
     }
     foundConnection = true;
     threads.push(...connection.nodes);
-    if (connection.pageInfo?.hasNextPage === true) {
+    if (
+      connection.pageInfo.hasNextPage === true &&
+      pageIndex === pages.length - 1
+    ) {
       addFinding(
         findings,
         "The review-thread response is incomplete.",
         "retrieve every current review-thread page before merging",
       );
     }
-  }
+    if (
+      connection.pageInfo.hasNextPage === false &&
+      pageIndex !== pages.length - 1
+    ) {
+      addFinding(
+        findings,
+        "The review-thread response contains pages after its terminal page.",
+        "retrieve every current review-thread page before merging",
+      );
+    }
+  });
   if (!foundConnection) {
     addFinding(
       findings,
@@ -1817,10 +1852,28 @@ function readClosingIssues(workingDirectory, repository, number, findings) {
 
   const nodes = [];
   let foundConnection = false;
-  for (const page of getGraphqlPages(value)) {
+  if (Array.isArray(value)) {
+    addFinding(
+      findings,
+      "The linked-issue response has an unexpected paginated shape.",
+      "retrieve one complete linked-issue page before merging",
+    );
+    return null;
+  }
+  for (const page of [value]) {
     const connection =
       page?.data?.repository?.pullRequest?.closingIssuesReferences ?? null;
-    if (!isRecord(connection) || !Array.isArray(connection.nodes)) {
+    if (
+      !isRecord(connection) ||
+      !Array.isArray(connection.nodes) ||
+      !isRecord(connection.pageInfo) ||
+      typeof connection.pageInfo.hasNextPage !== "boolean"
+    ) {
+      addFinding(
+        findings,
+        "The linked-issue response contains a malformed or incomplete page.",
+        "retrieve one complete linked-issue page before merging",
+      );
       continue;
     }
     foundConnection = true;

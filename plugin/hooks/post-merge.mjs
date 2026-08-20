@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import {
   existsSync,
   readFileSync,
@@ -11,6 +10,7 @@ import {
 } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { runCommandResult } from "./lib/run-command.mjs";
 
 const MAX_INPUT_BYTES = 2 * 1024 * 1024;
 const MAX_GATE_BYTES = 2 * 1024 * 1024;
@@ -103,27 +103,14 @@ function textValue(value) {
 }
 
 function runCommand(executable, args, workingDirectory, operation) {
-  try {
-    return {
-      ok: true,
-      stdout: execFileSync(executable, args, {
-        cwd: workingDirectory,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-        maxBuffer: 16 * 1024 * 1024,
-      }).trim(),
-      stderr: "",
-      operation,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      stdout: textValue(error?.stdout),
-      stderr: textValue(error?.stderr),
-      status: Number.isInteger(error?.status) ? error.status : null,
-      operation,
-    };
-  }
+  const result = runCommandResult(executable, args, {
+    cwd: workingDirectory,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+    operation,
+  });
+  if (result.ok) result.stdout = textValue(result.stdout).trim();
+  return result;
 }
 
 function runGit(workingDirectory, args, operation = `git ${args[0] ?? ""}`) {
@@ -1145,13 +1132,22 @@ function readClosingIssues(workingDirectory, repository, number, tracker) {
     return null;
   }
   const connection = value?.data?.repository?.pullRequest?.closingIssuesReferences;
-  if (!isRecord(connection) || !Array.isArray(connection.nodes)) {
+  if (
+    !isRecord(connection) ||
+    !Array.isArray(connection.nodes) ||
+    !isRecord(connection.pageInfo) ||
+    typeof connection.pageInfo.hasNextPage !== "boolean"
+  ) {
+    tracker.record("issue-relationship", "unavailable", [
+      "The pull-request closing-issue relationship returned a malformed page.",
+    ]);
     return null;
   }
   if (connection.pageInfo?.hasNextPage === true) {
     tracker.record("issue-relationship", "unavailable", [
       "The pull-request closing-issue relationship has more than one page.",
     ]);
+    return null;
   }
   return connection.nodes;
 }

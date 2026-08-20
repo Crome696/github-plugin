@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
 const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-commit.json";
 const PRE_COMMIT_GATE_VERSION = 2;
@@ -150,10 +150,11 @@ function makeAllow() {
 
 function runGit(worktreePath, args) {
   try {
-    return execFileSync("git", ["-C", worktreePath, ...args], {
+    return runBoundedCommand("git", ["-C", worktreePath, ...args], {
+      cwd: worktreePath,
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
       maxBuffer: 8 * 1024 * 1024,
+      operation: `git ${args[0] ?? "unknown"}`,
     }).trim();
   } catch {
     throw new GitCommandError(args[0] ?? "unknown");
@@ -162,9 +163,9 @@ function runGit(worktreePath, args) {
 
 function runGitBuffer(worktreePath, args) {
   try {
-    return execFileSync("git", ["-C", worktreePath, ...args], {
+    return runBoundedCommand("git", ["-C", worktreePath, ...args], {
+      cwd: worktreePath,
       encoding: null,
-      stdio: ["ignore", "pipe", "pipe"],
       maxBuffer: MAX_SCANNED_FILE_BYTES + 1024,
     });
   } catch {
@@ -1288,13 +1289,14 @@ function evaluate(input) {
   let unmergedIndex;
   try {
     statusEntries = parseStatus(
-      execFileSync(
+      runBoundedCommand(
         "git",
         ["-C", repositoryRoot, "status", "--porcelain=v1", "--untracked-files=all", "-z"],
         {
+          cwd: repositoryRoot,
           encoding: "utf8",
-          stdio: ["ignore", "pipe", "pipe"],
           maxBuffer: 8 * 1024 * 1024,
+          operation: "git status",
         },
       ),
     );

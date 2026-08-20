@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync } from "node:fs";
 
 const configPath = process.env.CROMESDK_RUNTIME_FAKE_CONFIG;
 const logPath = process.env.CROMESDK_RUNTIME_FAKE_LOG;
+const pidLogPath = process.env.CROMESDK_RUNTIME_FAKE_PID_LOG;
 const executable = process.argv[2] ?? "unknown";
 const args = process.argv.slice(3);
 
@@ -15,6 +16,15 @@ const wait = (delayMs) => {
   if (!Number.isFinite(delayMs) || delayMs <= 0) return;
   const buffer = new SharedArrayBuffer(4);
   Atomics.wait(new Int32Array(buffer), 0, 0, delayMs);
+};
+
+if (typeof pidLogPath === "string" && pidLogPath.length > 0) {
+  appendFileSync(pidLogPath, `${process.pid}\n`, "utf8");
+}
+
+const waitUntilKilled = () => {
+  const buffer = new SharedArrayBuffer(4);
+  while (true) Atomics.wait(new Int32Array(buffer), 0, 0, 1_000);
 };
 
 const loadConfig = () => {
@@ -92,12 +102,16 @@ if (!rule) {
     executable,
     args,
     cwd: process.cwd(),
-    stdout,
-    stderr,
+    stdout: stdout.slice(0, 256),
+    stderr: stderr.slice(0, 256),
+    stdoutBytes: Buffer.byteLength(stdout, "utf8"),
+    stderrBytes: Buffer.byteLength(stderr, "utf8"),
     exitCode,
     delayMs,
     matched: true,
+    completed: true,
   });
+  if (rule.hang === true) waitUntilKilled();
   if (stdout.length > 0) process.stdout.write(stdout);
   if (stderr.length > 0) process.stderr.write(stderr);
   process.exitCode = exitCode;
