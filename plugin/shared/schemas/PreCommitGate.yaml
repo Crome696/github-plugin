@@ -1,5 +1,5 @@
 schema: PreCommitGate
-version: 2
+version: 3
 description: Local, read-only pre-commit gate snapshot binding one AI commit to a verified worktree, exact approved scope, complete validation evidence, task-scoped authorization, exact commit-message bytes, and a complete staged-index fingerprint.
 required:
   - workspace
@@ -23,7 +23,7 @@ fields:
         type: string
   validation:
     type: object
-    description: Complete version-1 ValidationResult handoff captured immediately before commit preparation.
+    description: Complete version-2 ValidationResult handoff captured immediately before commit preparation.
     required:
       - schema
       - version
@@ -35,6 +35,7 @@ fields:
       - evaluation
       - blockers
       - warnings
+      - evidence_requirements
       - readiness
       - failure
       - recommended_next_skill
@@ -44,7 +45,7 @@ fields:
         const: ValidationResult
       version:
         type: integer
-        const: 1
+        const: 2
       status:
         type: enum
         values: [passed, failed, partial, blocked]
@@ -202,6 +203,37 @@ fields:
               type: list
               items:
                 type: string
+      evidence_requirements:
+        type: list
+        items:
+          type: object
+          required: [id, requirement, source, expected_kind, location, status, evidence]
+          fields:
+            id:
+              type: string
+            requirement:
+              type: string
+            source:
+              type: object
+              required: [kind, reference]
+              fields:
+                kind:
+                  type: enum
+                  values: [issue, implementation_plan, repository_policy, external_capability]
+                reference:
+                  type: string
+            expected_kind:
+              type: string
+            location:
+              type: string | null
+            required_capability:
+              type: string | null
+            status:
+              type: enum
+              values: [satisfied, missing, blocked]
+            evidence:
+              type: list
+              items: string
       readiness:
         type: object
         required: [commit_preparation_allowed, draft_pr_preparation_allowed, reasons]
@@ -373,4 +405,4 @@ invariants:
   - The hook reads this snapshot and Git state only; it never creates, edits, stages, restores, resets, cleans, or deletes anything.
   - Hook state is local-only and must never enter the commit scope.
   - Evidence and hook output must not contain secrets, tokens, private keys, or credential-bearing values.
-  - Version-1 PreCommitGate snapshots are incompatible with this hook and must fail closed; a fresh version-2 snapshot is required.
+  - Version-1 and version-2 PreCommitGate snapshots are incompatible with this hook and must fail closed; a fresh version-3 snapshot with a version-2 ValidationResult is required.

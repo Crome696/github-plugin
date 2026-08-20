@@ -214,9 +214,9 @@ The post-operation checker is read-only.
 
 | Hook | Host events | Contract and behavior |
 | --- | --- | --- |
-| `pre-commit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies exact commit scope, validation, worktree identity, authorization, and secret hygiene through `PreCommitGate`. |
+| `pre-commit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies exact commit scope, version-2 validation and explicit evidence requirements, worktree identity, authorization, and secret hygiene through `PreCommitGate v3`. |
 | `pre-rebase.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies a new start through the exact target branch, clean workspace, target revision, and `PreRebaseGate`; separately guards only standalone recovery whose active rebase metadata and registered worktree match that gate. |
-| `pre-pr-create.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the commit, push, issue link, description, validation, and exact Draft command through `PrePrCreateGate`. |
+| `pre-pr-create.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the commit, push, issue link, description, version-2 validation and explicit evidence requirements, and exact Draft command through `PrePrCreateGate v2`. |
 | `pre-review-submit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the current head, finding evidence, locations, deduplication, confirmation, and exact payload through `PreReviewSubmitGate`. |
 | `pre-pr-ready.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies one exact standalone Ready-for-Review transition or phase-appropriate requested-reviewers POST, complete URL/branch/SHA identity, one linked issue, typed reviewer payload, and `PrePrReadyGate`; rejects incomplete legacy gates and compound commands. |
 | `pre-merge.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies current merge readiness, reviews, threads, approvals, checks, conflicts, base freshness, linkage, strategy, and authorization through `PreMergeGate`. |

@@ -259,7 +259,7 @@ export const skillHandoffs: SkillHandoff[] = [
   {
     name: "compose-commit-message",
     consumes: [
-      contract("ValidationResult", 1),
+      contract("ValidationResult", 2),
       contract("WorkingTreeInspection", 1),
       contract("ChangeClassification", 1),
       contract("UnrelatedChangeDetection", 1),
@@ -275,7 +275,7 @@ export const skillHandoffs: SkillHandoff[] = [
     consumes: [
       contract("LoadedIssue", 1),
       contract("ImplementationPlan", 1),
-      contract("ValidationResult", 1),
+      contract("ValidationResult", 2),
       contract("CommitProposal", 1),
       optionalContract("PullRequestIssueLink", 1),
     ],
@@ -306,22 +306,22 @@ export const skillHandoffs: SkillHandoff[] = [
     name: "create-commit",
     consumes: [
       contract("CommitProposal", 1),
-      contract("ValidationResult", 1),
+      contract("ValidationResult", 2),
       contract("BranchWorkspace", 1),
     ],
-    produces: [contract("CommitProposal", 1), contract("PreCommitGate", 2)],
+    produces: [contract("CommitProposal", 1), contract("PreCommitGate", 3)],
   },
   {
     name: "create-draft-pr",
     consumes: [
       contract("PullRequestDraft", 1),
       contract("BranchWorkspace", 1),
-      contract("ValidationResult", 1),
+      contract("ValidationResult", 2),
       contract("CommitProposal", 1),
       contract("BranchPush", 1),
       contract("PullRequestIssueLink", 1),
     ],
-    produces: [contract("PullRequestDraft", 1), contract("PrePrCreateGate", 1)],
+    produces: [contract("PullRequestDraft", 1), contract("PrePrCreateGate", 2)],
   },
   {
     name: "create-worktree",
@@ -648,7 +648,7 @@ export const skillHandoffs: SkillHandoff[] = [
       contract("ImplementationPlan", 1),
       contract("ReviewFixPlan", 1),
     ]],
-    produces: [contract("ValidationResult", 1)],
+    produces: [contract("ValidationResult", 2)],
   },
   {
     name: "validate-rebased-branch",
@@ -656,9 +656,9 @@ export const skillHandoffs: SkillHandoff[] = [
       contract("ImplementationPlan", 1),
       contract("WorkingTreeInspection", 1),
       contract("ChangeClassification", 1),
-      contract("ValidationResult", 1),
+      contract("ValidationResult", 2),
     ],
-    produces: [contract("ValidationResult", 1)],
+    produces: [contract("ValidationResult", 2)],
   },
   {
     name: "verify-linked-issue-closure",
@@ -722,7 +722,7 @@ export const agentHandoffs: AgentHandoff[] = [
       contract("LoadedIssue", 1),
     ],
     produces: [
-      contract("ValidationResult", 1),
+      contract("ValidationResult", 2),
       contract("CommitProposal", 1),
       contract("BranchPush", 1),
       contract("PullRequestDraft", 1),
@@ -802,7 +802,7 @@ export const agentHandoffs: AgentHandoff[] = [
     ],
     produces: [
       contract("PullRequestIntegration", 1),
-      contract("ValidationResult", 1),
+      contract("ValidationResult", 2),
       contract("BranchRebase", 1),
       contract("PullRequestMerge", 1),
       contract("LinkedIssueClosureVerification", 1),
@@ -977,7 +977,7 @@ export const commandHandoffs: CommandHandoff[] = [
       contract("BranchWorkspace", 1),
       contract("LoadedIssue", 1),
       contract("WorkingTreeInspection", 1),
-      contract("ValidationResult", 1),
+      contract("ValidationResult", 2),
       contract("CommitProposal", 1),
     ],
   },

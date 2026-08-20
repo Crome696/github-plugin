@@ -7,7 +7,7 @@ import { loadRepositoryPolicy, policyEnforces } from "./lib/repository-policy.mj
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
 const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-commit.json";
-const PRE_COMMIT_GATE_VERSION = 2;
+const PRE_COMMIT_GATE_VERSION = 3;
 const MAX_SCANNED_FILE_BYTES = 25 * 1024 * 1024;
 const STAGED_INDEX_FINGERPRINT_FORMAT =
   "git-diff-cached-raw-z-no-renames-full-index-abbrev-40-v1";
@@ -37,6 +37,13 @@ const VALID_PLAN_STEP_RESULTS = new Set([
   "missing",
   "unexpected",
 ]);
+const VALID_EVIDENCE_SOURCE_KINDS = new Set([
+  "issue",
+  "implementation_plan",
+  "repository_policy",
+  "external_capability",
+]);
+const VALID_EVIDENCE_STATUSES = new Set(["satisfied", "missing", "blocked"]);
 const SECRET_CONTENT_PATTERNS = [
   {
     name: "private-key material",
@@ -134,6 +141,12 @@ function formatPathList(paths) {
 
 function safeLabel(value) {
   return String(value).replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 80);
+}
+
+function describeEvidenceRequirement(requirement) {
+  const source = isRecord(requirement.source) ? requirement.source : {};
+  const location = requirement.location === null ? "" : ` at ${safeLabel(requirement.location)}`;
+  return `Explicit evidence requirement ${safeLabel(requirement.id)} (${safeLabel(requirement.requirement)}) from ${safeLabel(source.kind)}:${safeLabel(source.reference)} expects ${safeLabel(requirement.expected_kind)}${location} and is ${safeLabel(requirement.status)}.`;
 }
 
 function makeDeny(reason, nextStep) {
@@ -623,8 +636,8 @@ function validateValidationResult(validation) {
   if (!isRecord(validation)) {
     return "PreCommitGate.validation is missing or malformed.";
   }
-  if (validation.schema !== "ValidationResult" || validation.version !== 1) {
-    return "PreCommitGate.validation is not a version-1 ValidationResult.";
+  if (validation.schema !== "ValidationResult" || validation.version !== 2) {
+    return "PreCommitGate.validation is not a version-2 ValidationResult.";
   }
   if (validation.status !== "passed") {
     return "ValidationResult.status is not passed.";
@@ -658,6 +671,43 @@ function validateValidationResult(validation) {
     !Array.isArray(validation.source.unavailable_inputs)
   ) {
     return "ValidationResult.source is incomplete.";
+  }
+  if (!Array.isArray(validation.evidence_requirements)) {
+    return "ValidationResult.evidence_requirements is missing or malformed.";
+  }
+  const evidenceRequirementIds = new Set();
+  for (const requirement of validation.evidence_requirements) {
+    if (
+      !isRecord(requirement) ||
+      !isNonEmptyString(requirement.id) ||
+      !isNonEmptyString(requirement.requirement) ||
+      !isRecord(requirement.source) ||
+      !VALID_EVIDENCE_SOURCE_KINDS.has(requirement.source.kind) ||
+      !isNonEmptyString(requirement.source.reference) ||
+      !isNonEmptyString(requirement.expected_kind) ||
+      (requirement.location !== null && !isNonEmptyString(requirement.location)) ||
+      !VALID_EVIDENCE_STATUSES.has(requirement.status) ||
+      !Array.isArray(requirement.evidence) ||
+      requirement.evidence.length === 0 ||
+      requirement.evidence.some((evidence) => !isNonEmptyString(evidence)) ||
+      (requirement.location !== null && normalizeRelativePath(requirement.location) === null)
+    ) {
+      return "ValidationResult contains a malformed evidence requirement.";
+    }
+    if (evidenceRequirementIds.has(requirement.id)) {
+      return `ValidationResult contains duplicate evidence requirement ${safeLabel(requirement.id)}.`;
+    }
+    evidenceRequirementIds.add(requirement.id);
+    if (requirement.status !== "satisfied") {
+      return describeEvidenceRequirement(requirement);
+    }
+    if (
+      requirement.required_capability !== undefined &&
+      requirement.required_capability !== null &&
+      !isNonEmptyString(requirement.required_capability)
+    ) {
+      return `Explicit evidence requirement ${safeLabel(requirement.id)} has an invalid required capability.`;
+    }
   }
   if (!Array.isArray(validation.checks)) {
     return "ValidationResult.checks is missing or malformed.";

@@ -13,7 +13,7 @@ authorization state so the next Skill can make a bounded decision.
 
 ## Contract families
 
-The plugin currently defines 82 versioned contracts.
+The plugin currently defines 83 versioned contracts.
 
 ### Issue and linkage contracts
 
@@ -65,7 +65,7 @@ The plugin currently defines 82 versioned contracts.
 | `WorkingTreeInspection` | Read-only branch/worktree status, changed paths, diff statistics, and unexpected-state markers. |
 | `ChangeClassification` | Purpose, component, issue/plan relationship, and evidence-backed scope classification for each path. |
 | `UnrelatedChangeDetection` | Foreign, uncertain, or necessary technical side effects and independent commit/PR scope gates. |
-| `ValidationResult` | Plan completion, acceptance, required validations, scope, blockers, warnings, and diagnostic readiness. |
+| `ValidationResult` | Version-2 plan completion, acceptance, required validations, explicit evidence requirements, scope, blockers, warnings, and diagnostic readiness. |
 | `CommitProposal` | Exact repository-relative path scope, English commit message, rationale, validation evidence, authorization, and result. |
 | `BranchPush` | Verified branch, remote, upstream, local status, authorization, and post-push SHA. |
 | `PullRequestDraft` | Evidence-backed English Draft PR title/body, issue linkage, branch identity, validations, and publication result. |
@@ -117,9 +117,9 @@ The plugin currently defines 82 versioned contracts.
 | `ProductPlannerRun` | Interactive parent-issue product-planning record through analysis, interview, mapping, decomposition, atomicity, dependencies, prioritization, sub-issue drafting, and publication handoff only after exact user approval. |
 | `ProductSubIssuePublication` | Exact-set publication result mapping approved product-plan unit IDs to GitHub issue numbers and URLs, with parent and hard-dependency relationship outcomes and failed operations. |
 | `CleanupResult` | Authorized branch/worktree cleanup results, preserved unsafe targets, and local/remote outcomes. |
-| `PreCommitGate` | Version-2 local snapshot binding one exact canonical commit to validated scope, worktree identity, authorization, exact message bytes, and cached staged-index contents. |
+| `PreCommitGate` | Version-3 local snapshot binding one exact canonical commit to validated scope, worktree identity, authorization, exact message bytes, and cached staged-index contents. |
 | `PreRebaseGate` | Local snapshot binding one exact rebase start to the verified branch, target, worktree, and authorization; its identity evidence can be reused only for a matching active-rebase recovery. |
-| `PrePrCreateGate` | Local snapshot binding one exact Draft PR publication to commit, push, issue link, description, and validation. |
+| `PrePrCreateGate` | Version-2 local snapshot binding one exact Draft PR publication to commit, push, issue link, description, and version-2 validation. |
 | `PreReviewSubmitGate` | Local snapshot binding one exact review payload to current evidence, deduplication, confirmation, and authorization. |
 | `PrePrReadyGate` | Version-1 local snapshot binding one standalone Ready-for-Review transition and, only when authorized after that transition, one exact requested-reviewers POST to complete Draft/URL/branch/SHA identity, unique issue, typed reviewer set, and authorization. |
 | `PreMergeGate` | Local snapshot binding one exact merge to current readiness and exact merge authorization. |
@@ -213,7 +213,7 @@ producer and consumer.
 
 The plugin's contract tests validate:
 
-- all 82 schema descriptions and minimal valid fixtures;
+- all 83 schema descriptions and minimal valid fixtures;
 - required fields, versions, enums, and nested payloads;
 - producer/consumer compatibility;
 - Command-to-Agent ownership and forbidden operation graphs;

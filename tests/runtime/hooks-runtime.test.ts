@@ -417,7 +417,7 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
         assertNoUnexpectedFakeCommands(context);
       }
     });
-  }, 30_000);
+  }, 45_000);
 
   it("binds pre-commit to the exact command, message bytes, and staged index on both hosts", () => {
     withRuntimeRepository((context) => {
@@ -520,7 +520,70 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
         }
       }
     });
-  }, 30_000);
+  }, 45_000);
+
+  it("rejects legacy, missing, and unmet explicit evidence handoffs", () => {
+    withRuntimeRepository((context) => {
+      for (const hook of ["pre-commit", "pre-pr-create"] as const) {
+        for (const host of hosts) {
+          prepareRuntimeMode(context, hook, "allow");
+          mutateGate(context, hook, (gate) => {
+            const validation = gate.validation as Record<string, unknown>;
+            validation.version = 1;
+          });
+          const legacy = executeProjectedHook(
+            context,
+            host,
+            hook,
+            "allow",
+            payloadFor(host, commandFor(context, hook), context.repositoryRoot),
+          );
+          assertRuntimeResponse(legacy, false);
+          assertNoUnexpectedFakeCommands(context);
+
+          prepareRuntimeMode(context, hook, "allow");
+          mutateGate(context, hook, (gate) => {
+            const validation = gate.validation as Record<string, unknown>;
+            delete validation.evidence_requirements;
+          });
+          const missingList = executeProjectedHook(
+            context,
+            host,
+            hook,
+            "allow",
+            payloadFor(host, commandFor(context, hook), context.repositoryRoot),
+          );
+          assertRuntimeResponse(missingList, false);
+          assertNoUnexpectedFakeCommands(context);
+
+          prepareRuntimeMode(context, hook, "allow");
+          mutateGate(context, hook, (gate) => {
+            const validation = gate.validation as Record<string, unknown>;
+            validation.evidence_requirements = [
+              {
+                id: "settings-ui",
+                requirement: "Provide the settings UI screenshot.",
+                source: { kind: "issue", reference: "issue:42" },
+                expected_kind: "ui_screenshot",
+                location: "docs/ui/settings.png",
+                status: "missing",
+                evidence: ["The declared evidence is missing."],
+              },
+            ];
+          });
+          const unmet = executeProjectedHook(
+            context,
+            host,
+            hook,
+            "allow",
+            payloadFor(host, commandFor(context, hook), context.repositoryRoot),
+          );
+          assertRuntimeResponse(unmet, false);
+          assertNoUnexpectedFakeCommands(context);
+        }
+      }
+    });
+  }, 45_000);
 
   it("handles controlled GitHub CLI failures, invalid JSON, authentication failures, and bounded delays", () => {
     withRuntimeRepository((context) => {

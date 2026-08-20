@@ -60,10 +60,10 @@ version changes.
 | `WorkingTreeInspection` | Version 1 read-only working-tree inventory with branch and worktree identity checks, changed paths, diff statistics, and unexpected-state markers for downstream scope and commit review. |
 | `ChangeClassification` | Version 1 read-only classification of worktree changes by purpose, component, issue or implementation-plan relationship, and evidence-backed scope alignment for commit planning. |
 | `UnrelatedChangeDetection` | Version 1 read-only detection of unrelated or uncertain changes, necessary technical side effects, evidence and confidence, and commit or pull-request scope gates. |
-| `ValidationResult` | Version 1 evidence-backed implementation-result validation combining plan completion, working-tree inspection, change classification, scope gates, required checks, blockers, warnings, and diagnostic commit or draft-pull-request readiness. |
-| `PreCommitGate` | Version 2 local-only snapshot binding one AI commit to a verified worktree, exact approved scope, complete `ValidationResult` evidence, task-scoped authorization, exact message-file bytes, and a cached staged-index fingerprint before the canonical final commit command. |
+| `ValidationResult` | Version 2 evidence-backed implementation-result validation combining plan completion, working-tree inspection, change classification, explicit evidence requirements, scope gates, required checks, blockers, warnings, and diagnostic commit or draft-pull-request readiness. |
+| `PreCommitGate` | Version 3 local-only snapshot binding one AI commit to a verified worktree, exact approved scope, complete version-2 `ValidationResult` evidence, task-scoped authorization, exact message-file bytes, and a cached staged-index fingerprint before the canonical final commit command. |
 | `PreRebaseGate` | Version 1 local-only snapshot binding one exact authorized rebase to a verified pull-request branch, clean worktree, current remote context, unique target base, and full `TargetBranchFetch` evidence before the rebase command. |
-| `PrePrCreateGate` | Version 1 local-only snapshot binding one exact Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed validation before `gh pr create`. |
+| `PrePrCreateGate` | Version 2 local-only snapshot binding one exact Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed version-2 validation before `gh pr create`. |
 | `PreReviewSubmitGate` | Version 1 local-only snapshot binding one exact AI pull-request review publication to structurally complete, deduplicated, explicitly confirmed, and current review evidence before the review write. |
 | `PreMergeGate` | Version 1 local-only snapshot binding one exact approved pull-request merge to current `MergeReadiness` evidence and explicit merge authorization before the merge write. |
 | `PullRequestReady` | Version 1 exact authorization-gated Ready-for-Review intent, optional confirmed reviewer requests, live preflight, and verification for one open Draft pull request with a unique linked issue. |
@@ -421,13 +421,17 @@ flowchart LR
   `ChangeClassification`, preserves uncertainty, distinguishes necessary
   technical side effects from scope violations, and reports diagnostic commit
   and pull-request gates without granting authorization or changing paths.
-- `ValidationResult` is read-only. It consolidates version-1 implementation
+- `ValidationResult` is read-only. It consolidates version-2 implementation
   plan, working-tree, change-classification, and applicable scope-gate
   evidence; it blocks unresolved scope deviations, missing required
   validations, and unmet completion criteria. Its commit and draft
   pull-request readiness flags are diagnostic only and never invent
-  task-scoped authorization.
-- `PreCommitGate` is a local-only, version-2 snapshot written after
+  task-scoped authorization. Its mandatory `evidence_requirements` list
+  preserves only explicitly declared requirements and records `satisfied`,
+  `missing`, or `blocked` outcomes. An empty list means no evidence is
+  required; frameworks, filenames, paths, and generated artifact names never
+  create requirements.
+- `PreCommitGate` is a local-only, version-3 snapshot written after
   validation and before the final commit status check. It binds the exact
   `CommitProposal`, complete `ValidationResult`, worktree path, branch,
   pre-commit `HEAD`, approved message-file bytes, and cached staged-index
@@ -436,8 +440,8 @@ flowchart LR
   --cleanup=verbatim --file=<approved-message-file>` invocation. The hook
   reads the snapshot and current Git state only; it never repairs, stages, or
   changes the workspace. The ignored state path must never be staged. Version-1
-  snapshots fail closed.
-- `PrePrCreateGate` is a local-only, version-1 snapshot written immediately
+  and version-2 snapshots fail closed.
+- `PrePrCreateGate` is a local-only, version-2 snapshot written immediately
   before `gh pr create`. It binds the exact `PullRequestDraft`,
   `PullRequestIssueLink`, created `CommitProposal`, verified `BranchPush`,
   complete passed `ValidationResult`, worktree identity, and expected head

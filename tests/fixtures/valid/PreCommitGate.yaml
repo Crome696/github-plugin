@@ -1,5 +1,5 @@
 schema: PreCommitGate
-version: 2
+version: 3
 workspace:
   repository: octo-org/widgets
   path: path-value
@@ -7,7 +7,7 @@ workspace:
   head_sha: head_sha-value
 validation:
   schema: ValidationResult
-  version: 1
+  version: 2
   status: passed
   workspace:
     path: path-value
@@ -36,6 +36,7 @@ validation:
     documented_deviations: []
   blockers: []
   warnings: []
+  evidence_requirements: []
   readiness:
     commit_preparation_allowed: false
     draft_pr_preparation_allowed: false

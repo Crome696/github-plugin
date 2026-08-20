@@ -29,13 +29,13 @@ rewrite, or approve the proposal.
 - Do not bypass hooks with `--no-verify` or equivalent flags.
 - Do not expose or commit secrets, tokens, private keys, credential-bearing
   values, `.env` contents, or other confidential data.
-- Before the final status check, write one local version-2 `PreCommitGate`
+- Before the final status check, write one local version-3 `PreCommitGate`
   snapshot to `.cursor/hooks/state/pre-commit.json` containing the exact
   approved `CommitProposal`, the complete current `ValidationResult`, the
   verified worktree identity, the pre-commit `HEAD`, the exact approved
   message-file bytes, and the complete cached staged-index fingerprint. The
-  hook state path is ignored and must never be staged. Version-1 snapshots
-  fail closed and must be regenerated as version 2.
+  hook state path is ignored and must never be staged. Version-1 and version-2
+  snapshots fail closed and must be regenerated as version 3.
 - A normal commit uses the existing task-scoped delivery authorization and
   does not ask for a second conversational approval. A repository instruction
   may explicitly re-enable an interactive commit gate for its scope.
@@ -71,10 +71,12 @@ Validate all of the following before changing the index:
    repository-relative paths. Reject absolute paths, paths containing `..`
    components, empty paths, and paths with NUL characters. Preserve the exact
    path spelling from the approved proposal.
-6. The complete current version-1 `ValidationResult` is available with
+6. The complete current version-2 `ValidationResult` is available with
    `status: passed`, aligned scope, no blockers or unresolved unexpected
    changes, passed required checks, and
-   `readiness.commit_preparation_allowed: true`. Its complete handoff is
+   `readiness.commit_preparation_allowed: true`. Every explicit evidence
+   requirement must be satisfied; an empty list explicitly means no evidence
+   requirement exists. Its complete handoff is
    required for the `PreCommitGate`; `validation.result_status` alone is not
    sufficient.
 7. `message.subject` is non-empty and `message.body` is a string. Require
@@ -170,12 +172,12 @@ unstage or clean automatically; report the exact diagnostic state.
 After the cached scope and whitespace checks pass, write exactly one
 repository-local, ignored JSON snapshot at
 `.cursor/hooks/state/pre-commit.json`. Create the ignored state directory only
-when it does not exist. The snapshot must have this version-2 shape:
+when it does not exist. The snapshot must have this version-3 shape:
 
 ```json
 {
   "schema": "PreCommitGate",
-  "version": 2,
+  "version": 3,
   "workspace": {
     "repository": "<verified owner/repository>",
     "path": "<verified absolute worktree path>",

@@ -1,5 +1,5 @@
 schema: ValidationResult
-version: 1
+version: 2
 status: passed
 workspace:
   path: path-value
@@ -28,6 +28,7 @@ evaluation:
   documented_deviations: []
 blockers: []
 warnings: []
+evidence_requirements: []
 readiness:
   commit_preparation_allowed: false
   draft_pr_preparation_allowed: false

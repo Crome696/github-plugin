@@ -350,7 +350,8 @@ invent delivery authorization.
 working-tree inspection, change classification, and an applicable
 `UnrelatedChangeDetection`. It consolidates scope, planned steps, acceptance
 and completion criteria, required validations, unexpected changes, and
-documented deviations into a version-1 `ValidationResult` with blockers,
+documented deviations into a version-2 `ValidationResult` with explicit
+evidence requirements, blockers,
 warnings, evidence, and diagnostic commit or draft-pull-request readiness. It
 never changes files or Git state, and its readiness flags do not invent
 task-scoped authorization.
@@ -358,7 +359,7 @@ task-scoped authorization.
 pre-rebase and post-rebase revisions, implementation scope, current worktree
 evidence, and SHA-bound test or status-check results. It compares history and
 patch scope, detects potentially lost or unexpected changes, and returns an
-updated version-1 `ValidationResult`. It never rebases, resolves conflicts,
+updated version-2 `ValidationResult`. It never rebases, resolves conflicts,
 pushes, merges, or modifies Git state; its readiness flags remain diagnostic
 only.
 `rebase-branch` consumes one verified active `BranchWorkspace`, one verified
@@ -881,18 +882,20 @@ response, direct approval or scoped feedback-mode authorization, publication,
 and verification handoff for one review-thread reply without thread resolution.
 `ReviewThreadResolution` uses the same version-2 scoped authorization model for
 one exact validated thread resolution.
-`PreCommitGate` is a local-only version-2 snapshot that binds one approved
+`PreCommitGate` is a local-only version-3 snapshot that binds one approved
 commit proposal and complete validation result to the verified worktree, branch,
 scope, and pre-commit `HEAD`, plus the exact approved message-file bytes and
-cached staged-index fingerprint; it never authorizes a commit by itself. A
-version-1 snapshot fails closed and must be regenerated.
+  cached staged-index fingerprint; it never authorizes a commit by itself.
+  Version-1 and version-2 snapshots fail closed and must be regenerated as
+  version 3. Explicit evidence requirements are validated here; generated
+  artifact paths remain descriptive and do not imply screenshots.
 `PreRebaseGate` is a local-only version-1 snapshot that binds one exact
 authorized local rebase start to the verified pull-request head branch and SHA,
 clean worktree, current remote context, unique base branch, and complete
 `TargetBranchFetch` evidence. The pre-rebase Hook reuses that identity evidence
 for guarded recovery of the same active rebase, but the snapshot never performs
 or authorizes a rebase by itself and is never fabricated or renewed by recovery.
-`PrePrCreateGate` is a local-only version-1 snapshot that binds one exact Draft
+`PrePrCreateGate` is a local-only version-2 snapshot that binds one exact Draft
 pull-request publication to the verified commit, pushed branch, unique issue
 link, complete description, and passed validation; it never creates or edits a
 pull request.
@@ -925,7 +928,7 @@ operations after every confirmed create has been attempted.
 
 ## Contract tests
 
-The repository test suite validates all 82 Shared Contract descriptions and
+The repository test suite validates all 83 Shared Contract descriptions and
 their generated minimal fixtures. It checks required fields, enum statuses,
 contract versions, nested handoff compatibility, Skill/Agent/Command
 producers and consumers, implementation-context boundaries, and the deep
@@ -979,7 +982,7 @@ npm test
 
 | Hook | Hosts | Purpose |
 | --- | --- | --- |
-| `pre-commit` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-commit commands and fail closed before AI-driven commits unless the current worktree, branch, exact scope, secret scan, required validations, version-2 `PreCommitGate`, exact message bytes, staged-index fingerprint, and canonical standalone command are all verified. |
+| `pre-commit` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-commit commands and fail closed before AI-driven commits unless the current worktree, branch, exact scope, secret scan, required validations, version-3 `PreCommitGate` with version-2 `ValidationResult`, explicit evidence requirements, exact message bytes, staged-index fingerprint, and canonical standalone command are all verified. |
 | `pre-rebase` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-rebase commands; require the complete gate, clean worktree, current target tracking ref, secured pre-rebase HEAD, exact target SHA, and exact authorization for a new start; allow only standalone `--continue`, `--skip`, or `--abort` recovery when the existing gate, active rebase metadata, and exact registered non-primary worktree match. |
 | `pre-pr-create` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-PR commands and fail closed before `gh pr create` unless the exact command, created commit, pushed branch, unique issue link, complete description, passed validation, and absence of known blockers are verified. |
 | `pre-review-submit` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-review commands and fail closed before AI review publication unless the exact canonical `gh api` command, authorized payload, finding evidence, valid locations, deduplication, recorded confirmation, blocker support, and current pull-request head are verified. |

@@ -473,7 +473,7 @@ const validationSource = {
 
 const validationResult = (context: RuntimeContext, draftReady: boolean) => ({
   schema: "ValidationResult",
-  version: 1,
+  version: 2,
   status: "passed",
   workspace: {
     path: context.repositoryRoot,
@@ -493,6 +493,7 @@ const validationResult = (context: RuntimeContext, draftReady: boolean) => ({
   },
   blockers: [],
   warnings: [],
+  evidence_requirements: [],
   readiness: {
     commit_preparation_allowed: true,
     draft_pr_preparation_allowed: draftReady,
@@ -516,7 +517,7 @@ const pullRequestIdentity = (context: RuntimeContext) => ({
 
 const preCommitGate = (context: RuntimeContext) => ({
   schema: "PreCommitGate",
-  version: 2,
+  version: 3,
   workspace: {
     repository: context.repository,
     path: context.repositoryRoot,
@@ -572,7 +573,7 @@ const prePrCreateGate = (context: RuntimeContext) => {
   const body = readFileSync(context.bodyPath, "utf8");
   return {
     schema: "PrePrCreateGate",
-    version: 1,
+    version: 2,
     workspace: {
       repository: context.repository,
       path: context.repositoryRoot,

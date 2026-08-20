@@ -17,10 +17,12 @@ const expectedVersionTwo = new Set([
   "IssueDraft",
   "LinkedIssueClosure",
   "MergeReadiness",
-  "PreCommitGate",
+  "PrePrCreateGate",
   "ReviewThreadReply",
   "ReviewThreadResolution",
+  "ValidationResult",
 ]);
+const expectedVersionThree = new Set(["PreCommitGate"]);
 const allowedTypes = new Set([
   "string",
   "integer",
@@ -116,15 +118,25 @@ describe("shared contract schema inventory", () => {
     }
   });
 
-  it("keeps version two limited to the documented breaking contracts", () => {
+  it("keeps versioned contracts limited to the documented breaking contracts", () => {
     const versionTwo = new Set(
       schemas
         .filter((schema) => schema.version === 2)
         .map((schema) => schema.schema),
     );
     expect(versionTwo).toEqual(expectedVersionTwo);
-    expect(schemas.filter((schema) => schema.version !== 1 && schema.version !== 2))
-      .toHaveLength(0);
+    const versionThree = new Set(
+      schemas
+        .filter((schema) => schema.version === 3)
+        .map((schema) => schema.schema),
+    );
+    expect(versionThree).toEqual(expectedVersionThree);
+    expect(
+      schemas.filter(
+        (schema) =>
+          schema.version !== 1 && schema.version !== 2 && schema.version !== 3,
+      ),
+    ).toHaveLength(0);
   });
 
   it("keeps every required field and nested field definition resolvable", () => {
@@ -184,6 +196,18 @@ describe("shared contract schema inventory", () => {
       }
     }
     expect(problems).toEqual([]);
+  });
+
+  it("does not retain the removed screenshot-capture capability", async () => {
+    const textPaths = (await walk(pluginRoot)).filter((path) =>
+      /\.(json|md|mdc|mjs|mts|ts|yaml|yml)$/.test(path),
+    );
+    const matches: string[] = [];
+    for (const path of textPaths) {
+      const source = await readFile(path, "utf8");
+      if (source.includes("capture-ui-screenshots")) matches.push(path);
+    }
+    expect(matches).toEqual([]);
   });
 
   it("keeps ImplementationContext outside the shared-contract inventory", async () => {

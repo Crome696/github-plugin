@@ -38,6 +38,8 @@ scenarios:
             unexpected_changes: []
             documented_deviations: []
           blockers: []
+          generated_artifacts:
+            - docs/ui-screenshots/preview.png
           readiness:
             commit_preparation_allowed: true
             draft_pr_preparation_allowed: true
@@ -72,6 +74,8 @@ scenarios:
             branch: agent/issue-42
           validation:
             required_checks_passed: true
+            generated_artifacts:
+              - docs/ui-screenshots/preview.png
             readiness:
               commit_preparation_allowed: true
           commit_proposal:
@@ -381,9 +385,9 @@ scenarios:
         effect: write
         result: api-error
 
-  - id: publish-draft-pr-ui-screenshots-present
+  - id: publish-draft-pr-explicit-ui-evidence-satisfied
     command: publish-draft-pr
-    description: Succeeds when UI screenshots and manifest are included in committed files.
+    description: Succeeds when an explicitly declared UI evidence requirement is satisfied.
     expected:
       status: completed
       successful_writes: [create-commit, push-branch, create-draft-pr]
@@ -405,6 +409,15 @@ scenarios:
           issue:
             repository: *repo_ui
             number: *issue_ui
+          validation:
+            evidence_requirements:
+              - id: settings-ui-screenshot
+                requirement: Provide the settings UI screenshot.
+                source:
+                  kind: issue
+                  reference: issue:99
+                expected_kind: ui_screenshot
+                location: docs/ui-screenshots/settings.png
       ValidationResult:
         patch:
           status: passed
@@ -418,6 +431,17 @@ scenarios:
             unexpected_changes: []
             documented_deviations: []
           blockers: []
+          evidence_requirements:
+            - id: settings-ui-screenshot
+              requirement: Provide the settings UI screenshot.
+              source:
+                kind: issue
+                reference: issue:99
+              expected_kind: ui_screenshot
+              location: docs/ui-screenshots/settings.png
+              status: satisfied
+              evidence:
+                - generated_artifact:docs/ui-screenshots/settings.png
           readiness:
             commit_preparation_allowed: true
             draft_pr_preparation_allowed: true
@@ -460,6 +484,17 @@ scenarios:
             branch: agent/issue-99
           validation:
             required_checks_passed: true
+            evidence_requirements:
+              - id: settings-ui-screenshot
+                requirement: Provide the settings UI screenshot.
+                source:
+                  kind: issue
+                  reference: issue:99
+                expected_kind: ui_screenshot
+                location: docs/ui-screenshots/settings.png
+                status: satisfied
+                evidence:
+                  - generated_artifact:docs/ui-screenshots/settings.png
             readiness:
               commit_preparation_allowed: true
           commit_proposal:
@@ -524,7 +559,19 @@ scenarios:
           validation:
             readiness:
               draft_pr_preparation_allowed: true
+            evidence_requirements:
+              - id: settings-ui-screenshot
+                requirement: Provide the settings UI screenshot.
+                source:
+                  kind: issue
+                  reference: issue:99
+                expected_kind: ui_screenshot
+                location: docs/ui-screenshots/settings.png
+                status: satisfied
+                evidence:
+                  - generated_artifact:docs/ui-screenshots/settings.png
             generated_artifacts:
+              - docs/ui-screenshots/preview.png
               - docs/ui-screenshots/root.png
               - docs/ui-screenshots/settings.png
               - docs/ui-screenshots/manifest.json
@@ -564,13 +611,13 @@ scenarios:
         effect: write
         handoff: PullRequestDraft
 
-  - id: publish-draft-pr-ui-screenshots-missing-manifest
+  - id: publish-draft-pr-explicit-ui-evidence-missing
     command: publish-draft-pr
-    description: Blocks Draft PR creation when UI screenshot manifest is missing.
+    description: Blocks delivery when an explicitly required UI evidence item is missing.
     expected:
       status: blocked
-      successful_writes: [create-commit, push-branch]
-      blocked_operation: create-draft-pr
+      successful_writes: []
+      blocked_operation: create-commit
       preserved_artifacts: []
     target:
       repository: &repo_ui_missing_manifest octo-org/widgets
@@ -589,9 +636,18 @@ scenarios:
           issue:
             repository: *repo_ui_missing_manifest
             number: *issue_ui_missing_manifest
+          validation:
+            evidence_requirements:
+              - id: settings-ui-screenshot
+                requirement: Provide the settings UI screenshot.
+                source:
+                  kind: issue
+                  reference: issue:100
+                expected_kind: ui_screenshot
+                location: docs/ui-screenshots/manifest.json
       ValidationResult:
         patch:
-          status: passed
+          status: blocked
           required_checks_passed: true
           evaluation:
             scope:
@@ -601,10 +657,25 @@ scenarios:
             planned_steps: []
             unexpected_changes: []
             documented_deviations: []
-          blockers: []
+          blockers:
+            - id: missing-settings-ui-screenshot
+              description: The explicitly required settings UI screenshot is missing.
+              evidence:
+                - docs/ui-screenshots/manifest.json is absent from generated artifacts.
+          evidence_requirements:
+            - id: settings-ui-screenshot
+              requirement: Provide the settings UI screenshot.
+              source:
+                kind: issue
+                reference: issue:100
+              expected_kind: ui_screenshot
+              location: docs/ui-screenshots/manifest.json
+              status: missing
+              evidence:
+                - generated_artifacts:docs/ui-screenshots/settings.png
           readiness:
-            commit_preparation_allowed: true
-            draft_pr_preparation_allowed: true
+            commit_preparation_allowed: false
+            draft_pr_preparation_allowed: false
           generated_artifacts:
             - docs/ui-screenshots/settings.png
       UnrelatedChangeDetection:
@@ -640,8 +711,25 @@ scenarios:
             branch: agent/issue-100
           validation:
             required_checks_passed: true
+            status: blocked
+            blockers:
+              - id: missing-settings-ui-screenshot
+                description: The explicitly required settings UI screenshot is missing.
+                evidence:
+                  - docs/ui-screenshots/manifest.json is absent from generated artifacts.
+            evidence_requirements:
+              - id: settings-ui-screenshot
+                requirement: Provide the settings UI screenshot.
+                source:
+                  kind: issue
+                  reference: issue:100
+                expected_kind: ui_screenshot
+                location: docs/ui-screenshots/manifest.json
+                status: missing
+                evidence:
+                  - generated_artifacts:docs/ui-screenshots/settings.png
             readiness:
-              commit_preparation_allowed: true
+              commit_preparation_allowed: false
           commit_proposal:
             status: approved
             repository: *repo_ui_missing_manifest
@@ -702,8 +790,25 @@ scenarios:
       PrePrCreateGate:
         patch:
           validation:
+            status: blocked
+            blockers:
+              - id: missing-settings-ui-screenshot
+                description: The explicitly required settings UI screenshot is missing.
+                evidence:
+                  - docs/ui-screenshots/manifest.json is absent from generated artifacts.
+            evidence_requirements:
+              - id: settings-ui-screenshot
+                requirement: Provide the settings UI screenshot.
+                source:
+                  kind: issue
+                  reference: issue:100
+                expected_kind: ui_screenshot
+                location: docs/ui-screenshots/manifest.json
+                status: missing
+                evidence:
+                  - generated_artifacts:docs/ui-screenshots/settings.png
             readiness:
-              draft_pr_preparation_allowed: true
+              draft_pr_preparation_allowed: false
             generated_artifacts:
               - docs/ui-screenshots/settings.png
           commit_proposal:
@@ -740,13 +845,13 @@ scenarios:
         effect: write
         handoff: PullRequestDraft
 
-  - id: publish-draft-pr-ui-screenshots-missing-png
+  - id: publish-draft-pr-explicit-ui-evidence-capability-unavailable
     command: publish-draft-pr
-    description: Blocks Draft PR creation when UI screenshot PNGs are missing.
+    description: Blocks validation when a declared external UI evidence capability is unavailable.
     expected:
       status: blocked
-      successful_writes: [create-commit, push-branch]
-      blocked_operation: create-draft-pr
+      successful_writes: []
+      blocked_operation: create-commit
       preserved_artifacts: []
     target:
       repository: &repo_ui_missing_png octo-org/widgets
@@ -765,9 +870,19 @@ scenarios:
           issue:
             repository: *repo_ui_missing_png
             number: *issue_ui_missing_png
+          validation:
+            evidence_requirements:
+              - id: settings-ui-screenshot
+                requirement: Provide the settings UI screenshot using the required external evidence capability.
+                source:
+                  kind: external_capability
+                  reference: session:skill:external-ui-evidence
+                expected_kind: ui_screenshot
+                location: docs/ui-screenshots/settings.png
+                required_capability: session:skill:external-ui-evidence
       ValidationResult:
         patch:
-          status: passed
+          status: blocked
           required_checks_passed: true
           evaluation:
             scope:
@@ -777,10 +892,26 @@ scenarios:
             planned_steps: []
             unexpected_changes: []
             documented_deviations: []
-          blockers: []
+          blockers:
+            - id: unavailable-ui-evidence-capability
+              description: The required external UI evidence capability is unavailable.
+              evidence:
+                - session:skill:external-ui-evidence is unavailable in the current session.
+          evidence_requirements:
+            - id: settings-ui-screenshot
+              requirement: Provide the settings UI screenshot using the required external evidence capability.
+              source:
+                kind: external_capability
+                reference: session:skill:external-ui-evidence
+              expected_kind: ui_screenshot
+              location: docs/ui-screenshots/settings.png
+              required_capability: session:skill:external-ui-evidence
+              status: blocked
+              evidence:
+                - required_capability:session:skill:external-ui-evidence unavailable
           readiness:
-            commit_preparation_allowed: true
-            draft_pr_preparation_allowed: true
+            commit_preparation_allowed: false
+            draft_pr_preparation_allowed: false
           generated_artifacts:
             - docs/ui-screenshots/manifest.json
       UnrelatedChangeDetection:
@@ -816,8 +947,26 @@ scenarios:
             branch: agent/issue-101
           validation:
             required_checks_passed: true
+            status: blocked
+            blockers:
+              - id: unavailable-ui-evidence-capability
+                description: The required external UI evidence capability is unavailable.
+                evidence:
+                  - session:skill:external-ui-evidence is unavailable in the current session.
+            evidence_requirements:
+              - id: settings-ui-screenshot
+                requirement: Provide the settings UI screenshot using the required external evidence capability.
+                source:
+                  kind: external_capability
+                  reference: session:skill:external-ui-evidence
+                expected_kind: ui_screenshot
+                location: docs/ui-screenshots/settings.png
+                required_capability: session:skill:external-ui-evidence
+                status: blocked
+                evidence:
+                  - required_capability:session:skill:external-ui-evidence unavailable
             readiness:
-              commit_preparation_allowed: true
+              commit_preparation_allowed: false
           commit_proposal:
             status: approved
             repository: *repo_ui_missing_png
@@ -877,8 +1026,26 @@ scenarios:
       PrePrCreateGate:
         patch:
           validation:
+            status: blocked
+            blockers:
+              - id: unavailable-ui-evidence-capability
+                description: The required external UI evidence capability is unavailable.
+                evidence:
+                  - session:skill:external-ui-evidence is unavailable in the current session.
+            evidence_requirements:
+              - id: settings-ui-screenshot
+                requirement: Provide the settings UI screenshot using the required external evidence capability.
+                source:
+                  kind: external_capability
+                  reference: session:skill:external-ui-evidence
+                expected_kind: ui_screenshot
+                location: docs/ui-screenshots/settings.png
+                required_capability: session:skill:external-ui-evidence
+                status: blocked
+                evidence:
+                  - required_capability:session:skill:external-ui-evidence unavailable
             readiness:
-              draft_pr_preparation_allowed: true
+              draft_pr_preparation_allowed: false
             generated_artifacts:
               - docs/ui-screenshots/manifest.json
           commit_proposal:

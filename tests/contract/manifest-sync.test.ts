@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const repositoryRoot = resolve(fileURLToPath(import.meta.url), "..", "..", "..");
 const pluginRoot = join(repositoryRoot, "plugin");
-const githubVersion = "0.3.111";
+const githubVersion = "0.3.112";
 
 const readJson = async (path: string): Promise<Record<string, unknown>> =>
   JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
