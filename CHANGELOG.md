@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.109
+
+- Replaced duplicate Codex protected-hook starts with one deterministic shared
+  Cursor/Codex dispatcher while preserving the native host response envelopes.
+- Added quoted-command-safe classification, compound-operation rejection, and
+  no-live-work short-circuiting for irrelevant events.
+- Added 5-second Git/`gh` child deadlines, 25-second pre-hook and 40-second
+  post-merge budgets, bounded output handling, structured runtime failures, and
+  Windows/POSIX process-tree cleanup without retries.
+- Tightened paginated GraphQL evidence handling so incomplete or malformed
+  pages fail closed for pre-hooks and remain unavailable in read-only post-hook
+  status.
+- Regenerated project-hook projections now include the dispatcher and shared
+  runner worker; installed projections must be regenerated after this release.
+- No Shared Contract schema migration was required.
+
 ## 0.3.108
 
 - Distinguished authorized rebase starts from recovery of an already active

@@ -986,6 +986,24 @@ npm test
 | `pre-merge` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Deterministically allow non-merge commands and fail closed before a GitHub pull-request merge unless the exact `PreMergeGate`, current `MergeReadiness`, reviews, blocking threads, approvals, required checks, conflicts, base SHA, issue relationship, selected strategy, and explicit merge authorization are verified. |
 | `post-merge` | Cursor `afterShellExecution`; Codex `PostToolUse` for `Bash` | Read-only after-merge verification of PR state, merge commit, target-branch containment, expected issue closure, cleanup availability, open cleanup actions, and deviations; never deletes branches or worktrees and always preserves separate authorization requirements. |
 
+All host events enter through `hooks/dispatch.mjs`. It reads the bounded host
+payload once, classifies shell segments without Git or GitHub access, and routes
+one protected operation to exactly one checker. Irrelevant pre-events return the
+native allow envelope without starting a checker; irrelevant post-events return
+the existing empty response. Quoted text is not classified as an operation, and
+compound protected commands fail closed before any live read. Cursor retains its
+operation-specific fail-closed matchers, while Codex uses one `PreToolUse` and
+one `PostToolUse` dispatcher registration, eliminating duplicate checker starts.
+
+Every Git and `gh` child runs through `hooks/lib/run-command.mjs` with a
+5-second child deadline, bounded stdout/stderr, and no retry. Pre-operation
+checkers share a 25-second total budget; post-merge observation has a
+40-second budget. The copied `run-command-worker.mjs` terminates and reaps the
+child process tree, including Windows descendants such as credential helpers.
+Timeouts, output overflow, authentication/network failures, malformed output,
+and incomplete pagination remain fail-closed for pre-hooks. Post-merge maps
+incomplete relationship evidence to unavailable or uncertain read-only status.
+
 The hook projections are host-specific and deliberately do not share a
 `hooks/hooks.json` event file:
 
@@ -993,8 +1011,12 @@ The hook projections are host-specific and deliberately do not share a
   `failClosed: true`, and at `afterShellExecution` for read-only post-merge
   status injection.
 - `hooks/codex-hooks.json` points Codex at `PreToolUse` for `Bash` and uses the
-  documented `PLUGIN_ROOT` command path; its `PostToolUse` projection
-  injects the read-only post-merge status.
+  documented `PLUGIN_ROOT` command path through one dispatcher registration;
+  its one `PostToolUse` registration uses the same dispatcher and injects the
+  read-only post-merge status only for merge completion.
+- `hooks/dispatch.mjs` is the shared classifier and process boundary. It
+  preserves Cursor and Codex native response envelopes and forwards the
+  original event to the selected checker without changing gate semantics.
 - `hooks/pre-commit.mjs` is the host-neutral Node checker. It reads the ignored
   `.cursor/hooks/state/pre-commit.json` `PreCommitGate` snapshot and current Git
   state only. It never plans, repairs, stages, resets, cleans, or rewrites
@@ -1061,10 +1083,13 @@ arguments, existing files, or a previous run. Cursor's thin
 Skill directly because Codex does not register plugin Commands.
 
 The projection contains `.cursor/hooks.json` and/or `.codex/hooks.json`, the
-selected host's checker copies, the required local-state ignore paths, and a
-marked English `AGENTS.md` guidance block. Existing conflicting files block the
-whole operation rather than being overwritten. The generator is idempotent for
-its own output and reports `written`, `unchanged`, `blocked`, or `partial`.
+selected host's dispatcher, checker and bounded-runner copies, the required
+local-state ignore paths, and a marked English `AGENTS.md` guidance block.
+Existing conflicting files block the whole operation rather than being
+overwritten. The generator is idempotent for its own output and reports
+`written`, `unchanged`, `blocked`, or `partial`. Installed projections must be
+regenerated after changing dispatch or runner code; no gate snapshot is created
+as part of migration.
 
 The generator deliberately does not create
 `.cursor/hooks/state/*.json`. Gate snapshots are runtime evidence written by
@@ -1098,6 +1123,10 @@ plugin.json
 hooks/cursor-hooks.json
 hooks/codex-hooks.json
 hooks/generate-project-hooks.mjs
+hooks/dispatch.mjs
+hooks/lib/read-hook-input.mjs
+hooks/lib/run-command.mjs
+hooks/lib/run-command-worker.mjs
 hooks/pre-commit.mjs
 hooks/pre-rebase.mjs
 hooks/pre-pr-create.mjs

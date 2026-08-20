@@ -204,9 +204,12 @@ prose.
 
 Hooks are deterministic host projections around specific shell or tool
 events. They do not plan, implement, repair, approve, release, or activate
-capabilities. The six pre-operation Hooks fail closed when their local gate
-is missing, stale, incomplete, or inconsistent. The post-operation Hook is
-read-only.
+capabilities. `dispatch.mjs` is the shared host-neutral entrypoint: it reads and
+classifies one bounded event, short-circuits irrelevant commands without live
+work, rejects ambiguity, and routes one protected operation to its checker. The
+six pre-operation checkers fail closed when their local gate is missing, stale,
+incomplete, inconsistent, timed out, or backed by incomplete external evidence.
+The post-operation checker is read-only.
 
 | Hook | Host events | Contract and behavior |
 | --- | --- | --- |
@@ -228,6 +231,21 @@ deterministic [`generate-project-hooks.mjs`](../../hooks/generate-project-hooks.
 generator to copy them into a target repository. It never writes runtime gate
 snapshots; those remain owning-Skill evidence and continue to fail closed when
 missing or mismatched.
+
+The projections deliberately differ only at the host boundary. Cursor keeps
+operation-specific matchers, all invoking the shared dispatcher with
+`failClosed: true`. Codex has one `PreToolUse` dispatcher registration and one
+`PostToolUse` dispatcher registration, so an irrelevant `Bash` command cannot
+start all six checkers. Merge completion is the only post-event routed to
+`post-merge.mjs`; other post-events return the existing empty response.
+
+The shared command runtime uses a 5-second deadline per Git/`gh` child, a
+25-second pre-hook total budget, and a 40-second post-merge total budget. It
+bounds stdout/stderr, terminates and reaps process trees (including Windows
+credential-helper descendants), never retries ambiguous or partial results,
+and maps protected failures to native deny responses. Incomplete GraphQL pages
+are never accepted as complete: pre-hooks deny, while post-merge reports
+relationship evidence as unavailable or uncertain.
 
 ### Shared Contracts
 

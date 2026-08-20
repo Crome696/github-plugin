@@ -89,9 +89,12 @@ describe("generate-project-hooks", () => {
     expect(existsSync(join(repository, ".cursor", "hooks", "pre-pr-ready.mjs"))).toBe(
       true,
     );
+    expect(existsSync(join(repository, ".cursor", "hooks", "dispatch.mjs"))).toBe(true);
     expect(existsSync(join(repository, ".cursor", "hooks", "lib", "read-hook-input.mjs"))).toBe(
       true,
     );
+    expect(existsSync(join(repository, ".cursor", "hooks", "lib", "run-command.mjs"))).toBe(true);
+    expect(existsSync(join(repository, ".cursor", "hooks", "lib", "run-command-worker.mjs"))).toBe(true);
     expect(
       readFileSync(
         join(repository, ".cursor", "hooks", "pre-commit.mjs"),
@@ -113,7 +116,7 @@ describe("generate-project-hooks", () => {
     for (const group of hookGroups) {
       for (const definition of group as Array<Record<string, unknown>>) {
         expect(definition.command).toEqual(
-          expect.stringContaining("node .cursor/hooks/"),
+          expect.stringContaining("node .cursor/hooks/dispatch.mjs"),
         );
       }
     }
@@ -138,6 +141,9 @@ describe("generate-project-hooks", () => {
     expect(existsSync(join(repository, ".codex", "hooks", "pre-pr-ready.mjs"))).toBe(
       true,
     );
+    expect(existsSync(join(repository, ".codex", "hooks", "dispatch.mjs"))).toBe(true);
+    expect(existsSync(join(repository, ".codex", "hooks", "lib", "run-command.mjs"))).toBe(true);
+    expect(existsSync(join(repository, ".codex", "hooks", "lib", "run-command-worker.mjs"))).toBe(true);
     expect(existsSync(join(repository, ".cursor", "hooks.json"))).toBe(false);
 
     const gitignore = readFileSync(join(repository, ".gitignore"), "utf8");
@@ -145,13 +151,16 @@ describe("generate-project-hooks", () => {
     expect(gitignore).toContain(".codex/hooks/state/");
 
     const config = readJson(join(repository, ".codex", "hooks.json"));
+    const codexHooks = config.hooks as Record<string, unknown[]>;
+    expect(codexHooks.PreToolUse).toHaveLength(1);
+    expect(codexHooks.PostToolUse).toHaveLength(1);
     const groups = Object.values(config.hooks as Record<string, unknown[]>);
     for (const group of groups) {
       for (const matcher of group as Array<Record<string, unknown>>) {
         for (const hook of matcher.hooks as Array<Record<string, unknown>>) {
           expect(hook.command).not.toContain("PLUGIN_ROOT");
           expect(hook.command).toEqual(
-            expect.stringContaining(".codex/hooks/"),
+            expect.stringContaining(".codex/hooks/dispatch.mjs"),
           );
           if (typeof hook.commandWindows === "string") {
             expect(hook.commandWindows).not.toContain("PLUGIN_ROOT");

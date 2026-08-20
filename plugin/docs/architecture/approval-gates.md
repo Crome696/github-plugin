@@ -218,11 +218,35 @@ repair missing prerequisites or make a product judgment.
 | [`PreMergeGate`](../../shared/schemas/PreMergeGate.yaml) | merge API write | Current `MergeReadiness`, live freshness checks, approvals, checks, threads, issue link, strategy, and merge authorization. | Fail closed on any changed, missing, stale, or unavailable condition. |
 | [`PostMergeStatus`](../../shared/schemas/PostMergeStatus.yaml) | after merge | Completed command, PR state, merge commit, target branch, issue closure, and cleanup availability. | Return read-only status and open actions; never mutate cleanup state. |
 
-The six pre-operation Hooks are projected separately for Cursor and Codex in
-[`hooks/cursor-hooks.json`](../../hooks/cursor-hooks.json) and
-[`hooks/codex-hooks.json`](../../hooks/codex-hooks.json). The local state files
-used by the checkers are ignored development state, not authority. A gate
+The six pre-operation checkers are reached through the shared
+[`hooks/dispatch.mjs`](../../hooks/dispatch.mjs). Cursor keeps its
+operation-specific, fail-closed matchers, while Codex registers one dispatcher
+for `PreToolUse` and one for `PostToolUse`; the latter routes only merge
+completion to `post-merge.mjs`. The dispatcher classifies quoted shell tokens
+without live reads, rejects compound protected commands before a checker starts,
+and returns the native host envelope for irrelevant commands. The local state
+files used by the checkers are ignored development state, not authority. A gate
 snapshot records evidence; it does not grant approval by itself.
+
+## Deterministic dispatch and bounded runtime
+
+`dispatch.mjs` reads the host event with a 2 MiB input limit and selects no more
+than one checker. `lib/run-command.mjs` gives every Git and `gh` child a fixed
+5-second timeout, explicit output limits, and structured error classes for
+timeouts, output overflow, authentication or network failure, malformed output,
+and ordinary command failure. The total budget is 25 seconds for every
+pre-operation checker and 40 seconds for post-merge observation, leaving
+headroom below the Cursor and Codex host limits.
+
+The adjacent `lib/run-command-worker.mjs` owns child termination and reaping.
+On Windows it uses process-tree cleanup so a timed-out GitHub CLI or credential
+helper cannot outlive the hook; on supported POSIX runtimes it terminates the
+process group and waits for the child. There are no retries after timeout,
+partial output, network failure, or ambiguous command completion. A protected
+pre-hook maps these conditions to its existing native deny envelope. A
+post-hook preserves its read-only `PostMergeStatus` contract and marks
+incomplete or malformed relationship evidence unavailable rather than treating
+it as complete.
 
 ## Project-hook generation
 
@@ -237,8 +261,8 @@ manifest does not register Commands.
 The deterministic
 [`generate-project-hooks.mjs`](../../hooks/generate-project-hooks.mjs) script
 writes only the selected `.cursor/hooks.json` and/or `.codex/hooks.json`,
-checker copies, local-state ignore paths, and the marked `AGENTS.md` guidance
-block. It preflights all requested paths and blocks the complete operation on
+the shared dispatcher, checker and runner copies, local-state ignore paths, and
+the marked `AGENTS.md` guidance block. It preflights all requested paths and blocks the complete operation on
 an existing conflicting file. It may replace only its own marked output or an
 unchanged prior projection.
 

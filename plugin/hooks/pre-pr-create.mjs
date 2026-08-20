@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
 const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-pr-create.json";
 const MAX_BODY_FILE_BYTES = 25 * 1024 * 1024;
@@ -146,10 +146,11 @@ function makeAllow() {
 
 function runGit(worktreePath, args) {
   try {
-    return execFileSync("git", ["-C", worktreePath, ...args], {
+    return runBoundedCommand("git", ["-C", worktreePath, ...args], {
+      cwd: worktreePath,
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
       maxBuffer: 8 * 1024 * 1024,
+      operation: `git ${args[0] ?? "unknown"}`,
     }).trim();
   } catch {
     throw new GitCommandError(args[0] ?? "unknown");

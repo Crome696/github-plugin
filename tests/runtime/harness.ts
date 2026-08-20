@@ -27,6 +27,7 @@ import {
   type RuntimeContext,
   type RuntimeExecution,
   type RuntimeMode,
+  type DispatchLogEntry,
 } from "./types.js";
 
 const runtimeDirectory = dirname(fileURLToPath(import.meta.url));
@@ -198,8 +199,12 @@ const createRepositoryAtRoot = (root: string): RuntimeContext => {
   const shimDirectory = join(root, ".runtime-shims");
   const fakeConfigPath = join(root, ".runtime-fake-config.json");
   const fakeLogPath = join(root, ".runtime-fake-log.jsonl");
+  const dispatchLogPath = join(root, ".runtime-dispatch-log.jsonl");
+  const fakePidLogPath = join(root, ".runtime-fake-pids.log");
   mkdirSync(shimDirectory, { recursive: true });
   writeFileSync(fakeLogPath, "", "utf8");
+  writeFileSync(dispatchLogPath, "", "utf8");
+  writeFileSync(fakePidLogPath, "", "utf8");
 
   return {
     repositoryRoot: root,
@@ -222,6 +227,8 @@ const createRepositoryAtRoot = (root: string): RuntimeContext => {
     runtimeFileRelativePath,
     fakeConfigPath,
     fakeLogPath,
+    dispatchLogPath,
+    fakePidLogPath,
     shimDirectory,
     fakeRunnerPath,
   };
@@ -326,6 +333,7 @@ const writeFakeConfig = (
     "utf8",
   );
   writeFileSync(context.fakeLogPath, "", "utf8");
+  writeFileSync(context.dispatchLogPath, "", "utf8");
 };
 
 const readFakeLog = (context: RuntimeContext): FakeCommandLogEntry[] =>
@@ -334,12 +342,20 @@ const readFakeLog = (context: RuntimeContext): FakeCommandLogEntry[] =>
     .filter(Boolean)
     .map((line) => JSON.parse(line) as FakeCommandLogEntry);
 
+const readDispatchLog = (context: RuntimeContext): DispatchLogEntry[] =>
+  readFileSync(context.dispatchLogPath, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as DispatchLogEntry);
+
 const baseChildEnvironment = (context: RuntimeContext): NodeJS.ProcessEnv => {
   const environment = isolatedEnvironment(context.repositoryRoot, context.shimDirectory);
   environment.CROMESDK_RUNTIME_FAKE_CONFIG = context.fakeConfigPath;
   environment.CROMESDK_RUNTIME_FAKE_LOG = context.fakeLogPath;
   environment.CROMESDK_RUNTIME_FAKE_RUNNER = context.fakeRunnerPath;
   environment.CROMESDK_RUNTIME_FAKE_TIMEOUT_MS = String(fakeCommandTimeoutMs);
+  environment.CROMESDK_HOOK_DISPATCH_LOG = context.dispatchLogPath;
+  environment.CROMESDK_RUNTIME_FAKE_PID_LOG = context.fakePidLogPath;
   environment.NODE_OPTIONS = `--require=${fakeExecFileShimPath}`;
   return environment;
 };
@@ -377,8 +393,8 @@ export const writeReviewerPayload = (context: RuntimeContext, payload: unknown) 
   writeFileSync(context.reviewPayloadPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 };
 
-const cursorPayload = (command: string, cwd: string) => ({
-  hook_event_name: "beforeShellExecution",
+const cursorPayload = (command: string, cwd: string, post = false) => ({
+  hook_event_name: post ? "afterShellExecution" : "beforeShellExecution",
   command,
   cwd,
 });
@@ -394,7 +410,7 @@ export const payloadFor = (
   command: string,
   cwd: string,
   post = false,
-) => (host === "cursor" ? cursorPayload(command, cwd) : codexPayload(command, cwd, post));
+) => (host === "cursor" ? cursorPayload(command, cwd, post) : codexPayload(command, cwd, post));
 
 export const commandFor = (context: RuntimeContext, hook: HookName): string => {
   switch (hook) {
@@ -1126,7 +1142,7 @@ const preMergeRules = (context: RuntimeContext): FakeCommandRule[] => [
     ["api", `repos/${context.repository}/branches/${context.baseBranch}`],
     JSON.stringify({ commit: { sha: context.baseSha } }),
   ),
-  graphql("reviewThreads", preMergeReviewThreadsGraphql),
+  graphql("reviewThreads", [preMergeReviewThreadsGraphql]),
   graphql("closingIssuesReferences", preMergeClosingIssuesGraphql(context)),
   exact(
     "gh",
@@ -1258,11 +1274,41 @@ const postMergeRules = (context: RuntimeContext): FakeCommandRule[] => [
   ),
   exact(
     "gh",
+    ["api", `repos/${context.repository.toLowerCase()}/issues/${context.issueNumber}`],
+    JSON.stringify({
+      number: context.issueNumber,
+      html_url: context.issueUrl,
+      state: "closed",
+      closed_at: "2026-08-19T13:00:00.000Z",
+    }),
+  ),
+  exact(
+    "gh",
     [
       "api",
       "--paginate",
       "--slurp",
       `repos/${context.repository}/issues/${context.issueNumber}/timeline`,
+      "-H",
+      "Accept: application/vnd.github+json",
+    ],
+    JSON.stringify([
+      [
+        {
+          event: "cross-referenced",
+          source: { issue: { pull_request: { url: context.pullRequestUrl } } },
+          commit_id: context.mergeCommitSha,
+        },
+      ],
+    ]),
+  ),
+  exact(
+    "gh",
+    [
+      "api",
+      "--paginate",
+      "--slurp",
+      `repos/${context.repository.toLowerCase()}/issues/${context.issueNumber}/timeline`,
       "-H",
       "Accept: application/vnd.github+json",
     ],
@@ -1331,7 +1377,7 @@ const rulesFor = (
     case "pre-commit":
       return [
         ...gitIdentityRules(context),
-        ...(mode === "allow" || mode === "unmerged-index" || mode === "message-bytes" || mode === "message-source" || mode.startsWith("staged-")
+        ...(mode === "allow" || mode === "unmerged-index" || mode === "message-bytes" || mode === "message-source" || mode === "credential-helper-delay" || mode.startsWith("staged-")
           ? preCommitStateRules(
               context,
               mode === "unmerged-index" ? "unmerged" : "clean",
@@ -1370,7 +1416,64 @@ const alterCliRule = (rules: FakeCommandRule[], mode: RuntimeMode) => {
     rule.exitCode = 1;
   } else if (mode === "cli-delay") {
     rule.delayMs = 80;
+  } else if (mode === "cli-timeout" || mode === "credential-helper-delay") {
+    rule.delayMs = 6_000;
+  } else if (mode === "cli-hang") {
+    rule.hang = true;
+  } else if (mode === "cli-oversized-output") {
+    rule.stdout = "x".repeat(17 * 1024 * 1024);
+  } else if (mode === "cli-network-failure") {
+    rule.stdout = "";
+    rule.stderr = "network connection reset by peer\n";
+    rule.exitCode = 1;
   }
+};
+
+const alterGitDelayRule = (rules: FakeCommandRule[], mode: RuntimeMode) => {
+  if (mode !== "credential-helper-delay") return;
+  for (const candidate of rules) {
+    if (
+      candidate.executable === "git" &&
+      "args" in candidate &&
+      candidate.args.includes("rev-parse")
+    ) {
+      candidate.delayMs = 6_000;
+    }
+  }
+};
+
+const alterGraphqlRule = (rules: FakeCommandRule[], mode: RuntimeMode) => {
+  if (mode !== "graphql-incomplete" && mode !== "graphql-malformed") return;
+  const rule = rules.find(
+    (candidate): candidate is GraphqlCommandRule =>
+      candidate.executable === "gh" &&
+      "match" in candidate &&
+      candidate.match === "graphql" &&
+      (candidate.queryIncludes === "reviewThreads" || candidate.queryIncludes === "closingIssuesReferences"),
+  );
+  if (!rule) return;
+  if (rule.queryIncludes === "closingIssuesReferences") {
+    rule.stdout = mode === "graphql-incomplete"
+      ? JSON.stringify({ data: { repository: { pullRequest: { closingIssuesReferences: { nodes: [], pageInfo: { hasNextPage: true } } } } } })
+      : JSON.stringify({ data: { repository: { pullRequest: { closingIssuesReferences: { nodes: null, pageInfo: {} } } } } });
+    return;
+  }
+  rule.stdout = mode === "graphql-incomplete"
+    ? JSON.stringify([
+        {
+          data: {
+            repository: {
+              pullRequest: {
+                reviewThreads: {
+                  nodes: [],
+                  pageInfo: { hasNextPage: true, endCursor: "cursor-1" },
+                },
+              },
+            },
+          },
+        },
+      ])
+    : JSON.stringify([{ data: { repository: { pullRequest: { reviewThreads: { nodes: [], pageInfo: {} } } } } }]);
 };
 
 const prepareMode = (context: RuntimeContext, hook: HookName, mode: RuntimeMode) => {
@@ -1384,6 +1487,8 @@ const prepareMode = (context: RuntimeContext, hook: HookName, mode: RuntimeMode)
   }
   const rules = rulesFor(context, hook, mode);
   alterCliRule(rules, mode);
+  alterGitDelayRule(rules, mode);
+  alterGraphqlRule(rules, mode);
   writeFakeConfig(context, rules);
 };
 
@@ -1401,7 +1506,7 @@ const configCommandFor = (context: RuntimeContext, host: Host, hook: HookName) =
   const eventName = host === "cursor"
     ? hook === "post-merge" ? "afterShellExecution" : "beforeShellExecution"
     : hook === "post-merge" ? "PostToolUse" : "PreToolUse";
-  const operationIndex = hook === "post-merge" ? 0 : HOOK_NAMES.indexOf(hook);
+  const operationIndex = host === "codex" || hook === "post-merge" ? 0 : HOOK_NAMES.indexOf(hook);
   const definitions = hooks[eventName];
   if (!Array.isArray(definitions) || operationIndex < 0) return null;
   const definition = definitions[operationIndex];
@@ -1423,12 +1528,13 @@ const entrypointFor = (context: RuntimeContext, host: Host, hook: HookName) => {
   const command = configCommandFor(context, host, hook);
   const route = routeFromCommand(command);
   if (!route || route.host !== host) {
-    return { command, route: route?.file ?? null, entrypoint: null };
+    return { command, route: route?.file ?? null, entrypoint: null, checker: null };
   }
   return {
     command,
     route: route.file,
     entrypoint: join(context.repositoryRoot, `.${host}`, "hooks", route.file),
+    checker: hook === "post-merge" ? "post-merge.mjs" : `${hook}.mjs`,
   };
 };
 
@@ -1467,6 +1573,8 @@ export const executeProjectedHook = (
       stderr: "",
       timedOut: false,
       logs: logsFor(context),
+      dispatches: readDispatchLog(context),
+      checker: null,
     };
   }
 
@@ -1492,14 +1600,16 @@ export const executeProjectedHook = (
     stderr: child.stderr ?? child.error?.message ?? "",
     timedOut,
     logs: logsFor(context),
+    dispatches: readDispatchLog(context),
+    checker: projection.checker,
   };
 };
 
 const parseSingleJsonLine = (execution: RuntimeExecution): unknown => {
   if (execution.entrypoint === null) throw new Error("Configured hook entrypoint is missing or cannot be resolved.");
   if (!existsSync(execution.entrypoint)) throw new Error("Configured hook entrypoint is missing or cannot be started.");
-  if (execution.route !== `${execution.hook}.mjs`) {
-    throw new Error(`Generated manifest routed ${execution.hook} to ${execution.route ?? "no file"}.`);
+  if (execution.route !== "dispatch.mjs") {
+    throw new Error(`Generated manifest routed ${execution.hook} to ${execution.route ?? "no file"} instead of dispatch.mjs.`);
   }
   if (execution.timedOut) throw new Error("Hook process exceeded the bounded runtime timeout.");
   if (execution.status === null || execution.signal !== null) {
@@ -1646,8 +1756,8 @@ export const redirectGeneratedRoute = (context: RuntimeContext, host: Host, hook
   const path = generatedConfigPath(context, host);
   const config = JSON.parse(readFileSync(path, "utf8")) as JsonRecord;
   const replace = (value: unknown): unknown => {
-    if (typeof value === "string" && value.toLowerCase().includes(`${hook}.mjs`)) {
-      return value.replace(new RegExp(`${hook}\\.mjs`, "gi"), `${targetHook}.mjs`);
+    if (typeof value === "string" && value.toLowerCase().includes("dispatch.mjs")) {
+      return value.replace(/dispatch\.mjs/gi, `${targetHook}.mjs`);
     }
     if (Array.isArray(value)) return value.map(replace);
     if (isRecord(value)) return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, replace(child)]));
@@ -1662,6 +1772,31 @@ export const writeActiveGitMarker = (context: RuntimeContext, marker = "MERGE_HE
 };
 
 export const fakeCommandLogs = (context: RuntimeContext) => readFakeLog(context);
+
+export const dispatchLogs = (context: RuntimeContext) => readDispatchLog(context);
+
+export const assertFakeChildrenReaped = (context: RuntimeContext) => {
+  const pids = readFileSync(context.fakePidLogPath, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  for (const pid of pids) {
+    const deadline = Date.now() + 1_000;
+    let alive = true;
+    while (Date.now() < deadline) {
+      try {
+        process.kill(pid, 0);
+      } catch {
+        alive = false;
+        break;
+      }
+      const buffer = new SharedArrayBuffer(4);
+      Atomics.wait(new Int32Array(buffer), 0, 0, 25);
+    }
+    if (alive) throw new Error(`Fake command process ${pid} was not reaped after the bounded hook run.`);
+  }
+};
 
 export const assertNoUnexpectedFakeCommands = (context: RuntimeContext) => {
   const unexpected = readFakeLog(context).filter((entry) => !entry.matched);

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   allHookNames,
+  assertFakeChildrenReaped,
   assertNoUnexpectedFakeCommands,
   assertNonDefaultBaseSemantics,
   assertRuntimeResponse,
@@ -11,6 +12,7 @@ import {
   commandFor,
   createRuntimeContext,
   deleteGeneratedEntrypoint,
+  dispatchLogs,
   executeProjectedHook,
   irrelevantCommandFor,
   malformedCommandFor,
@@ -71,7 +73,10 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
             "irrelevant",
             payloadFor(host, irrelevantCommandFor(hook), context.repositoryRoot, hook === "post-merge"),
           );
-          assertRuntimeResponse(irrelevant, true, false);
+        assertRuntimeResponse(irrelevant, true, false);
+          expect(irrelevant.dispatches).toEqual([
+            { checker: null, operation: null, decision: hook === "post-merge" ? "irrelevant" : "allow" },
+          ]);
           assertNoUnexpectedFakeCommands(context);
 
           if (hook === "post-merge") {
@@ -84,6 +89,9 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
               payloadFor(host, commandFor(context, hook), context.repositoryRoot, true),
             );
             assertRuntimeResponse(relevant, true, true);
+            expect(relevant.dispatches).toEqual([
+              { checker: "post-merge.mjs", operation: "merge", decision: "route" },
+            ]);
             assertNoUnexpectedFakeCommands(context);
             continue;
           }
@@ -97,6 +105,9 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
             payloadFor(host, commandFor(context, hook), context.repositoryRoot),
           );
           assertRuntimeResponse(denied, false);
+          expect(denied.dispatches).toEqual([
+            { checker: `${hook}.mjs`, operation: hook === "pre-pr-create" ? "pr-create" : hook === "pre-review-submit" ? "review" : hook === "pre-pr-ready" ? "ready" : hook === "pre-rebase" ? "rebase" : hook.replace("pre-", ""), decision: "route" },
+          ]);
           assertNoUnexpectedFakeCommands(context);
 
           prepareRuntimeMode(context, hook, "allow");
@@ -108,6 +119,9 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
             payloadFor(host, commandFor(context, hook), context.repositoryRoot),
           );
           assertRuntimeResponse(allowed, true);
+          expect(allowed.dispatches).toEqual([
+            { checker: `${hook}.mjs`, operation: hook === "pre-pr-create" ? "pr-create" : hook === "pre-review-submit" ? "review" : hook === "pre-pr-ready" ? "ready" : hook === "pre-rebase" ? "rebase" : hook.replace("pre-", ""), decision: "route" },
+          ]);
           assertNoUnexpectedFakeCommands(context);
         }
       });
@@ -151,13 +165,47 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
           "post-merge",
           "allow",
           host === "cursor"
-            ? []
+            ? { hook_event_name: "afterShellExecution", cwd: context.repositoryRoot }
             : { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { cwd: context.repositoryRoot } },
         );
-        assertRuntimeResponse(malformedPost, true, host === "cursor");
+        assertRuntimeResponse(malformedPost, true, false);
       }
     });
   }, 30_000);
+
+  it("does not misclassify quoted text and rejects compound protected commands before live work", () => {
+    withRuntimeRepository((context) => {
+      for (const host of hosts) {
+        prepareRuntimeMode(context, "pre-commit", "missing-gate");
+        const quoted = executeProjectedHook(
+          context,
+          host,
+          "pre-commit",
+          "missing-gate",
+          payloadFor(host, 'echo "git commit --file=runtime.txt" && printf "gh pr merge"', context.repositoryRoot),
+        );
+        assertRuntimeResponse(quoted, true);
+        expect(quoted.dispatches).toEqual([{ checker: null, operation: null, decision: "allow" }]);
+        expect(quoted.logs).toEqual([]);
+
+        prepareRuntimeMode(context, "pre-commit", "missing-gate");
+        const compound = executeProjectedHook(
+          context,
+          host,
+          "pre-commit",
+          "missing-gate",
+          payloadFor(
+            host,
+            `${commandFor(context, "pre-commit")} && ${commandFor(context, "pre-merge")}`,
+            context.repositoryRoot,
+          ),
+        );
+        assertRuntimeResponse(compound, false);
+        expect(compound.dispatches).toEqual([{ checker: null, operation: null, decision: "deny" }]);
+        expect(compound.logs).toEqual([]);
+      }
+    });
+  });
 
   it("binds Ready-for-Review and requested-reviewers operations exactly on both hosts", () => {
     withRuntimeRepository((context) => {
@@ -501,6 +549,67 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
       }
     });
   }, 30_000);
+
+  it("bounds slow, hung, oversized, network-like, credential-helper, and paginated failures", () => {
+    withRuntimeRepository((context) => {
+      const preCases: Array<{ hook: HookName; mode: RuntimeMode }> = [
+        { hook: "pre-pr-ready", mode: "cli-timeout" },
+        { hook: "pre-pr-ready", mode: "cli-hang" },
+        { hook: "pre-pr-ready", mode: "cli-oversized-output" },
+        { hook: "pre-pr-ready", mode: "cli-network-failure" },
+        { hook: "pre-commit", mode: "credential-helper-delay" },
+        { hook: "pre-merge", mode: "graphql-incomplete" },
+        { hook: "pre-merge", mode: "graphql-malformed" },
+      ];
+      for (const testCase of preCases) {
+        for (const host of hosts) {
+          prepareRuntimeMode(context, testCase.hook, testCase.mode);
+          const startedAt = Date.now();
+          const execution = executeProjectedHook(
+            context,
+            host,
+            testCase.hook,
+            testCase.mode,
+            payloadFor(host, commandFor(context, testCase.hook), context.repositoryRoot),
+          );
+          const elapsed = Date.now() - startedAt;
+          assertRuntimeResponse(execution, false);
+          expect(elapsed).toBeLessThan(10_000);
+          expect(execution.dispatches).toEqual([
+            {
+              checker: `${testCase.hook}.mjs`,
+              operation: testCase.hook === "pre-pr-ready" ? "ready" : testCase.hook === "pre-merge" ? "merge" : "commit",
+              decision: "route",
+            },
+          ]);
+          assertNoUnexpectedFakeCommands(context);
+          if (testCase.mode === "cli-hang") assertFakeChildrenReaped(context);
+        }
+      }
+
+      for (const host of hosts) {
+        prepareRuntimeMode(context, "post-merge", "graphql-incomplete");
+        const startedAt = Date.now();
+        const execution = executeProjectedHook(
+          context,
+          host,
+          "post-merge",
+          "graphql-incomplete",
+          payloadFor(host, commandFor(context, "post-merge"), context.repositoryRoot, true),
+        );
+        const elapsed = Date.now() - startedAt;
+        assertRuntimeResponse(execution, true, true);
+        expect(elapsed).toBeLessThan(10_000);
+        expect(execution.dispatches).toEqual([
+          { checker: "post-merge.mjs", operation: "merge", decision: "route" },
+        ]);
+        expect(execution.stdout.toLowerCase()).toContain("unavailable");
+        assertNoUnexpectedFakeCommands(context);
+      }
+
+      expect(dispatchLogs(context)).toHaveLength(1);
+    });
+  }, 60_000);
 
   it("uses the live non-default pull-request base for merge containment", () => {
     withRuntimeRepository((original) => {

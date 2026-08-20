@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
 const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-review-submit.json";
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -125,11 +125,11 @@ function makeAllow() {
 
 function runCommand(executable, args, workingDirectory, operation) {
   try {
-    return execFileSync(executable, args, {
+    return runBoundedCommand(executable, args, {
       cwd: workingDirectory,
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
       maxBuffer: 8 * 1024 * 1024,
+      operation,
     }).trim();
   } catch {
     throw new CommandError(operation);

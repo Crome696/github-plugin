@@ -3,42 +3,42 @@
   "hooks": {
     "beforeShellExecution": [
       {
-        "command": "node ./hooks/pre-commit.mjs",
+        "command": "node ./hooks/dispatch.mjs",
         "type": "command",
         "timeout": 30,
         "matcher": "(?:^|[;&|]\\s*)(?:(?:sudo|env|command|exec|nohup)\\s+)*git(?:\\.exe|\\.cmd|\\.bat)?\\b[\\s\\S]*\\bcommit\\b",
         "failClosed": true
       },
       {
-        "command": "node ./hooks/pre-pr-create.mjs",
+        "command": "node ./hooks/dispatch.mjs",
         "type": "command",
         "timeout": 30,
         "matcher": "(?:^|[;&|]\\s*)(?:(?:sudo|env|command|exec|nohup)\\s+)*gh(?:\\.exe|\\.cmd|\\.bat)?\\s+pr\\s+create\\b",
         "failClosed": true
       },
       {
-        "command": "node ./hooks/pre-review-submit.mjs",
+        "command": "node ./hooks/dispatch.mjs",
         "type": "command",
         "timeout": 30,
         "matcher": "(?:^|[;&|]\\s*)(?:(?:sudo|env|command|exec|nohup)\\s+)*gh(?:\\.exe|\\.cmd|\\.bat)?\\s+(?:pr\\s+review\\b|api\\b[\\s\\S]*\\/pulls\\/[1-9]\\d*\\/reviews\\b)",
         "failClosed": true
       },
       {
-        "command": "node ./hooks/pre-rebase.mjs",
+        "command": "node ./hooks/dispatch.mjs",
         "type": "command",
         "timeout": 30,
         "matcher": "(?:^|[;&|]\\s*)(?:(?:sudo|env|command|exec|nohup)\\s+)*git(?:\\.exe|\\.cmd|\\.bat)?\\b[\\s\\S]*\\brebase(?:\\s|$)",
         "failClosed": true
       },
       {
-        "command": "node ./hooks/pre-pr-ready.mjs",
+        "command": "node ./hooks/dispatch.mjs",
         "type": "command",
         "timeout": 30,
         "matcher": "(?:^|[;&|]\\s*)(?:(?:sudo|env|command|exec|nohup)\\s+)*gh(?:\\.exe|\\.cmd|\\.bat)?\\s+(?:pr\\s+ready\\b|api\\b[\\s\\S]*\\/pulls\\/[1-9]\\d*\\/requested_reviewers\\b)",
         "failClosed": true
       },
       {
-        "command": "node ./hooks/pre-merge.mjs",
+        "command": "node ./hooks/dispatch.mjs",
         "type": "command",
         "timeout": 30,
         "matcher": "(?:^|[;&|]\\s*)(?:(?:sudo|env|command|exec|nohup)\\s+)*gh(?:\\.exe|\\.cmd|\\.bat)?\\s+(?:pr\\s+merge\\b|api\\b[\\s\\S]*\\/pulls\\/[1-9]\\d*\\/merge\\b)",
@@ -47,7 +47,7 @@
     ],
     "afterShellExecution": [
       {
-        "command": "node ./hooks/post-merge.mjs",
+        "command": "node ./hooks/dispatch.mjs",
         "type": "command",
         "timeout": 45,
         "matcher": "(?:^|[;&|]\\s*)(?:(?:sudo|env|command|exec|nohup)\\s+)*gh(?:\\.exe|\\.cmd|\\.bat)?\\s+(?:pr\\s+merge\\b|api\\b[\\s\\S]*\\/pulls\\/[1-9]\\d*\\/merge\\b)"
