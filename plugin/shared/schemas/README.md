@@ -49,6 +49,7 @@ version changes.
 | `ImplementationEvaluation` | Version 1 evidence-based evaluation of implementation feasibility, architectural fit, dependencies, risks, compatibility, testing implications, and meaningful alternatives. |
 | `ContextCapabilities` | Version 1 evidence-based resolution of relevant skills, rules, agents, tools, and domain capabilities, including required or optional use, availability, and implementation gaps. |
 | `ImplementationPlan` | Version 1 task-authorized implementation objective with affected areas, ordered steps and dependencies, validation, capabilities, workspace, risks, prerequisites, blockers, assumptions, unresolved questions, and delivery authorization evidence. |
+| `RepositoryPolicy` | Version 1 repository-owned configuration for PR description, rebase posture, and secret-scan preferences with compatibility-default and fail-closed invariants. |
 | `RepositoryContext` | Version 1 verified repository identity, Git state, remotes, instructions, relevant paths, technologies, commands, and evidence-based findings. |
 | `RepositoryConventions` | Version 1 evidence-based development conventions for planning and implementation, including authority, scope, confidence, and conflicts. |
 | `BranchNameProposal` | Version 1 evidence-based Git branch name proposal with issue-number provenance, applied convention, rationale, and alternatives. |

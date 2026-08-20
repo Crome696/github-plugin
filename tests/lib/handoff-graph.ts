@@ -1043,7 +1043,7 @@ export const commandHandoffs: CommandHandoff[] = [
   },
 ];
 
-export const nestedContracts = new Set(["ReviewFinding"]);
+export const nestedContracts = new Set(["ReviewFinding", "RepositoryPolicy"]);
 export const hookEmittedContracts = new Set(["PostMergeStatus"]);
 
 export const allReferencedContracts = (): ContractRef[] => {

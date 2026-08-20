@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { loadRepositoryPolicy, policyEnforces } from "./lib/repository-policy.mjs";
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
 const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-rebase.json";
@@ -1083,7 +1084,7 @@ function validateRegisteredWorktree(
   branch,
   headSha,
   findings,
-  { recovery = false } = {},
+  { recovery = false, allowPrimary = false } = {},
 ) {
   let output;
   try {
@@ -1114,7 +1115,7 @@ function validateRegisteredWorktree(
   }
 
   const match = matches[0];
-  if (records.length > 0 && match === records[0]) {
+  if (records.length > 0 && match === records[0] && !allowPrimary) {
     addFinding(
       findings,
       "The rebase target is the primary checkout.",
@@ -1412,7 +1413,8 @@ function validateRemoteContext(repositoryRoot, gate, findings) {
   }
 }
 
-function validateNoUnsecuredChanges(repositoryRoot, pullRequest, headSha, findings) {
+function validateNoUnsecuredChanges(repositoryRoot, pullRequest, headSha, findings, { requireRemoteBackup = true } = {}) {
+  if (!requireRemoteBackup) return;
   if (!isRecord(pullRequest) || !isSafeBranchName(pullRequest.head_branch)) {
     return;
   }
@@ -1902,6 +1904,7 @@ function evaluate(input) {
   }
 
   const gate = readGate(repositoryRoot, findings);
+  const policy = loadRepositoryPolicy(repositoryRoot);
   const operation = validateRebaseCommand(
     {
       ...invocation,
@@ -1969,7 +1972,10 @@ function evaluate(input) {
         operation?.kind === "start" ? operation.targetSha : null,
         findings,
       );
-      validateRegisteredWorktree(repositoryRoot, branch, headSha, findings);
+      validateRegisteredWorktree(repositoryRoot, branch, headSha, findings, {
+        allowPrimary:
+          policy.rebase.mode !== "enforce" || policy.rebase.worktree !== "dedicated",
+      });
       validateCleanWorktree(repositoryRoot, findings);
       validateRemoteContext(repositoryRoot, gate, findings);
       validateNoUnsecuredChanges(
@@ -1977,6 +1983,12 @@ function evaluate(input) {
         gate.pull_request,
         headSha,
         findings,
+        {
+          requireRemoteBackup:
+            policyEnforces(policy.rebase) &&
+            policy.rebase.require_remote_upstream &&
+            policy.rebase.require_remote_backup,
+        },
       );
     }
   }

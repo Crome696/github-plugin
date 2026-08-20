@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { loadRepositoryPolicy, policyEnforces } from "./lib/repository-policy.mjs";
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
 const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-pr-create.json";
@@ -1698,7 +1699,7 @@ function compareGateIdentities(gate, repositoryRoot, branch, headSha, commandVal
   }
 }
 
-function validateDescription(draft, commandValues, bodyText, findings) {
+function validateDescription(draft, commandValues, bodyText, findings, policy) {
   if (!isRecord(draft)) {
     return;
   }
@@ -1731,7 +1732,14 @@ function validateDescription(draft, commandValues, bodyText, findings) {
     }
   }
 
-  const missingHeadings = REQUIRED_DESCRIPTION_HEADINGS.filter(
+  const headingPolicy = policy?.pull_request ?? {
+    mode: "enforce",
+    required_headings: REQUIRED_DESCRIPTION_HEADINGS,
+  };
+  if (!policyEnforces(headingPolicy)) {
+    return;
+  }
+  const missingHeadings = headingPolicy.required_headings.filter(
     (heading) => !heading.names.some((name) => headings.has(name)),
   ).map((heading) => heading.label);
   if (missingHeadings.length > 0) {
@@ -2037,10 +2045,11 @@ function evaluate(input) {
   }
 
   const gate = readGate(repositoryRoot, findings);
+  const policy = loadRepositoryPolicy(repositoryRoot);
   if (gate !== null) {
     validateGate(gate, findings);
     compareGateIdentities(gate, repositoryRoot, branch, headSha, commandValues, findings);
-    validateDescription(gate.pull_request_draft, commandValues, bodyText, findings);
+    validateDescription(gate.pull_request_draft, commandValues, bodyText, findings, policy);
     verifyRemoteBranch(repositoryRoot, gate.branch_push, branch, headSha, findings);
   }
 

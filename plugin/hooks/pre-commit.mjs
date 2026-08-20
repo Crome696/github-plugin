@@ -3,6 +3,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { loadRepositoryPolicy, policyEnforces } from "./lib/repository-policy.mjs";
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
 const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-commit.json";
@@ -1032,9 +1033,9 @@ function parseInProgressOperations(worktreePath) {
   return null;
 }
 
-function scanFileName(repositoryRelativePath) {
+function scanFileName(repositoryRelativePath, filenamePatterns = []) {
   const basename = repositoryRelativePath.split("/").at(-1).toLowerCase();
-  if (
+  const compatibilityFinding =
     (basename === ".env" || (basename.startsWith(".env.") && !SAFE_ENV_TEMPLATES.has(basename))) ||
     basename === ".npmrc" ||
     basename === ".pypirc" ||
@@ -1042,8 +1043,16 @@ function scanFileName(repositoryRelativePath) {
     basename === ".dockerconfigjson" ||
     /^(?:credentials?|secrets?)(?:\.(?:json|ya?ml|toml|ini|cfg|env|txt))?$/.test(basename) ||
     /^(?:id_(?:rsa|dsa|ecdsa|ed25519)|.*\.(?:pem|key|p12|pfx|jks))$/.test(basename)
-  ) {
+  ;
+  if (compatibilityFinding && filenamePatterns.includes("credential-like")) {
     return "credential-like filename";
+  }
+  if (filenamePatterns.includes("environment-secret") && basename.startsWith(".env.") && !SAFE_ENV_TEMPLATES.has(basename)) return "credential-like filename";
+  if (filenamePatterns.includes("private-key-like") && /^(?:id_(?:rsa|dsa|ecdsa|ed25519)|.*\.(?:pem|key|p12|pfx|jks))$/.test(basename)) return "credential-like filename";
+  if (filenamePatterns.some((pattern) => typeof pattern === "string" && pattern.startsWith("regex:"))) {
+    for (const pattern of filenamePatterns.filter((value) => value.startsWith("regex:"))) {
+      try { if (new RegExp(pattern.slice(6), "i").test(basename)) return "policy-configured credential-like filename"; } catch { return "invalid policy filename pattern"; }
+    }
   }
   return null;
 }
@@ -1073,7 +1082,13 @@ function readIndexAndWorkingTree(worktreePath, repositoryRelativePath) {
   return contents.length > 0 ? contents : null;
 }
 
-function scanApprovedFiles(worktreePath, approvedPaths, statusEntries) {
+function scanApprovedFiles(worktreePath, approvedPaths, statusEntries, policy) {
+  if (!policyEnforces(policy?.secrets)) return null;
+  const filenamePatterns = policy.secrets.filename_patterns;
+  const contentPatterns = policy.secrets.content_patterns.map((entry) => ({
+    name: entry.name,
+    pattern: new RegExp(entry.source, entry.flags),
+  }));
   const entryByPath = new Map();
   for (const entry of statusEntries) {
     for (const pathValue of entry.paths) {
@@ -1082,7 +1097,7 @@ function scanApprovedFiles(worktreePath, approvedPaths, statusEntries) {
   }
 
   for (const repositoryRelativePath of approvedPaths) {
-    const filenameFinding = scanFileName(repositoryRelativePath);
+    const filenameFinding = scanFileName(repositoryRelativePath, filenamePatterns);
     if (filenameFinding) {
       return {
         path: repositoryRelativePath,
@@ -1114,7 +1129,7 @@ function scanApprovedFiles(worktreePath, approvedPaths, statusEntries) {
         };
       }
       const text = content.toString("utf8");
-      for (const secretPattern of SECRET_CONTENT_PATTERNS) {
+      for (const secretPattern of contentPatterns) {
         if (secretPattern.pattern.test(text)) {
           return {
             path: repositoryRelativePath,
@@ -1197,6 +1212,8 @@ function evaluate(input) {
   if (!isNonEmptyString(branch)) {
     return makeDeny("The commit worktree is detached or has no current branch", "verify-worktree");
   }
+
+  const policy = loadRepositoryPolicy(repositoryRoot);
 
   const gatePath = statePathForRoot(repositoryRoot);
   let gate;
@@ -1348,7 +1365,7 @@ function evaluate(input) {
       "inspect-working-tree",
     );
   }
-  const secretFinding = scanApprovedFiles(repositoryRoot, [...approvedPaths], statusEntries);
+  const secretFinding = scanApprovedFiles(repositoryRoot, [...approvedPaths], statusEntries, policy);
   if (secretFinding) {
     return makeDeny(
       `Approved path ${secretFinding.path} matches ${secretFinding.finding}`,
