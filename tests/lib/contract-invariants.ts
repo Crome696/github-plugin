@@ -24,6 +24,97 @@ const objectAt = (
   return null;
 };
 
+const evidenceSourceKinds = new Set([
+  "issue",
+  "implementation_plan",
+  "repository_policy",
+  "external_capability",
+]);
+
+const evidenceStatuses = new Set(["satisfied", "missing", "blocked"]);
+
+const isRepositoryRelativeLocation = (value: unknown): value is string => {
+  if (typeof value !== "string" || value.trim().length === 0 || value.includes("\0")) {
+    return false;
+  }
+  const normalized = value.replaceAll("\\", "/");
+  if (normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) {
+    return false;
+  }
+  const segments = normalized.split("/");
+  return segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
+};
+
+const validateEvidenceRequirements = (
+  payload: Record<string, unknown>,
+): InvariantIssue[] => {
+  const issues: InvariantIssue[] = [];
+  if (!Array.isArray(payload.evidence_requirements)) {
+    return [
+      issue(
+        "evidence_requirements_required",
+        "$.evidence_requirements",
+        "ValidationResult v2 must contain an explicit evidence_requirements list.",
+      ),
+    ];
+  }
+
+  const seenIds = new Set<string>();
+  for (const [index, value] of payload.evidence_requirements.entries()) {
+    const path = `$.evidence_requirements[${index}]`;
+    if (!isRecord(value)) {
+      issues.push(issue("evidence_requirement_malformed", path, "Every evidence requirement must be an object."));
+      continue;
+    }
+    if (typeof value.id !== "string" || value.id.trim().length === 0) {
+      issues.push(issue("evidence_requirement_id_required", `${path}.id`, "Every evidence requirement needs a non-empty id."));
+    } else if (seenIds.has(value.id)) {
+      issues.push(issue("evidence_requirement_id_duplicate", `${path}.id`, "Evidence requirement ids must be unique."));
+    } else {
+      seenIds.add(value.id);
+    }
+    if (typeof value.requirement !== "string" || value.requirement.trim().length === 0) {
+      issues.push(issue("evidence_requirement_text_required", `${path}.requirement`, "Every evidence requirement needs exact requirement text."));
+    }
+    const source = objectAt(value.source, `${path}.source`);
+    if (
+      source === null ||
+      !evidenceSourceKinds.has(String(source.kind)) ||
+      typeof source.reference !== "string" ||
+      source.reference.trim().length === 0
+    ) {
+      issues.push(issue("evidence_requirement_source_required", `${path}.source`, "Every evidence requirement needs a supported source kind and reference."));
+    }
+    if (typeof value.expected_kind !== "string" || value.expected_kind.trim().length === 0) {
+      issues.push(issue("evidence_requirement_kind_required", `${path}.expected_kind`, "Every evidence requirement needs a non-empty expected evidence kind."));
+    }
+    if (value.location !== null && !isRepositoryRelativeLocation(value.location)) {
+      issues.push(issue("evidence_requirement_location_invalid", `${path}.location`, "An evidence requirement location must be a repository-relative string or null."));
+    }
+    if (
+      value.required_capability !== undefined &&
+      value.required_capability !== null &&
+      (typeof value.required_capability !== "string" || value.required_capability.trim().length === 0)
+    ) {
+      issues.push(issue("evidence_requirement_capability_invalid", `${path}.required_capability`, "A required external capability must be a non-empty string or null."));
+    }
+    if (!evidenceStatuses.has(String(value.status))) {
+      issues.push(issue("evidence_requirement_status_invalid", `${path}.status`, "Evidence requirement status must be satisfied, missing, or blocked."));
+    }
+    if (
+      !Array.isArray(value.evidence) ||
+      value.evidence.length === 0 ||
+      value.evidence.some((entry) => typeof entry !== "string" || entry.trim().length === 0)
+    ) {
+      issues.push(issue("evidence_requirement_evidence_required", `${path}.evidence`, "Every evidence requirement outcome needs concrete evidence references."));
+    }
+    if (payload.status === "passed" && value.status !== "satisfied") {
+      issues.push(issue("passed_with_unmet_evidence", path, "A passed ValidationResult requires every explicit evidence requirement to be satisfied."));
+    }
+  }
+  return issues;
+};
+
 const isExternalCapabilityReference = (
   value: string,
   expectedType: "skill" | "rule",
@@ -178,7 +269,7 @@ const validateClassifiedFindings = (
 const validateValidationResult = (
   payload: Record<string, unknown>,
 ): InvariantIssue[] => {
-  const issues: InvariantIssue[] = [];
+  const issues: InvariantIssue[] = validateEvidenceRequirements(payload);
   const checks = arrayAt(payload.checks, "$.checks").filter(isRecord);
   const requiredChecks = checks.filter((check) => check.required === true);
   const requiredChecksPassed = requiredChecks.every(

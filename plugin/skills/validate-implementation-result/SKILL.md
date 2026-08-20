@@ -11,7 +11,7 @@ conditional `UnrelatedChangeDetection` evidence. Check scope, acceptance and
 completion criteria, planned steps, required validations, unexpected changes,
 and explicit deviations. It incorporates the implementation-result evaluation
 concerns without requiring a separate `evaluate-implementation-result`
-handoff. Return exactly one version-1
+handoff. Return exactly one version-2
 [`ValidationResult`](../../shared/schemas/ValidationResult.yaml) handoff with
 evidence and diagnostic commit and draft-pull-request readiness. This Skill
 does not authorize or perform a Git or GitHub operation.
@@ -91,6 +91,8 @@ Use concise, reproducible references:
   `handoff:ReviewFixPlan.validation.required_checks[<index>]`
 - `handoff:ImplementationPlan.validation.success_criteria[<index>]` or
   `handoff:ReviewFixPlan.validation.success_criteria[<index>]`
+- `handoff:ImplementationPlan.validation.evidence_requirements[<id>]` or
+  `handoff:ReviewFixPlan.validation.evidence_requirements[<id>]`
 - `handoff:ImplementationPlan.acceptance_criteria[<index>]`
 - `handoff:ImplementationPlan.implementation_steps[<id>]` or
   `handoff:ReviewFixPlan.implementation_steps[<id>]`
@@ -215,37 +217,36 @@ A failed, skipped, or not-run required item creates a blocker and prevents
 `status: passed`. Preserve optional checks as `required: false`; they may
 create warnings but cannot compensate for a required failure.
 
-### 6. Validate UI-screenshot artifacts when required
+### 6. Validate explicit evidence requirements
 
-After validating tests and checks, determine whether the implementation
-involves a web UI using the same heuristic as
-[`capture-ui-screenshots`](../capture-ui-screenshots/SKILL.md):
+Collect only evidence requirements that are explicitly present in the supplied
+issue, approved implementation or review-fix plan, verified repository policy,
+or a resolved external validation capability. Preserve each requirement's
+exact text, source kind and reference, expected evidence kind, optional
+location, and optional required capability. Do not infer a requirement from
+framework dependencies, source-file patterns, `index.html`, filenames,
+generated-artifact names, or any other path convention.
 
-1. Check `package.json` in the worktree for UI-framework dependencies
-   (`react`, `react-dom`, `next`, `vue`, `nuxt`, `@angular/core`, `svelte`,
-   `@sveltejs/kit`, `solid-js`, `lit`, `preact`, `qwik`).
-2. Check for UI-relevant source files (`src/**/*.tsx`, `src/**/*.jsx`,
-   `src/**/*.vue`, `src/**/*.svelte`, `app/**/*.tsx`, `app/**/*.jsx`,
-   `pages/**/*.tsx`, `pages/**/*.jsx`).
-3. Check for an `index.html` entry point in the project root, `public/`, or
-   `src/`.
+For every collected requirement:
 
-When any indicator matches (web UI detected):
+- Set `status: satisfied` only when the supplied worktree, commit, generated
+  artifact, or external validation evidence proves the exact requirement.
+- Set `status: missing` when the requirement is explicit but its declared
+  evidence is absent. If `location` is present, compare that exact normalized
+  repository-relative location; do not substitute a conventional directory or
+  file name.
+- Set `status: blocked` when the required evidence source or the explicit
+  `required_capability` is unavailable. A missing external capability is a
+  blocker only when the requirement names it as required.
+- Add concrete evidence references for every outcome. A missing or blocked
+  requirement adds a blocker naming the requirement, source, expected kind,
+  optional location, and missing capability or evidence.
 
-- Verify that `docs/ui-screenshots/manifest.json` exists in the worktree or
-  in the change/commit scope.
-- Verify that at least one `docs/ui-screenshots/*.png` file exists in the
-  worktree or in the change/commit scope.
-- When both conditions are met, populate `generated_artifacts` with every
-  PNG path under `docs/ui-screenshots/` and the manifest path.
-- When the manifest or all PNGs are missing, add a blocker with id
-  `missing-ui-screenshots` and set
-  `readiness.draft_pr_preparation_allowed: false`. The blocker evidence must
-  reference the UI-detection indicator and the missing artifact paths.
-
-For non-web UI projects where automated capture is unsupported, add a warning
-instead of a blocker. Do not block validation for desktop/native UIs where
-no automated capture method is available.
+When no explicit requirement is supplied, return
+`evidence_requirements: []`. Preserve existing `generated_artifacts` values as
+descriptive paths, but never turn them into an implicit UI requirement. Any
+missing or blocked requirement prevents `status: passed` and sets both
+readiness flags to `false`.
 
 ### 7. Reconcile unexpected changes and deviations
 
@@ -298,11 +299,11 @@ partial processing result, preserve a structured failure with one of:
 
 ## Output contract
 
-Return exactly one English version-1 `ValidationResult` object:
+Return exactly one English version-2 `ValidationResult` object:
 
 ```yaml
 schema: ValidationResult
-version: 1
+version: 2
 status: failed
 workspace:
   path: /workspace/.cromesdk-worktrees/repository/agent-example-task
@@ -373,6 +374,7 @@ skipped_checks: []
 changed_files_reviewed:
   - src/feature.ts
 generated_artifacts: []
+evidence_requirements: []
 validated_at: null
 recommended_next_skill: null
 failure: null

@@ -23,6 +23,10 @@ MUST:
   explicit repository-relative paths; never use `git add .`, `git add -A`,
   `git add --all`, `git commit -a`, or wildcard pathspecs.
 - Require `ValidationResult.result_status: passed` with non-empty evidence.
+  The complete version-2 `ValidationResult.evidence_requirements` list is
+  mandatory; every entry must be `satisfied`, while an empty list explicitly
+  means no evidence requirement exists. Generated artifact paths do not imply
+  screenshot evidence.
   Readiness flags, a plan, or successful prior work do not replace validation.
 - Require explicit, recorded authorization with both
   `authorization.exact_scope_approved: true` and
@@ -36,12 +40,13 @@ MUST:
 - Record the validation evidence and the exact committed path scope in the
   commit handoff. Do not claim checks passed when they were skipped, waived,
   unavailable, or unsuccessful.
-- Before the final commit status check, create one local version-1
+- Before the final commit status check, create one local version-3
   `PreCommitGate` snapshot at `.cursor/hooks/state/pre-commit.json` containing
-  the exact approved `CommitProposal`, complete `ValidationResult`, verified
-  worktree identity, and pre-commit `HEAD`. The deterministic plugin hook must
-  accept only that current, identity-matched snapshot; the ignored state path
-  must never be staged or committed.
+  the exact approved `CommitProposal`, complete version-2 `ValidationResult`,
+  verified worktree identity, and pre-commit `HEAD`. Version-1 and version-2
+  gate snapshots fail closed. The deterministic plugin hook must accept only
+  that current, identity-matched snapshot; the ignored state path must never be
+  staged or committed.
 - Apply the global confidential-data boundary from `github-safety.mdc`; a
   commit must never contain secrets or other confidential data.
 

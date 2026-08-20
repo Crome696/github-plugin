@@ -67,7 +67,7 @@ blocker, or ambiguous handoff.
 ## Deterministic pre-publication gate
 
 Immediately before `gh pr create`, the `create-draft-pr` Skill MUST write a
-current local version-1 `PrePrCreateGate` containing the exact active
+current local version-2 `PrePrCreateGate` containing the exact active
 `BranchWorkspace`, passed `ValidationResult`, created `CommitProposal`,
 verified non-force `BranchPush`, linked `PullRequestIssueLink`, and unpublished
 `PullRequestDraft`. The host `pre-pr-create` Hook MUST fail closed unless the

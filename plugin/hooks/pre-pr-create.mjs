@@ -22,6 +22,13 @@ const VALID_PLAN_STEP_RESULTS = new Set([
   "missing",
   "unexpected",
 ]);
+const VALID_EVIDENCE_SOURCE_KINDS = new Set([
+  "issue",
+  "implementation_plan",
+  "repository_policy",
+  "external_capability",
+]);
+const VALID_EVIDENCE_STATUSES = new Set(["satisfied", "missing", "blocked"]);
 const REQUIRED_DESCRIPTION_HEADINGS = [
   {
     names: ["problem / issue context"],
@@ -113,6 +120,19 @@ function validateRepositoryName(value) {
 
 function safeLabel(value) {
   return String(value).replace(/[^A-Za-z0-9_.:/-]/g, "_").slice(0, 100);
+}
+
+function isRepositoryRelativeLocation(value) {
+  if (!isNonEmptyString(value) || value.includes("\0")) return false;
+  const normalized = value.replaceAll("\\", "/");
+  if (normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) return false;
+  return normalized.split("/").every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
+}
+
+function describeEvidenceRequirement(requirement) {
+  const source = isRecord(requirement.source) ? requirement.source : {};
+  const location = requirement.location === null ? "" : ` at ${safeLabel(requirement.location)}`;
+  return `Explicit evidence requirement ${safeLabel(requirement.id)} (${safeLabel(requirement.requirement)}) from ${safeLabel(source.kind)}:${safeLabel(source.reference)} expects ${safeLabel(requirement.expected_kind)}${location} and is ${safeLabel(requirement.status)}.`;
 }
 
 function statePathForRoot(root) {
@@ -536,10 +556,10 @@ function validateValidationResult(validation, findings) {
     return;
   }
 
-  if (validation.schema !== "ValidationResult" || validation.version !== 1) {
+  if (validation.schema !== "ValidationResult" || validation.version !== 2) {
     addFinding(
       findings,
-      "ValidationResult is not the supported version-1 handoff.",
+      "ValidationResult is not the supported version-2 handoff.",
       "run validate-implementation-result and write a fresh PrePrCreateGate",
     );
   }
@@ -596,6 +616,58 @@ function validateValidationResult(validation, findings) {
         "ValidationResult.source is incomplete.",
         "run validate-implementation-result with complete source evidence",
       );
+    }
+  }
+
+  if (!Array.isArray(validation.evidence_requirements)) {
+    addFinding(
+      findings,
+      "ValidationResult.evidence_requirements is missing or malformed.",
+      "run validate-implementation-result and include the explicit evidence requirement list",
+    );
+  } else {
+    const evidenceRequirementIds = new Set();
+    for (const requirement of validation.evidence_requirements) {
+      if (
+        !isRecord(requirement) ||
+        !isNonEmptyString(requirement.id) ||
+        !isNonEmptyString(requirement.requirement) ||
+        !isRecord(requirement.source) ||
+        !VALID_EVIDENCE_SOURCE_KINDS.has(requirement.source.kind) ||
+        !isNonEmptyString(requirement.source.reference) ||
+        !isNonEmptyString(requirement.expected_kind) ||
+        (requirement.location !== null && !isRepositoryRelativeLocation(requirement.location)) ||
+        !VALID_EVIDENCE_STATUSES.has(requirement.status) ||
+        !Array.isArray(requirement.evidence) ||
+        requirement.evidence.length === 0 ||
+        requirement.evidence.some((evidence) => !isNonEmptyString(evidence)) ||
+        (requirement.required_capability !== undefined &&
+          requirement.required_capability !== null &&
+          !isNonEmptyString(requirement.required_capability))
+      ) {
+        addFinding(
+          findings,
+          "ValidationResult contains a malformed evidence requirement.",
+          "run validate-implementation-result and preserve exact requirement source and evidence",
+        );
+        continue;
+      }
+      if (evidenceRequirementIds.has(requirement.id)) {
+        addFinding(
+          findings,
+          `ValidationResult contains duplicate evidence requirement ${safeLabel(requirement.id)}.`,
+          "run validate-implementation-result and preserve unique evidence requirement ids",
+        );
+        continue;
+      }
+      evidenceRequirementIds.add(requirement.id);
+      if (requirement.status !== "satisfied") {
+        addFinding(
+          findings,
+          describeEvidenceRequirement(requirement),
+          "satisfy the explicit evidence requirement or return a blocked validation result",
+        );
+      }
     }
   }
 
@@ -753,7 +825,7 @@ function validateValidationResult(validation, findings) {
     addFinding(
       findings,
       "ValidationResult.recommended_next_skill is missing or malformed.",
-      "write a complete version-1 ValidationResult",
+      "write a complete version-2 ValidationResult",
     );
   }
 }
@@ -1471,15 +1543,15 @@ function validateGate(gate, findings) {
     addFinding(
       findings,
       "PrePrCreateGate is missing or malformed.",
-      "write a fresh version-1 PrePrCreateGate before gh pr create",
+      "write a fresh version-2 PrePrCreateGate before gh pr create",
     );
     return;
   }
-  if (gate.schema !== "PrePrCreateGate" || gate.version !== 1) {
+  if (gate.schema !== "PrePrCreateGate" || gate.version !== 2) {
     addFinding(
       findings,
       "PrePrCreateGate has an unsupported schema version.",
-      "write a fresh version-1 PrePrCreateGate",
+      "write a fresh version-2 PrePrCreateGate",
     );
   }
   if (!isIsoTimestamp(gate.written_at)) {

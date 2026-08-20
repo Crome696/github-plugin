@@ -97,10 +97,10 @@ invent a value to complete a contract.
 
 - The Agent consumes version-1 `ImplementationPlan`, `BranchWorkspace`, and
   `LoadedIssue` handoffs.
-- The delivery chain produces version-1 `ValidationResult`, `CommitProposal`,
+- The delivery chain produces version-2 `ValidationResult`, `CommitProposal`,
   `BranchPush`, `PullRequestIssueLink`, and `PullRequestDraft` handoffs.
-- The local `PreCommitGate` snapshot is version-2 and the local `PrePrCreateGate`
-  snapshot is version-1; both are mutation gates owned by their respective
+- The local `PreCommitGate` snapshot is version-3 and the local `PrePrCreateGate`
+  snapshot is version-2; both are mutation gates owned by their respective
   Skills.
 
 ## Mission and language
@@ -328,7 +328,7 @@ Readiness flags and a prior successful stage never replace authorization.
 Immediately before `create-commit`, announce the exact repository, branch,
 absolute worktree path, approved path union, and approved message. Require an
 approved version-1 `CommitProposal` with both exact-scope and commit
-authorization flags true. The Skill must capture a current version-2
+authorization flags true. The Skill must capture a current version-3
 `PreCommitGate` containing the complete `ValidationResult`, exact proposal,
 verified worktree identity, pre-commit `HEAD`, exact approved message-file
 bytes, and the cached staged-index fingerprint before its final status check.
@@ -402,7 +402,7 @@ task-scoped Draft PR authorization.
 The Skill must also receive the active `BranchWorkspace`, complete
 `ValidationResult`, created `CommitProposal`, verified `BranchPush`, and
 linked `PullRequestIssueLink` handoffs. Immediately before `gh pr create`, it
-must write and verify the local version-1 `PrePrCreateGate` containing those
+must write and verify the local version-2 `PrePrCreateGate` containing those
 exact handoffs and the unpublished Draft payload. The deterministic host Hook
 must accept that gate and verify the command, live HEAD, live remote branch,
 description sections, unique issue link, passed validation, and absence of
@@ -445,11 +445,12 @@ Do not carry authorization across that material scope change.
 
 For a successful delivery:
 
-- every handoff is version 1 and has matching repository identity;
+- every handoff uses its contract's current version and has matching repository identity;
 - `WorkingTreeInspection` and `ChangeClassification` preserve every observed
   path;
 - any required `UnrelatedChangeDetection` is clear without unresolved gates;
-- `ValidationResult.status` is `passed` and both delivery readiness flags are
+- `ValidationResult` is version 2, all explicit evidence requirements are
+  satisfied, its status is `passed`, and both delivery readiness flags are
   true;
 - the local `PreCommitGate` is current, identity-matched, complete, and was
   accepted by the normal commit hook;
@@ -564,7 +565,7 @@ completed | partial | blocked
 
 ## WorkingTreeInspection
 
-- Exact version-1 handoff:
+- Exact version-2 handoff:
 - Status:
 - Identity:
 - Changed, new, deleted, renamed, untracked, and unmerged paths:

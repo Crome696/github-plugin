@@ -1,6 +1,6 @@
 schema: ValidationResult
-version: 1
-description: Evidence-backed implementation-result validation, required-check outcome, scope assessment, and diagnostic readiness for commit and draft pull-request preparation.
+version: 2
+description: Evidence-backed implementation-result validation, explicit evidence-requirement outcomes, required-check outcome, scope assessment, and diagnostic readiness for commit and draft pull-request preparation.
 required:
   - status
   - workspace
@@ -10,6 +10,7 @@ required:
   - evaluation
   - blockers
   - warnings
+  - evidence_requirements
   - readiness
   - failure
   - recommended_next_skill
@@ -234,6 +235,37 @@ fields:
   generated_artifacts:
     type: list
     items: string
+  evidence_requirements:
+    type: list
+    items:
+      type: object
+      required: [id, requirement, source, expected_kind, location, status, evidence]
+      fields:
+        id:
+          type: string
+        requirement:
+          type: string
+        source:
+          type: object
+          required: [kind, reference]
+          fields:
+            kind:
+              type: enum
+              values: [issue, implementation_plan, repository_policy, external_capability]
+            reference:
+              type: string
+        expected_kind:
+          type: string
+        location:
+          type: string | null
+        required_capability:
+          type: string | null
+        status:
+          type: enum
+          values: [satisfied, missing, blocked]
+        evidence:
+          type: list
+          items: string
   validated_at:
     type: string | null
     format: iso-8601
@@ -270,5 +302,8 @@ invariants:
   - Every acceptance criterion and completion criterion is pass before a passed status is returned.
   - Unresolved scope drift, uncertain changes, or a blocked or clarification scope gate prevents a passed status.
   - Results identify the exact workspace revision that was checked.
+  - Every explicit evidence requirement preserves its requirement text, source, expected kind, optional location, outcome status, and evidence.
+  - A missing or blocked explicit evidence requirement prevents a passed status and both readiness flags.
+  - Evidence requirements are never inferred from frameworks, filenames, paths, or generated artifact names.
   - Readiness flags are diagnostic only and never authorize staging, commit, push, pull-request publication, merge, or cleanup.
   - Evidence must not contain secrets, tokens, private keys, or credential-bearing output.

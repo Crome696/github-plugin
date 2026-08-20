@@ -1,12 +1,12 @@
 ---
 name: validate-rebased-branch
-description: Validate one explicitly identified branch after a completed rebase by comparing its history and diff with the pre-rebase implementation and selected base, checking implementation scope, required tests, and status checks, and returning an updated version-1 ValidationResult. Use automatically after a successful rebase; never rebase, push, merge, or modify Git state.
+description: Validate one explicitly identified branch after a completed rebase by comparing its history and diff with the pre-rebase implementation and selected base, checking implementation scope, required tests, explicit evidence requirements, and status checks, and returning an updated version-2 ValidationResult. Use automatically after a successful rebase; never rebase, push, merge, or modify Git state.
 ---
 
 # Validate Rebased Branch
 
 Validate exactly one branch after an already completed rebase and return one
-updated version-1
+updated version-2
 [`ValidationResult`](../../shared/schemas/ValidationResult.yaml) handoff. This
 Skill is a read-only post-rebase verification gate. It does not authorize or
 perform delivery.
@@ -51,7 +51,7 @@ Accept these optional inputs:
 
 - `UnrelatedChangeDetection` when scope alignment is `drift` or `unknown`, or
   when foreign or uncertain paths exist.
-- The prior version-1 `ValidationResult` from before the rebase.
+- The prior version-2 `ValidationResult` from before the rebase.
 - `LoadedIssue`, `IssueAnalysis`, or `BranchWorkspace` for additional
   requirements and identity evidence.
 - Explicit SHA-bound test and status-check results.
@@ -164,7 +164,7 @@ next Skill; never invoke it automatically.
 ## Output contract
 
 Return exactly one English object with `schema: ValidationResult` and
-`version: 1`. Preserve the supplied workspace identity and source versions,
+`version: 2`. Preserve the supplied workspace identity and source versions,
 record every unavailable input, and include:
 
 - the exact current `head_sha`;
@@ -173,6 +173,10 @@ record every unavailable input, and include:
   implementation step;
 - all blockers, warnings, lost changes, unexpected changes, deviations, and
   readiness reasons;
+- the normalized explicit `evidence_requirements` list from the plan or prior
+  validation result, with a satisfied, missing, or blocked outcome for every
+  entry. Never infer a requirement from paths, filenames, or generated
+  artifacts;
 - `validated_at`, `failure`, and at most one advisory
   `recommended_next_skill`.
 

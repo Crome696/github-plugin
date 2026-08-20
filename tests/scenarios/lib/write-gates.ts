@@ -296,6 +296,29 @@ const validationGate = (
       "A failed, partial, or blocked ValidationResult cannot authorize delivery.",
     );
   }
+  if (!Array.isArray(validation.evidence_requirements)) {
+    return decision(
+      "evidence_requirements_required",
+      "ValidationResult must contain the explicit evidence requirement list.",
+    );
+  }
+  for (const requirement of validation.evidence_requirements) {
+    if (!isRecord(requirement)) {
+      return decision(
+        "evidence_requirement_malformed",
+        "ValidationResult contains a malformed explicit evidence requirement.",
+      );
+    }
+    if (requirement.status !== "satisfied") {
+      const source = recordAt(requirement, "source");
+      const location =
+        typeof requirement.location === "string" ? ` at ${requirement.location}` : "";
+      return decision(
+        "explicit_evidence_unmet",
+        `Explicit evidence requirement ${String(requirement.id ?? "unknown")} (${String(requirement.requirement ?? "unspecified requirement")}) from ${String(source?.kind ?? "unknown kind")}:${String(source?.reference ?? "unknown source")} expects ${String(requirement.expected_kind ?? "unknown evidence")}${location} and is ${String(requirement.status ?? "missing")}.`,
+      );
+    }
+  }
   const evaluation = recordAt(validation, "evaluation");
   if (stringAt(evaluation, "scope", "status") !== "aligned") {
     return decision(
@@ -686,42 +709,6 @@ const prePrCreateGate = (context: GateContext): GateDecision | null => {
     );
   }
 
-  const filesCommitted = arrayAt(
-    gate,
-    "commit_proposal",
-    "commit",
-    "files_committed",
-  ).filter((v) => typeof v === "string") as string[];
-  const generatedArtifacts = arrayAt(
-    validation,
-    "generated_artifacts",
-  ).filter((v) => typeof v === "string") as string[];
-  const allPaths = [...filesCommitted, ...generatedArtifacts].map((p) =>
-    p.replaceAll("\\", "/"),
-  );
-  const uiScreenshotRequired = allPaths.some((p) =>
-    /^docs\/ui-screenshots\//i.test(p),
-  );
-  if (uiScreenshotRequired) {
-    const hasManifest = allPaths.some(
-      (p) => p === "docs/ui-screenshots/manifest.json",
-    );
-    const hasPng = allPaths.some((p) =>
-      /^docs\/ui-screenshots\/[^/]+\.png$/i.test(p),
-    );
-    if (!hasManifest) {
-      return decision(
-        "ui_screenshots_manifest_missing",
-        "UI screenshots are required but docs/ui-screenshots/manifest.json is missing from the PrePrCreateGate commit scope or generated artifacts.",
-      );
-    }
-    if (!hasPng) {
-      return decision(
-        "ui_screenshots_png_missing",
-        "UI screenshots are required but no docs/ui-screenshots/*.png file is present in the PrePrCreateGate commit scope or generated artifacts.",
-      );
-    }
-  }
   return null;
 };
 

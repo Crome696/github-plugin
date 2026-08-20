@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.112
+
+- Replaced inferred UI screenshot enforcement with explicit evidence
+  requirements declared by the implementation or review-fix plan.
+- Migrated `ValidationResult` to version 2, `PreCommitGate` to version 3, and
+  `PrePrCreateGate` to version 2 with fail-closed rejection of old or mixed
+  handoffs.
+- Preserved `generated_artifacts` as descriptive path evidence, added explicit
+  satisfied/missing/blocked evidence outcomes, and removed the nonexistent
+  screenshot-capture capability and fixed screenshot-directory convention.
+- Added contract, hook, runtime, and scenario coverage for UI evidence,
+  non-UI work, missing evidence, unavailable required capabilities, and
+  legacy-version rejection.
+
 ## 0.3.111
 
 - Added the host-neutral `cli-transport-file-lifecycle` Rule for the exact

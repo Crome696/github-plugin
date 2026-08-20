@@ -1,6 +1,6 @@
 schema: PrePrCreateGate
-version: 1
-description: Local, read-only snapshot binding one authorized Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed implementation validation.
+version: 2
+description: Local, read-only snapshot binding one authorized Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed version-2 implementation validation.
 required:
   - workspace
   - validation
@@ -26,7 +26,7 @@ fields:
         type: string
   validation:
     type: object
-    description: Complete version-1 ValidationResult handoff captured for Draft pull-request preparation.
+    description: Complete version-2 ValidationResult handoff captured for Draft pull-request preparation.
     required:
       - schema
       - version
@@ -38,6 +38,7 @@ fields:
       - evaluation
       - blockers
       - warnings
+      - evidence_requirements
       - readiness
       - failure
       - recommended_next_skill
@@ -47,7 +48,7 @@ fields:
         const: ValidationResult
       version:
         type: integer
-        const: 1
+        const: 2
       status:
         type: enum
         values: [passed, failed, partial, blocked]
@@ -66,6 +67,37 @@ fields:
         type: list
       warnings:
         type: list
+      evidence_requirements:
+        type: list
+        items:
+          type: object
+          required: [id, requirement, source, expected_kind, location, status, evidence]
+          fields:
+            id:
+              type: string
+            requirement:
+              type: string
+            source:
+              type: object
+              required: [kind, reference]
+              fields:
+                kind:
+                  type: enum
+                  values: [issue, implementation_plan, repository_policy, external_capability]
+                reference:
+                  type: string
+            expected_kind:
+              type: string
+            location:
+              type: string | null
+            required_capability:
+              type: string | null
+            status:
+              type: enum
+              values: [satisfied, missing, blocked]
+            evidence:
+              type: list
+              items: string
       readiness:
         type: object
         required: [commit_preparation_allowed, draft_pr_preparation_allowed, reasons]
@@ -261,4 +293,6 @@ invariants:
   - pull_request_draft.status is draft, draft is true, number, url, and created_at are null, and its body contains every required description section from supplied evidence.
   - issue_link.status is linked and both issue_link.linked_issues and pull_request_draft.linked_issues contain exactly one identical issue in the target repository.
   - validation.status is passed, all required checks pass, all acceptance and completion criteria pass, scope is aligned, no blocker or unexpected change remains, and draft_pr_preparation_allowed is true.
+  - Every explicit evidence requirement has status satisfied before validation can be published as passed; missing or blocked requirements fail closed.
+  - Version-1 snapshots fail closed; a fresh version-2 snapshot with a version-2 ValidationResult is required.
   - Hook output reports missing prerequisites without exposing secrets and never invents or changes a title, body, issue link, branch, SHA, or authorization.

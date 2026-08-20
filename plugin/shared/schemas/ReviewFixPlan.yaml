@@ -263,6 +263,31 @@ fields:
         items: string
       re_review_required:
         type: boolean
+      evidence_requirements:
+        type: list
+        items:
+          type: object
+          required: [id, requirement, source, expected_kind, location]
+          fields:
+            id:
+              type: string
+            requirement:
+              type: string
+            source:
+              type: object
+              required: [kind, reference]
+              fields:
+                kind:
+                  type: enum
+                  values: [issue, implementation_plan, repository_policy, external_capability]
+                reference:
+                  type: string
+            expected_kind:
+              type: string
+            location:
+              type: string | null
+            required_capability:
+              type: string | null
   risks:
     type: list
     items:

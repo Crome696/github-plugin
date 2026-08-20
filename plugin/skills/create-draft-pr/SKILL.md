@@ -27,7 +27,7 @@ rewrite, push, review, mark ready, merge, or otherwise change the pull request.
   already-used target.
 - Require evidence that the head branch is already pushed at the approved
   `head_sha`. This Skill never creates or pushes a branch.
-- Require a current version-1 `BranchWorkspace`, `ValidationResult`,
+- Require a current version-1 `BranchWorkspace`, version-2 `ValidationResult`,
   `CommitProposal`, `BranchPush`, and `PullRequestIssueLink` handoff before
   writing the local `PrePrCreateGate`. The gate is a read-only input to the
   host hook and does not replace any GitHub or Git authorization.
@@ -97,9 +97,11 @@ The required supporting handoffs are:
 
 - an active version-1 `BranchWorkspace` with the expected absolute
   `worktree_path`, repository, `branch_name`, and current `current_head_sha`;
-- a complete version-1 `ValidationResult` with `status: passed`,
+- a complete version-2 `ValidationResult` with `status: passed`,
   `required_checks_passed: true`, and
-  `readiness.draft_pr_preparation_allowed: true`;
+  `readiness.draft_pr_preparation_allowed: true`. Every explicit evidence
+  requirement must be `satisfied`; an empty list explicitly means that no
+  evidence is required;
 - a created version-1 `CommitProposal` whose verified `commit.sha` equals the
   Draft `head_sha`;
 - a verified version-1 `BranchPush` whose non-force remote SHA equals the
@@ -223,7 +225,7 @@ and prepare the approved `body` in an operating-system temporary file without
 translation or normalization. The body file and the one direct
 payload-consuming `gh pr create` invocation belong to the same `try/finally`
 lifecycle; cleanup also runs if gate preparation or verification is handled as
-a failure. Then write exactly one local version-1
+a failure. Then write exactly one local version-2
 `PrePrCreateGate` snapshot to
 `.cursor/hooks/state/pre-pr-create.json`. Create the ignored state directory
 only when it does not exist. Do not use an old, partial, or stale snapshot as
@@ -235,7 +237,7 @@ handoffs:
 ```json
 {
   "schema": "PrePrCreateGate",
-  "version": 1,
+  "version": 2,
   "workspace": {
     "repository": "<BranchWorkspace.repository>",
     "path": "<BranchWorkspace.worktree_path>",

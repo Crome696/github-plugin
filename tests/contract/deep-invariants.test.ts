@@ -287,6 +287,37 @@ describe("deep shared-contract invariants", () => {
     blocked.failure = null;
     expectStructurallyValid("ValidationResult", blocked);
     expectInvariant("ValidationResult", blocked, "blocked_failure_required");
+
+    const explicitMissing = clone(valid);
+    explicitMissing.evidence_requirements = [
+      {
+        id: "settings-ui",
+        requirement: "Provide the settings UI screenshot.",
+        source: { kind: "issue", reference: "issue:42" },
+        expected_kind: "ui_screenshot",
+        location: "docs/ui/settings.png",
+        status: "missing",
+        evidence: ["The declared evidence location is absent."],
+      },
+    ];
+    expectStructurallyValid("ValidationResult", explicitMissing);
+    expectInvariant(
+      "ValidationResult",
+      explicitMissing,
+      "passed_with_unmet_evidence",
+    );
+
+    const legacy = clone(valid);
+    legacy.version = 1;
+    expect(validatePayload(schema("ValidationResult"), legacy).valid).toBe(
+      false,
+    );
+
+    const missingRequirements = clone(valid);
+    delete missingRequirements.evidence_requirements;
+    expect(
+      validatePayload(schema("ValidationResult"), missingRequirements).valid,
+    ).toBe(false);
   });
 
   it("requires current evidence before MergeReadiness can be ready", () => {

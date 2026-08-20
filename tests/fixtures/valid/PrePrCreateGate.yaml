@@ -1,5 +1,5 @@
 schema: PrePrCreateGate
-version: 1
+version: 2
 workspace:
   repository: octo-org/widgets
   path: C:/workspace/github
@@ -7,7 +7,7 @@ workspace:
   head_sha: head_sha-value
 validation:
   schema: ValidationResult
-  version: 1
+  version: 2
   status: passed
   workspace:
     path: null
@@ -19,6 +19,7 @@ validation:
   evaluation: {}
   blockers: []
   warnings: []
+  evidence_requirements: []
   readiness:
     commit_preparation_allowed: null
     draft_pr_preparation_allowed: null
