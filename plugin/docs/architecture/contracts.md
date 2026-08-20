@@ -227,4 +227,4 @@ The main sources are
 [`tests/lib/contract-invariants.ts`](../../../tests/lib/contract-invariants.ts),
 [`tests/contract/`](../../../tests/contract/), and
 [`tests/scenarios/`](../../../tests/scenarios/). The complete test instructions
-remain in [`../../README.md`](../../README.md).
+remain in [repository README](../../../README.md).

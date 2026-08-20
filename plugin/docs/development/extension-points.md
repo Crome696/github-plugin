@@ -6,9 +6,9 @@ the plugin's responsibility boundary, structured handoffs, host compatibility,
 and independent safety gates.
 
 Start with the inventory and synchronization requirements in
-[`AGENTS.md`](../../AGENTS.md), the component procedures in
-[`README.md`](../../README.md), and the contract rules in
-[`shared/schemas/README.md`](../../shared/schemas/README.md).
+[AGENTS.md](../../../AGENTS.md), the component procedures in
+[README.md](../README.md), and the contract rules in
+[shared/schemas/README.md](../../shared/schemas/README.md).
 
 ## Before adding a component
 
@@ -46,8 +46,9 @@ A Skill is the smallest reusable procedure or mutation boundary.
    [`tests/lib/handoff-graph.ts`](../../../tests/lib/handoff-graph.ts).
 7. Add or update contract, invariant, and scenario tests where the Skill
    changes a workflow graph or safety boundary.
-8. Add the Skill to the inventories in [`README.md`](../../README.md) and
-   [`AGENTS.md`](../../AGENTS.md), and add documentation links when needed.
+8. Add the Skill to the component inventory in [README.md](../README.md), and
+   update [AGENTS.md](../../../AGENTS.md) only when repository policy or
+   synchronization requirements change.
 
 The Skill must not silently invoke another Agent, expand a task's scope, or
 implement external project behavior.
@@ -71,8 +72,9 @@ To add one:
    and produced Contracts, forbidden operations, and final handoff.
 3. Add its handoff declaration to
    [`tests/lib/handoff-graph.ts`](../../../tests/lib/handoff-graph.ts).
-4. Add the Agent to the plugin README, `AGENTS.md`, and any applicable
-   Command documentation.
+4. Add the Agent to the component inventory in [README.md](../README.md) and
+   any applicable Command documentation; update the root [AGENTS.md](../../../AGENTS.md)
+   only when repository policy or synchronization requirements change.
 5. Add scenario coverage for happy paths and the Agent's forbidden
    operations.
 
@@ -107,7 +109,7 @@ To add one:
    [`tests/scenarios/lib/workflow-graphs.ts`](../../../tests/scenarios/lib/workflow-graphs.ts).
 4. Add deterministic scenario coverage for identity failures, write gates,
    and forbidden operations.
-5. Update the README and `AGENTS.md` inventories.
+5. Update the component inventory in [README.md](../README.md).
 
 Do not add a portable manifest field for a Command unless the authoritative
 host or portable specification defines that field. Host-specific Command
@@ -151,7 +153,7 @@ Rules define policy, not workflow sequencing. A Rule change must:
   boundary;
 - avoid duplicating another Rule's authority;
 - preserve the secret prohibition and explicit hard-operation boundaries;
-- update the README and `AGENTS.md` inventory;
+- update the component inventory in [README.md](../README.md);
 - update affected Skills, Hooks, fixtures, and tests.
 
 If a new policy is host-neutral, keep its durable semantics in the plugin's
@@ -183,7 +185,8 @@ The implementation pattern is:
    assumption.
 5. Add fail-closed tests for missing, stale, mismatched, and unavailable
    evidence, plus an allow test for the exact valid command.
-6. Update the Hook inventory and host-compatibility documentation.
+6. Update the Hook entry in the component inventory in [README.md](../README.md)
+   and the host-compatibility reference in the root [README.md](../../../README.md).
 
 The portable [`plugin.json`](../../plugin.json) remains free of Hook
 declarations. A post-operation observer must remain read-only and must not
@@ -243,7 +246,7 @@ Host-specific behavior must remain in host-specific files:
 - Codex `AGENTS.md` guidance, plugin metadata, and Hook projections;
 - portable manifest fields only where the relevant specification defines them.
 
-Use the host manifests and the standalone repository README
+Use the host manifests and the standalone [repository README](../../../README.md)
 as the evidence boundary. Do not invent a portable equivalent for an
 unsupported host component.
 
