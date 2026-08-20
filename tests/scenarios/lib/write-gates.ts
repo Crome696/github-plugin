@@ -873,6 +873,32 @@ const preMergeGate = (context: GateContext): GateDecision | null => {
       "PreMergeGate must bind independent exact merge authorization.",
     );
   }
+  const preflight = recordAt(gate, "preflight");
+  const pullRequest = recordAt(gate, "pull_request");
+  if (
+    !preflight ||
+    stringAt(preflight, "live_head_sha") !== context.scenario.target.head_sha ||
+    stringAt(preflight, "live_base_sha") !== context.scenario.target.base_sha ||
+    stringAt(preflight, "base_branch") !== stringAt(pullRequest, "base_branch") ||
+    [
+      "target_match",
+      "open_state",
+      "non_draft",
+      "head_sha_match",
+      "base_branch_match",
+      "base_sha_match",
+      "mergeability",
+      "reviews_current",
+      "checks_current",
+      "method_allowed",
+      "authorization_match",
+    ].some((field) => stringAt(preflight, field) !== "pass")
+  ) {
+    return decision(
+      "premerge_preflight_mismatch",
+      "PreMergeGate must bind a passing final live preflight for the current pull-request and base identities.",
+    );
+  }
   const readiness = recordAt(gate, "readiness");
   if (
     stringAt(readiness, "schema") !== "MergeReadiness" ||

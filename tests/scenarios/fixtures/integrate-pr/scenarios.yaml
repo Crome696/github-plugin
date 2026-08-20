@@ -877,6 +877,7 @@ scenarios:
       repository: *repo
       pull_request_number: *pr
       head_sha: *head
+      base_sha: *base
       exact: true
     facts:
       worktree_clean: true
@@ -1053,6 +1054,7 @@ scenarios:
       repository: *repo
       pull_request_number: *pr
       head_sha: *head
+      base_sha: *base
       exact: true
     facts:
       worktree_clean: true

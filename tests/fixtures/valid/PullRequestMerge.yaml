@@ -70,6 +70,11 @@ readiness:
     failure: null
 preflight:
   checked_at: '2026-01-01T00:00:00.000Z'
+  repository: octo-org/widgets
+  pull_request_number: 1
+  pull_request_url: https://github.com/octo-org/widgets
+  head_branch: head_branch-value
+  base_branch: base_branch-value
   live_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   live_base_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   target_match: pass
@@ -83,7 +88,7 @@ preflight:
   checks_current: pass
   method_allowed: pass
   authorization_match: pass
-  evidence: []
+  evidence: [The final live merge preflight was verified for the exact target.]
 result:
   attempted: false
   api_operation: api_operation-value

@@ -312,6 +312,8 @@ invariants:
   - Empty means a source was retrieved successfully and contained no entries; unavailable means retrieval or interpretation failed.
   - Missing, unavailable, ambiguous, stale, partially paginated, or mixed-identity policy or discussion evidence cannot produce status complete.
   - The exact required-check set and approval requirements come only from the recorded policy sources; no requirement is invented when policy is unavailable.
+  - "policy.approvals.approvals contains only current, non-dismissed effective approvals; dismissals is retained as evidence and never contributes to the effective approval count."
+  - "policy.approvals.change_requests contains only currently active change requests; resolved or superseded requests are not counted as active blockers."
   - Thread disposition is evidence-backed and distinguishes blocking, nonblocking, and uncertain states without model-only interpretation in hooks.
   - Merge-method evidence is required only when readiness uses merge-method requirements; otherwise merge_methods.status is not_used.
   - The snapshot is evidence, not merge authorization.

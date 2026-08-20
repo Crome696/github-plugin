@@ -350,7 +350,7 @@ const validateValidationResult = (
 };
 
 const isFullSha = (value: unknown): value is string =>
-  typeof value === "string" && /^[0-9a-f]{40,64}$/i.test(value);
+  typeof value === "string" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(value);
 
 const isNonNegativeInteger = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value) && value >= 0;
@@ -849,6 +849,215 @@ const validatePullRequestMerge = (
       ),
     );
   }
+  const pullRequest = objectAt(payload.pull_request, "$.pull_request");
+  const preflight = objectAt(payload.preflight, "$.preflight");
+  const expectedHead = payload.expected_head_sha;
+  const expectedBase = payload.expected_base_sha;
+  const requiredPassFields = [
+    "target_match",
+    "open_state",
+    "non_draft",
+    "head_sha_match",
+    "base_branch_match",
+    "base_sha_match",
+    "mergeability",
+    "reviews_current",
+    "checks_current",
+    "method_allowed",
+    "authorization_match",
+  ];
+  if (
+    !isRecord(pullRequest) ||
+    !isRecord(preflight) ||
+    !isFullSha(expectedHead) ||
+    !isFullSha(expectedBase) ||
+    preflight.repository !== payload.repository ||
+    preflight.pull_request_number !== pullRequest.number ||
+    preflight.pull_request_url !== pullRequest.url ||
+    preflight.head_branch !== pullRequest.head_branch ||
+    preflight.base_branch !== pullRequest.base_branch ||
+    !isFullSha(preflight.live_head_sha) ||
+    preflight.live_head_sha.toLowerCase() !== expectedHead.toLowerCase() ||
+    !isFullSha(preflight.live_base_sha) ||
+    preflight.live_base_sha.toLowerCase() !== expectedBase.toLowerCase()
+  ) {
+    issues.push(
+      issue(
+        "merge_preflight_identity_mismatch",
+        "$.preflight",
+        "An approved PullRequestMerge must carry the exact final live preflight identity.",
+      ),
+    );
+  }
+  for (const field of requiredPassFields) {
+    if (preflight?.[field] !== "pass") {
+      issues.push(
+        issue(
+          "merge_preflight_not_pass",
+          `$.preflight.${field}`,
+          "Every final live PullRequestMerge preflight condition must be pass.",
+        ),
+      );
+    }
+  }
+  if (!isNonEmptyStringList(preflight?.evidence)) {
+    issues.push(
+      issue(
+        "merge_preflight_evidence_missing",
+        "$.preflight.evidence",
+        "The final live PullRequestMerge preflight must preserve non-empty evidence.",
+      ),
+    );
+  }
+  return issues;
+};
+
+const validatePreMergeGate = (
+  payload: Record<string, unknown>,
+): InvariantIssue[] => {
+  const issues: InvariantIssue[] = [];
+  if (payload.schema !== "PreMergeGate" || payload.version !== 3) {
+    issues.push(
+      issue(
+        "premerge_gate_version_mismatch",
+        "$.version",
+        "A merge gate must use PreMergeGate version 3 with a final live preflight.",
+      ),
+    );
+  }
+
+  const pullRequest = objectAt(payload.pull_request, "$.pull_request");
+  const workspace = objectAt(payload.workspace, "$.workspace");
+  const preflight = objectAt(payload.preflight, "$.preflight");
+  const expectedHead = payload.expected_head_sha;
+  const expectedBase = payload.expected_base_sha;
+  if (
+    !isFullSha(expectedHead) ||
+    !isFullSha(expectedBase) ||
+    !isRecord(pullRequest) ||
+    typeof pullRequest.base_branch !== "string" ||
+    !isRecord(preflight)
+  ) {
+    issues.push(
+      issue(
+        "premerge_preflight_incomplete",
+        "$.preflight",
+        "PreMergeGate v3 must bind one complete live preflight to the exact PR and head/base revisions.",
+      ),
+    );
+    return issues;
+  }
+
+  if (
+    !isIsoTimestamp(preflight.checked_at) ||
+    typeof preflight.repository !== "string" ||
+    preflight.repository !== workspace?.repository ||
+    preflight.pull_request_number !== pullRequest.number ||
+    typeof preflight.pull_request_url !== "string" ||
+    preflight.pull_request_url !== pullRequest.url ||
+    preflight.head_branch !== pullRequest.head_branch ||
+    !isFullSha(preflight.live_head_sha) ||
+    preflight.live_head_sha.toLowerCase() !== expectedHead.toLowerCase() ||
+    !isFullSha(preflight.live_base_sha) ||
+    preflight.live_base_sha.toLowerCase() !== expectedBase.toLowerCase() ||
+    preflight.base_branch !== pullRequest.base_branch
+  ) {
+    issues.push(
+      issue(
+        "premerge_preflight_identity_mismatch",
+        "$.preflight",
+        "The final preflight must carry the exact live repository, PR, branches, head, base, and base branch from the gate identity.",
+      ),
+    );
+  }
+
+  const requiredPassFields = [
+    "target_match",
+    "open_state",
+    "non_draft",
+    "head_sha_match",
+    "base_branch_match",
+    "base_sha_match",
+    "mergeability",
+    "reviews_current",
+    "checks_current",
+    "method_allowed",
+    "authorization_match",
+  ];
+  for (const field of requiredPassFields) {
+    if (preflight[field] !== "pass") {
+      issues.push(
+        issue(
+          "premerge_preflight_not_pass",
+          `$.preflight.${field}`,
+          "Every final live merge preflight condition must be pass before the gate is consumed.",
+        ),
+      );
+    }
+  }
+  if (!isNonEmptyStringList(preflight.evidence)) {
+    issues.push(
+      issue(
+        "premerge_preflight_evidence_missing",
+        "$.preflight.evidence",
+        "The final preflight must preserve non-empty source and provenance evidence.",
+      ),
+    );
+  }
+
+  const readiness = objectAt(payload.readiness, "$.readiness");
+  if (
+    readiness?.schema !== "MergeReadiness" ||
+    readiness.version !== 3 ||
+    readiness.status !== "ready" ||
+    !isFullSha(readiness.head_sha) ||
+    readiness.head_sha.toLowerCase() !== expectedHead.toLowerCase()
+  ) {
+    issues.push(
+      issue(
+        "premerge_readiness_mismatch",
+        "$.readiness",
+        "PreMergeGate v3 must carry current version-3 ready MergeReadiness bound to the expected head.",
+      ),
+    );
+  }
+  const observedAt = objectAt(
+    objectAt(payload.readiness, "$.readiness")?.readiness_evidence,
+    "$.readiness.readiness_evidence",
+  )?.observed_at;
+  if (
+    isIsoTimestamp(preflight.checked_at) &&
+    isIsoTimestamp(payload.written_at) &&
+    isIsoTimestamp(observedAt)
+  ) {
+    if (Date.parse(preflight.checked_at) < Date.parse(observedAt)) {
+      issues.push(
+        issue(
+          "premerge_preflight_before_snapshot",
+          "$.preflight.checked_at",
+          "The final preflight must be captured after the embedded readiness snapshot.",
+        ),
+      );
+    }
+    if (Date.parse(preflight.checked_at) > Date.parse(payload.written_at)) {
+      issues.push(
+        issue(
+          "premerge_preflight_after_gate",
+          "$.preflight.checked_at",
+          "The gate must be written immediately after, not before, its final preflight.",
+        ),
+      );
+    }
+    if (Date.parse(preflight.checked_at) - Date.parse(observedAt) > 60_000) {
+      issues.push(
+        issue(
+          "premerge_preflight_snapshot_stale",
+          "$.preflight.checked_at",
+          "The final preflight may not reuse a readiness snapshot outside the freshness window.",
+        ),
+      );
+    }
+  }
   return issues;
 };
 
@@ -1029,6 +1238,8 @@ export const validateContractInvariants = (
       return validateMergeReadiness(payload);
     case "PullRequestMerge":
       return validatePullRequestMerge(payload);
+    case "PreMergeGate":
+      return validatePreMergeGate(payload);
     case "PullRequestReady":
       return validatePullRequestReady(payload);
     case "CleanupResult":

@@ -401,23 +401,53 @@ const synchronizeScenarioHandoffs = (
     const handoff = handoffs.get(name);
     if (!isRecord(handoff)) continue;
     const nestedReadiness = handoff.readiness;
-    if (!isRecord(nestedReadiness)) continue;
-    delete nestedReadiness.pull_request_number;
-    delete nestedReadiness.assessed_head_sha;
-    if (Array.isArray(nestedReadiness.evidence)) {
-      nestedReadiness.evidence = {
-        head_sha: nestedReadiness.head_sha ?? target.head_sha,
-        status: "complete",
-        sources: [
-          {
-            name: "readiness-snapshot",
-            status: "loaded",
-            evidence: ["Current readiness is bound to the rebased head."],
-          },
-        ],
-      };
+    if (isRecord(nestedReadiness)) {
+      delete nestedReadiness.pull_request_number;
+      delete nestedReadiness.assessed_head_sha;
+      if (Array.isArray(nestedReadiness.evidence)) {
+        nestedReadiness.evidence = {
+          head_sha: nestedReadiness.head_sha ?? target.head_sha,
+          status: "complete",
+          sources: [
+            {
+              name: "readiness-snapshot",
+              status: "loaded",
+              evidence: ["Current readiness is bound to the rebased head."],
+            },
+          ],
+        };
+      }
+      synchronizeScenarioReadinessSnapshot(nestedReadiness, target);
     }
-    synchronizeScenarioReadinessSnapshot(nestedReadiness, target);
+    if (name === "PullRequestMerge" || name === "PreMergeGate") {
+      const preflight = handoff.preflight;
+      const pullRequest = handoff.pull_request;
+      if (isRecord(preflight)) {
+        if (isRecord(pullRequest)) {
+          preflight.repository =
+            pullRequest.repository ?? handoff.repository ?? target.repository;
+          preflight.pull_request_number = pullRequest.number;
+          preflight.pull_request_url = pullRequest.url;
+          preflight.head_branch = pullRequest.head_branch;
+          preflight.base_branch = pullRequest.base_branch;
+        }
+        if (typeof target.head_sha === "string") {
+          preflight.live_head_sha = target.head_sha;
+        } else if (typeof handoff.expected_head_sha === "string") {
+          preflight.live_head_sha = handoff.expected_head_sha;
+        }
+        if (typeof target.base_sha === "string") {
+          preflight.live_base_sha = target.base_sha;
+        } else if (typeof handoff.expected_base_sha === "string") {
+          preflight.live_base_sha = handoff.expected_base_sha;
+        }
+        if (typeof target.base_branch === "string") {
+          preflight.base_branch = target.base_branch;
+        } else if (isRecord(pullRequest) && typeof pullRequest.base_branch === "string") {
+          preflight.base_branch = pullRequest.base_branch;
+        }
+      }
+    }
   }
 };
 

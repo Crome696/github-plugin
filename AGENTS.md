@@ -22,12 +22,12 @@ part of the installed plugin.
 
 - Plugin name: `github`
 - Marketplace name: `github-plugin`
-- Package version: `0.3.113`
+- Package version: `0.3.114`
 - License: MIT
 - Homepage: https://github.com/Crome696/github-plugin
 - Default branch: `master`
 
-Keep version `0.3.113` synchronized across:
+Keep version `0.3.114` synchronized across:
 
 - `plugin/plugin.json`
 - `plugin/.cursor-plugin/plugin.json`

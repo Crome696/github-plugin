@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.114
+
+- Required exact full-head compare-and-set protection for every supported
+  pull-request merge command and upgraded the local `PreMergeGate` to version 3
+  with final live preflight identity and provenance.
+- Made the pre-merge Hook evaluate current S03 required-check, approval, and
+  review-thread evidence from the embedded immutable snapshot, including
+  evidence-backed nonblocking outdated threads, without acquiring live GitHub
+  state.
+- Added fail-closed runtime, contract, fixture, and cross-host coverage for
+  missing or altered head guards, changed policy, incomplete pagination, and
+  ambiguous thread evidence.
+
 ## 0.3.113
 
 - Added immutable version-1 `PullRequestReadinessEvidence` snapshots bound to

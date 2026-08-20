@@ -10,7 +10,9 @@ Merge exactly one GitHub pull request through the GitHub pull-request merge
 operation and return a version-2
 [`PullRequestMerge`](../../shared/schemas/PullRequestMerge.yaml) result.
 This Skill is explicitly invoked. A `MergeReadiness.status: ready` result is
-diagnostic evidence and never invokes or authorizes this Skill.
+diagnostic evidence and never invokes or authorizes this Skill. The final S03
+reader chain is rebuilt immediately before the merge gate; an older readiness
+summary is never treated as current policy.
 
 ## Boundaries
 
@@ -75,6 +77,10 @@ is absent, malformed, stale, or inconsistent:
    or the exact final user or repository-policy authorization. If repository
    policy permits several methods but does not choose one, the authorization
    must choose one.
+8. The final S03 reader chain has produced one complete, current,
+   identity-matched `PullRequestReadinessEvidence` snapshot after the last
+   live PR/base preflight. Required checks, approval thresholds, change
+   requests, and thread dispositions are evaluated from that snapshot.
 
 Read the applicable repository instructions, especially the target
 repository's `AGENTS.md`, before deciding whether a repository-policy
@@ -117,7 +123,7 @@ endpoint, and relevant returned field for each check.
    Refresh required-check policy and outcomes, approval policy and reviews,
    required open-thread evidence, mergeability/conflicts, and required linked
    issue coverage. Treat unavailable policy evidence as a block, never as a
-   pass.
+   pass. Do not reuse a prior `MergeReadiness` summary as the policy source.
 6. Confirm the selected merge method is both currently enabled by GitHub and
    selected by the exact user or repository-policy authorization or applicable
    documented repository policy.
@@ -150,13 +156,16 @@ operation, stop and obtain new explicit final approval.
 
 Then perform one minimal live read of the PR. Verify it remains open, non-Draft,
 mergeable, and at the expected head SHA, expected base SHA, and base branch.
-If anything differs from the passed preflight, return `blocked` without
-writing.
+The merge command must carry the same full expected head SHA through the
+supported CLI `--match-head-commit` or API `sha` compare-and-set field. If the
+platform cannot express that exact head binding, return `blocked` without
+writing. If anything differs from the passed preflight, return `blocked`
+without writing.
 
 ## Local pre-merge gate
 
 After the final live race check and immediately before the one GitHub merge
-write, write exactly one current version-2
+write, write exactly one current version-3
 [`PreMergeGate`](../../shared/schemas/PreMergeGate.yaml) snapshot to
 `.cursor/hooks/state/pre-merge.json`. The state directory is local-only and is
 already ignored by the repository. Do not reuse an old, partial, stale, or
@@ -169,7 +178,7 @@ The snapshot must preserve the exact values from the approved
 ```json
 {
   "schema": "PreMergeGate",
-  "version": 2,
+  "version": 3,
   "workspace": {
     "repository": "<BranchWorkspace.repository>",
     "path": "<BranchWorkspace.worktree_path>"
@@ -185,6 +194,7 @@ The snapshot must preserve the exact values from the approved
   "expected_base_sha": "<PullRequestMerge.expected_base_sha>",
   "merge": "<exact PullRequestMerge.merge>",
   "authorization": "<exact PullRequestMerge.authorization>",
+  "preflight": "<exact final PullRequestMerge.preflight>",
   "readiness": "<current version-3 MergeReadiness with embedded version-1 PullRequestReadinessEvidence>",
   "written_at": "<current ISO-8601 timestamp>"
 }
@@ -215,8 +225,8 @@ Perform exactly one GitHub pull-request merge with:
 
 Use the GitHub API or an equivalent `gh pr merge` invocation. Do not add an
 auto-merge, merge-queue, admin-bypass, local-Git, force, review, or cleanup
-option. If the platform cannot enforce the expected head SHA, the immediately
-preceding final read is mandatory and the limitation must be recorded.
+option. The API/CLI invocation is allowed only when it carries the exact
+expected-head compare-and-set; unsupported forms fail closed.
 
 If the merge command errors, times out, or reports an ambiguous result, do not
 retry. Perform exactly one read-only PR lookup:

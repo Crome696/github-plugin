@@ -173,17 +173,30 @@ fields:
             type: object | null
   preflight:
     type: object
-    required: [checked_at, live_head_sha, live_base_sha, target_match, open_state, non_draft, head_sha_match, base_branch_match, base_sha_match, mergeability, reviews_current, checks_current, method_allowed, authorization_match, evidence]
+    required: [checked_at, repository, pull_request_number, pull_request_url, head_branch, live_head_sha, live_base_sha, base_branch, target_match, open_state, non_draft, head_sha_match, base_branch_match, base_sha_match, mergeability, reviews_current, checks_current, method_allowed, authorization_match, evidence]
     fields:
       checked_at:
         type: string | null
         format: iso-8601
+      repository:
+        type: string | null
+        format: owner/repository
+      pull_request_number:
+        type: integer | null
+        minimum: 1
+      pull_request_url:
+        type: string | null
+        format: uri
+      head_branch:
+        type: string | null
       live_head_sha:
         type: string | null
         format: full git commit SHA
       live_base_sha:
         type: string | null
         format: full git commit SHA
+      base_branch:
+        type: string | null
       target_match:
         type: enum
         values: [pass, fail, unknown]
