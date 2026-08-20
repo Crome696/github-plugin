@@ -8,7 +8,7 @@ copied into the plugin and are never silently invented.
 
 This boundary is normative in
 [`github-scope-contract.mdc`](../../rules/github-scope-contract.mdc) and
-[`AGENTS.md`](../../AGENTS.md).
+[AGENTS.md](../../../AGENTS.md).
 
 ## Capability firewall
 

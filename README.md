@@ -71,8 +71,6 @@ plugin/
 ├── rules/
 ├── shared/schemas/
 ├── skills/
-├── AGENTS.md
-├── README.md
 └── plugin.json
 ```
 
@@ -120,7 +118,9 @@ The script invokes the installable generator at
 When changing plugin identity, keep version `0.3.113` synchronized across the
 four manifests under `plugin/` and the three root Marketplace manifests. When
 changing a Skill, Agent, Command, Rule, Hook, or Shared Contract, update the
-corresponding plugin inventory and run the typecheck and full test suite.
+technical component inventory in [`plugin/docs/README.md`](plugin/docs/README.md)
+and run the typecheck and full test suite. Repository policy and synchronization
+requirements remain in [`AGENTS.md`](AGENTS.md).
 
 ## Security and safety boundaries
 

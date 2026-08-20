@@ -74,7 +74,7 @@ The following responsibilities are deliberately outside this plugin:
 
 These boundaries are defined by
 [`github-scope-contract.mdc`](../../rules/github-scope-contract.mdc) and
-[`AGENTS.md`](../../AGENTS.md). External capability resolution is described in
+[AGENTS.md](../../../AGENTS.md). External capability resolution is described in
 [External capabilities](external-capabilities.md).
 
 ## Layered architecture
@@ -177,9 +177,9 @@ The Skills are grouped by responsibility:
 | Review and feedback | Detect, deduplicate, classify, collect, resolve, validate, summarize, compose, publish, reply to, and resolve review findings or threads. | [`detect-review-findings`](../../skills/detect-review-findings/SKILL.md), [`collect-review-feedback`](../../skills/collect-review-feedback/SKILL.md) |
 | Integration and cleanup | Fetch a target branch, analyze and perform an approved rebase, validate the result, merge, verify linked-issue closure, delete a merged branch, and clean a worktree. | [`rebase-branch`](../../skills/rebase-branch/SKILL.md), [`merge-pull-request`](../../skills/merge-pull-request/SKILL.md) |
 
-The complete Skill inventory and activation behavior remain in the plugin
-[`README.md`](../../README.md). The individual `SKILL.md` files are the
-authoritative procedures.
+The concise Skill inventory and activation routing remain in the plugin
+[README.md](../README.md). The individual SKILL.md files are the authoritative
+procedures.
 
 ### Rules
 
@@ -279,7 +279,7 @@ events are host-specific. Cursor and Codex therefore have separate Hook
 projections. The documented Codex plugin manifest does not register the
 Cursor-style Commands and Agents; the portable package must not invent
 equivalent native fields. The full evidence and limitations are recorded in
-the host manifests and the standalone repository README.
+the host manifests and the standalone [repository README](../../../README.md).
 
 ## Design invariants
 
