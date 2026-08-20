@@ -96,12 +96,16 @@ Perform every check as close as possible to the write.
 
 ## Deterministic pre-ready gate
 
-Immediately before `gh pr ready`, write a current local version-1
+Immediately before `gh pr ready`, write a current local version-2
 [`PrePrReadyGate`](../../shared/schemas/PrePrReadyGate.yaml) to
-`.cursor/hooks/state/pre-pr-ready.json`. The snapshot must contain the exact
+`.github/github-plugin/state/pre-pr-ready.json` through the shared
+`plugin/hooks/lib/gate-state.mjs` writer. The snapshot must contain the exact
 repository, pull request, expected head SHA, `is_draft: true`, unique linked
-issue, authorized `reviewers.add` set, and independent authorization flags.
-Do not stage or commit that ignored path.
+issue, authorized `reviewers.add` set, independent authorization flags, and a
+fresh `GateLifecycle` authority with operation `pre-pr-ready`. The five-minute
+TTL, maximum 60-second future skew, nonce, and non-overwriting atomic publish
+are mandatory; the Hook claims the gate before semantic validation. Do not
+stage or commit that ignored path.
 
 The host `pre-pr-ready` Hook must fail closed unless the gate, live identity,
 current Draft state, unique issue, command, and authorized reviewer set match.
@@ -139,6 +143,14 @@ The payload file must contain exactly two keys and no others:
   "team_reviewers": ["team-slug"]
 }
 ```
+
+Before this separate reviewer mutation, write a second version-2
+`PrePrReadyGate` to the same canonical path with `is_draft: false`, a fresh
+nonce, and lifecycle operation `pre-reviewer-request`. Never reuse the
+`pre-pr-ready` authority for the reviewer POST. If the authorized reviewer set
+is empty, do not write this second gate and do not issue a reviewer request.
+The reviewer gate is independently claimed and consumed, so a failed POST or
+process restart cannot replay it.
 
 Gate entries with `kind: user` map to `reviewers`; entries with
 `kind: team` use the `<organization>/<team-slug>` form and map only the slug

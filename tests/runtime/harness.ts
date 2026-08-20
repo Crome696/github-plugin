@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   existsSync,
@@ -65,6 +65,33 @@ const credentialsToRemove = [
 
 const sha = (digit: string) => digit.repeat(40);
 const now = () => new Date(Date.now() - 1_000).toISOString();
+
+const authorityLifecycle = (operation: string) => {
+  const issuedAt = Date.now() - 1_000;
+  return {
+    schema: "GateLifecycle",
+    version: 1,
+    operation,
+    nonce: randomUUID(),
+    state: "authority",
+    authorizes: true,
+    issued_at: new Date(issuedAt).toISOString(),
+    expires_at: new Date(issuedAt + 5 * 60 * 1000).toISOString(),
+    consumed_at: null,
+    receipt_expires_at: null,
+  };
+};
+
+const receiptLifecycle = (authority: Record<string, unknown>) => {
+  const consumedAt = Date.now() - 1_000;
+  return {
+    ...authority,
+    state: "receipt",
+    authorizes: false,
+    consumed_at: new Date(consumedAt).toISOString(),
+    receipt_expires_at: new Date(consumedAt + 5 * 60 * 1000).toISOString(),
+  };
+};
 
 const isWindows = process.platform === "win32";
 const pathEnvironmentKey = () =>
@@ -361,18 +388,30 @@ const baseChildEnvironment = (context: RuntimeContext): NodeJS.ProcessEnv => {
 };
 
 const writeGate = (context: RuntimeContext, hook: HookName, gate: unknown) => {
-  const path = join(context.repositoryRoot, ".cursor", "hooks", "state", `${hook}.json`);
+  const fileName = hook === "post-merge" ? "post-merge-receipt.json" : `${hook}.json`;
+  const path = join(context.repositoryRoot, ".github", "github-plugin", "state", fileName);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(gate, null, 2), "utf8");
 };
 
 const removeGate = (context: RuntimeContext, hook: HookName) => {
-  const path = join(context.repositoryRoot, ".cursor", "hooks", "state", `${hook}.json`);
-  if (existsSync(path)) unlinkSync(path);
+  const fileNames = hook === "post-merge"
+    ? ["post-merge-receipt.json"]
+    : [`${hook}.json`];
+  for (const fileName of fileNames) {
+    const path = join(context.repositoryRoot, ".github", "github-plugin", "state", fileName);
+    if (existsSync(path)) unlinkSync(path);
+  }
 };
 
 const gatePath = (context: RuntimeContext, hook: HookName) =>
-  join(context.repositoryRoot, ".cursor", "hooks", "state", `${hook}.json`);
+  join(
+    context.repositoryRoot,
+    ".github",
+    "github-plugin",
+    "state",
+    hook === "post-merge" ? "post-merge-receipt.json" : `${hook}.json`,
+  );
 
 export const mutateGate = (
   context: RuntimeContext,
@@ -517,7 +556,8 @@ const pullRequestIdentity = (context: RuntimeContext) => ({
 
 const preCommitGate = (context: RuntimeContext) => ({
   schema: "PreCommitGate",
-  version: 3,
+  version: 4,
+  lifecycle: authorityLifecycle("pre-commit"),
   workspace: {
     repository: context.repository,
     path: context.repositoryRoot,
@@ -573,7 +613,8 @@ const prePrCreateGate = (context: RuntimeContext) => {
   const body = readFileSync(context.bodyPath, "utf8");
   return {
     schema: "PrePrCreateGate",
-    version: 2,
+    version: 3,
+    lifecycle: authorityLifecycle("pre-pr-create"),
     workspace: {
       repository: context.repository,
       path: context.repositoryRoot,
@@ -710,7 +751,8 @@ const prePrCreateGate = (context: RuntimeContext) => {
 
 const preReviewSubmitGate = (context: RuntimeContext) => ({
   schema: "PreReviewSubmitGate",
-  version: 1,
+  version: 2,
+  lifecycle: authorityLifecycle("pre-review-submit"),
   workspace: {
     repository: context.repository,
     path: context.repositoryRoot,
@@ -769,9 +811,10 @@ const preReviewSubmitGate = (context: RuntimeContext) => ({
   written_at: now(),
 });
 
-const preRebaseGate = (context: RuntimeContext) => ({
+const preRebaseGate = (context: RuntimeContext, operation = "pre-rebase-start") => ({
   schema: "PreRebaseGate",
-  version: 1,
+  version: 2,
+  lifecycle: authorityLifecycle(operation),
   workspace: {
     repository: context.repository,
     path: context.repositoryRoot,
@@ -822,9 +865,10 @@ const preRebaseGate = (context: RuntimeContext) => ({
   written_at: now(),
 });
 
-const prePrReadyGate = (context: RuntimeContext) => ({
+const prePrReadyGate = (context: RuntimeContext, reviewerRequest = false) => ({
   schema: "PrePrReadyGate",
-  version: 1,
+  version: 2,
+  lifecycle: authorityLifecycle(reviewerRequest ? "pre-reviewer-request" : "pre-pr-ready"),
   workspace: {
     repository: context.repository,
     path: context.repositoryRoot,
@@ -835,7 +879,7 @@ const prePrReadyGate = (context: RuntimeContext) => ({
     head_branch: context.branch,
   },
   expected_head_sha: context.headSha,
-  is_draft: true,
+  is_draft: !reviewerRequest,
   linked_issue: { ...issueIdentity(context), unique: true },
   reviewers: { add: [] },
   authorization: {
@@ -939,7 +983,8 @@ const preMergeGate = (context: RuntimeContext) => {
   const preflightCheckedAt = now();
   return {
   schema: "PreMergeGate",
-  version: 3,
+  version: 4,
+  lifecycle: authorityLifecycle("pre-merge"),
   workspace: {
     repository: context.repository,
     path: context.repositoryRoot,
@@ -1028,6 +1073,14 @@ const preMergeGate = (context: RuntimeContext) => {
   };
 };
 
+const preMergeReceipt = (context: RuntimeContext) => {
+  const gate = preMergeGate(context);
+  return {
+    ...gate,
+    lifecycle: receiptLifecycle(gate.lifecycle as Record<string, unknown>),
+  };
+};
+
 export const buildGate = (
   context: RuntimeContext,
   hook: HookName,
@@ -1048,16 +1101,16 @@ export const buildGate = (
       gate = preReviewSubmitGate(context);
       break;
     case "pre-rebase":
-      gate = preRebaseGate(context);
+      gate = preRebaseGate(context, options.rebaseOperation ?? "pre-rebase-start");
       break;
     case "pre-pr-ready":
-      gate = prePrReadyGate(context);
+      gate = prePrReadyGate(context, options.reviewerRequest === true);
       break;
     case "pre-merge":
       gate = preMergeGate(context);
       break;
     case "post-merge":
-      gate = preMergeGate(context);
+      gate = preMergeReceipt(context);
       break;
   }
   if (options.stale) {
@@ -1517,11 +1570,13 @@ const alterGraphqlRule = (rules: FakeCommandRule[], mode: RuntimeMode) => {
 
 const prepareMode = (context: RuntimeContext, hook: HookName, mode: RuntimeMode) => {
   removeGate(context, hook);
+  if (hook === "pre-merge") removeGate(context, "post-merge");
   if (mode !== "irrelevant" && mode !== "missing-gate") {
     writeGate(context, hook, buildGate(context, hook, {
       malformed: mode === "malformed-gate",
       stale: mode === "stale-gate",
       mismatched: mode === "mismatched-gate",
+      reviewerRequest: mode.startsWith("reviewer-"),
     }));
   }
   const rules = rulesFor(context, hook, mode);

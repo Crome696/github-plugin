@@ -40,13 +40,17 @@ MUST:
 - Record the validation evidence and the exact committed path scope in the
   commit handoff. Do not claim checks passed when they were skipped, waived,
   unavailable, or unsuccessful.
-- Before the final commit status check, create one local version-3
-  `PreCommitGate` snapshot at `.cursor/hooks/state/pre-commit.json` containing
-  the exact approved `CommitProposal`, complete version-2 `ValidationResult`,
-  verified worktree identity, and pre-commit `HEAD`. Version-1 and version-2
-  gate snapshots fail closed. The deterministic plugin hook must accept only
-  that current, identity-matched snapshot; the ignored state path must never be
-  staged or committed.
+- Before the final commit status check, create one local version-4
+  `PreCommitGate` snapshot at `.github/github-plugin/state/pre-commit.json`
+  containing the exact approved `CommitProposal`, complete version-2
+  `ValidationResult`, verified worktree identity, pre-commit `HEAD`, and a
+  fresh version-1 `GateLifecycle` authority for `pre-commit`. Use the shared
+  lifecycle writer for same-directory temporary publication, non-overwriting
+  atomic rename, final-byte reread, five-minute TTL, 60-second future-skew
+  bound, and fresh nonce. The deterministic hook must claim the authority
+  before semantic validation and accept only that current, identity-matched
+  snapshot; the ignored canonical state path must never be staged or
+  committed. Version-1 through version-3 gates fail closed.
 - Apply the global confidential-data boundary from `github-safety.mdc`; a
   commit must never contain secrets or other confidential data.
 

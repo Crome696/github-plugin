@@ -61,13 +61,14 @@ version changes.
 | `ChangeClassification` | Version 1 read-only classification of worktree changes by purpose, component, issue or implementation-plan relationship, and evidence-backed scope alignment for commit planning. |
 | `UnrelatedChangeDetection` | Version 1 read-only detection of unrelated or uncertain changes, necessary technical side effects, evidence and confidence, and commit or pull-request scope gates. |
 | `ValidationResult` | Version 2 evidence-backed implementation-result validation combining plan completion, working-tree inspection, change classification, explicit evidence requirements, scope gates, required checks, blockers, warnings, and diagnostic commit or draft-pull-request readiness. |
-| `PreCommitGate` | Version 3 local-only snapshot binding one AI commit to a verified worktree, exact approved scope, complete version-2 `ValidationResult` evidence, task-scoped authorization, exact message-file bytes, and a cached staged-index fingerprint before the canonical final commit command. |
-| `PreRebaseGate` | Version 1 local-only snapshot binding one exact authorized rebase to a verified pull-request branch, clean worktree, current remote context, unique target base, and full `TargetBranchFetch` evidence before the rebase command. |
-| `PrePrCreateGate` | Version 2 local-only snapshot binding one exact Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed version-2 validation before `gh pr create`. |
-| `PreReviewSubmitGate` | Version 1 local-only snapshot binding one exact AI pull-request review publication to structurally complete, deduplicated, explicitly confirmed, and current review evidence before the review write. |
-| `PreMergeGate` | Version 3 local-only snapshot binding one exact approved pull-request merge to a final live preflight, version-3 `MergeReadiness` with an embedded immutable version-1 readiness evidence snapshot, and explicit merge authorization before the merge write. |
+| `GateLifecycle` | Version 1 host-neutral authority or non-authorizing receipt with one operation-specific nonce, exact five-minute expiry, maximum 60-second future skew, persistent consumption, and receipt-expiry fields. |
+| `PreCommitGate` | Version 4 local-only snapshot binding one AI commit to a verified worktree, exact approved scope, complete version-2 `ValidationResult` evidence, task-scoped authorization, exact message-file bytes, cached staged-index fingerprint, and a one-shot lifecycle authority before the canonical final commit command. |
+| `PreRebaseGate` | Version 2 local-only snapshot binding one exact authorized rebase phase to a verified pull-request branch, clean worktree, current remote context, unique target base, full `TargetBranchFetch` evidence, and a phase-specific one-shot lifecycle authority. |
+| `PrePrCreateGate` | Version 3 local-only snapshot binding one exact Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, passed version-2 validation, and a one-shot lifecycle authority before `gh pr create`. |
+| `PreReviewSubmitGate` | Version 2 local-only snapshot binding one exact AI pull-request review publication to structurally complete, deduplicated, explicitly confirmed, current review evidence, and a one-shot lifecycle authority before the review write. |
+| `PreMergeGate` | Version 4 local-only snapshot binding one exact approved pull-request merge to a final live preflight, version-3 `MergeReadiness` with an embedded immutable version-1 readiness evidence snapshot, explicit merge authorization, and a one-shot lifecycle authority before the merge write. |
 | `PullRequestReady` | Version 1 exact authorization-gated Ready-for-Review intent, optional confirmed reviewer requests, live preflight, and verification for one open Draft pull request with a unique linked issue. |
-| `PrePrReadyGate` | Version 1 local-only snapshot binding one exact Ready-for-Review transition and optional confirmed reviewer set to a current open Draft pull request before `gh pr ready`. |
+| `PrePrReadyGate` | Version 2 local-only snapshot binding one exact Ready-for-Review transition or a separate requested-reviewers POST to a current pull request with a phase-specific one-shot lifecycle authority. |
 | `PostMergeStatus` | Version 1 read-only post-merge status preserving PR and merge-commit verification, expected linked-issue closure, cleanup availability, separate authorization requirements, open actions, and deviations without performing cleanup. |
 | `CommitProposal` | Version 1 intended file scope, English commit message, rationale, validation evidence, explicit authorization state, and verified commit result for the composition and creation workflows. |
 | `BranchPush` | Version 1 verified branch-push result with repository, branch, remote, upstream, local-status, authorization, and post-push verification evidence. |
@@ -101,13 +102,26 @@ post-rebase revisions, implementation scope, and current-head validation
 evidence before returning the updated result.
 
 The explicitly invoked `rebase-branch` Skill produces `BranchRebase` and owns
-only the authorized local rebase. It writes a complete `PreRebaseGate` immediately
-before the bounded Git command; the host Hook consumes that local snapshot and
-never performs the rebase. A conflict remains stopped for a separate
-resolution workflow. The `integration-agent` `integration` mode produces
+only the authorized local rebase. It writes a complete version-2 `PreRebaseGate`
+immediately before the bounded Git command through the common lifecycle writer;
+the host Hook claims that phase-specific authority and never performs the
+rebase. A conflict remains stopped for a separate resolution workflow. The
+`integration-agent` `integration` mode produces
 `PullRequestIntegration`, which preserves the current head at every phase,
   independent hard-operation authorizations, blockers, deferred operations,
 issue-closure verification, and branch/worktree cleanup outcomes.
+
+Every authorizing `Pre*Gate` carries a version-1 `GateLifecycle` object. The
+canonical runtime path is `.github/github-plugin/state/`, shared by Cursor and
+Codex through `hooks/lib/gate-state.mjs`. Owner Skills publish with a flushed,
+same-directory temporary file and non-overwriting atomic operation; Hooks
+claim before semantic validation and persist nonce-consumption markers. A
+five-minute lifecycle TTL and maximum 60-second future skew are independent of
+the domain `written_at` value. Invalid, expired, replayed, malformed, or
+legacy state is quarantined without recursive deletion. A consumed pre-merge
+gate may create one non-authorizing receipt, which `post-merge` consumes and
+removes exactly once. Receipts and consumed markers are not reusable by an
+older plugin version during rollback.
 
 ## Workflow relationships
 
@@ -348,11 +362,12 @@ flowchart LR
   and optional suggestions, includes evidence and an expected correction for
   every included request, and leaves both approval flags false. Publication
   requires a later exact-payload and event-authorization gate.
-- `PreReviewSubmitGate` is written immediately before the review API write. It
-  binds the authorized decision to matching classified and deduplicated findings,
-  explicit finding confirmation, valid locations, blocker-support evidence, and
-  current pull-request freshness. The host hook performs deterministic
-  structural checks only and never reanalyzes or rewrites the review.
+- `PreReviewSubmitGate` is a version-2 one-shot snapshot written immediately
+  before the review API write. It binds the authorized decision to matching
+  classified and deduplicated findings, explicit finding confirmation, valid
+  locations, blocker-support evidence, current pull-request freshness, and a
+  fresh `GateLifecycle` authority. The host hook claims the authority before
+  deterministic structural checks and never reanalyzes or rewrites the review.
 - `submit-pr-review` is the only publication step for an approved
   `ReviewDecision`. It rechecks the live pull-request identity, open state,
   head SHA, and every inline location immediately before publication, preserves
@@ -435,7 +450,7 @@ flowchart LR
   `missing`, or `blocked` outcomes. An empty list means no evidence is
   required; frameworks, filenames, paths, and generated artifact names never
   create requirements.
-- `PreCommitGate` is a local-only, version-3 snapshot written after
+- `PreCommitGate` is a local-only, version-4 snapshot written after
   validation and before the final commit status check. It binds the exact
   `CommitProposal`, complete `ValidationResult`, worktree path, branch,
   pre-commit `HEAD`, approved message-file bytes, and cached staged-index
@@ -443,15 +458,17 @@ flowchart LR
   one standalone direct `git -C <verified-worktree> commit
   --cleanup=verbatim --file=<approved-message-file>` invocation. The hook
   reads the snapshot and current Git state only; it never repairs, stages, or
-  changes the workspace. The ignored state path must never be staged. Version-1
-  and version-2 snapshots fail closed.
-- `PrePrCreateGate` is a local-only, version-2 snapshot written immediately
+  changes the workspace. It carries a fresh lifecycle authority and is claimed
+  before semantic validation, so command failure cannot replay it. The ignored
+  canonical state path must never be staged. Older snapshots fail closed.
+- `PrePrCreateGate` is a local-only, version-3 snapshot written immediately
   before `gh pr create`. It binds the exact `PullRequestDraft`,
   `PullRequestIssueLink`, created `CommitProposal`, verified `BranchPush`,
-  complete passed `ValidationResult`, worktree identity, and expected head
-  SHA. Its deterministic host hook checks the command, live Git and remote
-  branch, exact title and body, required description sections, unique issue
-  link, and open blockers without modifying any content or Git state.
+  complete passed `ValidationResult`, worktree identity, expected head SHA,
+  and a fresh lifecycle authority. Its deterministic host hook claims the
+  authority before checking the command, live Git and remote branch, exact
+  title and body, required description sections, unique issue link, and open
+  blockers without modifying any content or Git state.
 - `CommitProposal` is composition-only while `status` is `draft` or `partial`.
   The `create-commit` Skill accepts only an `approved` proposal with both
   authorization flags true, a verified routine authorization source, stages
@@ -508,20 +525,28 @@ flowchart LR
 - `MergeReadiness` version 3 is a pure deterministic transformation of exactly
   one complete snapshot. It retains that snapshot under `readiness_evidence`
   and never refreshes a source or interprets live policy.
-- `PreMergeGate` is a version-3 local-only snapshot written immediately before
+- `PrePrReadyGate` is a version-2 local-only snapshot with a phase-specific
+  lifecycle operation. The `pre-pr-ready` authority is written and claimed
+  before `gh pr ready`; a non-empty reviewer set requires a second fresh
+  `pre-reviewer-request` authority with `is_draft: false`. Neither authority
+  covers the other mutation.
+- `PreMergeGate` is a version-4 local-only snapshot written immediately before
   the GitHub merge write. It binds the exact pull request, expected head and
   base SHAs, final live preflight, selected method, branch-deletion effect,
-  complete version-3 `MergeReadiness` with its version-1 snapshot, and explicit
-  merge authorization. Its host hook validates the embedded current policy
-  evidence, final preflight, exact Git identity, and command compare-and-set
-  without executing a GitHub or GraphQL live read or authorizing the merge.
+  complete version-3 `MergeReadiness` with its version-1 snapshot, explicit
+  merge authorization, and a fresh lifecycle authority. Its host hook claims
+  the authority before validating the embedded current policy evidence, final
+  preflight, exact Git identity, and command compare-and-set without executing
+  a GitHub or GraphQL live read or authorizing the merge.
 - `PostMergeStatus` is a version-1 read-only result emitted after one observed
-  GitHub pull-request merge. It preserves the live PR state, merge timestamp
+  GitHub pull-request merge and, when available, one consumed non-authorizing
+  pre-merge receipt. It preserves the live PR state, merge timestamp
   and commit, target-branch containment, expected issue closure and
   attribution, local and remote branch/worktree availability, open cleanup
   actions, deviations, and evidence limitations. Every cleanup action requires
   separate exact user or repository-policy authorization; the Hook never performs cleanup, issue closure, or
-  state-file writes.
+  state-file writes; the receipt is consumed and removed exactly once and
+  cannot authorize a replay or cleanup operation.
 - `LinkedIssueClosureVerification` is the version-1 read-only post-merge
   handoff for exactly one pull request and one uniquely linked issue. It keeps
   merge identity, closing intent, GitHub relationship evidence, target branch,

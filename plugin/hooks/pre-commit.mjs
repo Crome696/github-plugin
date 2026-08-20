@@ -3,11 +3,13 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { claimGate, CANONICAL_STATE_RELATIVE_PATH } from "./lib/gate-state.mjs";
 import { loadRepositoryPolicy, policyEnforces } from "./lib/repository-policy.mjs";
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
-const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-commit.json";
-const PRE_COMMIT_GATE_VERSION = 3;
+const GATE_FILE_NAME = "pre-commit.json";
+const GATE_RELATIVE_PATH = `${CANONICAL_STATE_RELATIVE_PATH}${GATE_FILE_NAME}`;
+const PRE_COMMIT_GATE_VERSION = 4;
 const MAX_SCANNED_FILE_BYTES = 25 * 1024 * 1024;
 const STAGED_INDEX_FINGERPRINT_FORMAT =
   "git-diff-cached-raw-z-no-renames-full-index-abbrev-40-v1";
@@ -508,13 +510,9 @@ function parseStatus(output) {
   return entries;
 }
 
-function statePathForRoot(root) {
-  return resolve(root, ...GATE_RELATIVE_PATH.split("/"));
-}
-
 function isStatePath(root, repositoryRelativePath) {
   const candidate = resolve(root, ...repositoryRelativePath.split("/"));
-  return normalizeRelativePath(relative(root, candidate))?.startsWith(".cursor/hooks/state/") ?? false;
+  return normalizeRelativePath(relative(root, candidate))?.startsWith(CANONICAL_STATE_RELATIVE_PATH) ?? false;
 }
 
 function validateRepositoryName(value) {
@@ -1265,13 +1263,11 @@ function evaluate(input) {
 
   const policy = loadRepositoryPolicy(repositoryRoot);
 
-  const gatePath = statePathForRoot(repositoryRoot);
-  let gate;
-  try {
-    gate = JSON.parse(readFileSync(gatePath, "utf8"));
-  } catch {
+  const claim = claimGate(repositoryRoot, GATE_FILE_NAME, "pre-commit");
+  const gate = claim.gate;
+  if (gate === null) {
     return makeDeny(
-      `The local PreCommitGate is missing or unreadable at ${GATE_RELATIVE_PATH}`,
+      `The local PreCommitGate could not be claimed from ${GATE_RELATIVE_PATH}: ${claim.error ?? "unknown lifecycle error"}`,
       "validate-implementation-result and create a fresh PreCommitGate",
     );
   }

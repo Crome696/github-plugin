@@ -2,9 +2,11 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { claimGate, CANONICAL_STATE_RELATIVE_PATH } from "./lib/gate-state.mjs";
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
-const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-pr-ready.json";
+const GATE_FILE_NAME = "pre-pr-ready.json";
+const GATE_RELATIVE_PATH = `${CANONICAL_STATE_RELATIVE_PATH}${GATE_FILE_NAME}`;
 const MAX_GATE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AUTHORIZATION_SOURCES = new Set([
   "explicit_user",
@@ -380,30 +382,15 @@ function parseReviewerArgs(args, findings) {
   return { repository: endpoint.repository, number: endpoint.number, payloadPath: args[4] };
 }
 
-function readGate(repositoryRoot, findings) {
-  const gatePath = resolve(repositoryRoot, ...GATE_RELATIVE_PATH.split("/"));
-  if (!existsSync(gatePath)) {
-    addFinding(
-      findings,
-      `The local PrePrReadyGate is missing at ${GATE_RELATIVE_PATH}.`,
-      "run mark-pr-ready preflight and write a fresh PrePrReadyGate",
-    );
-    return null;
-  }
-  try {
-    const stats = statSync(gatePath);
-    if (!stats.isFile() || stats.size > MAX_GATE_BYTES) {
-      throw new Error("invalid gate");
-    }
-    return JSON.parse(readFileSync(gatePath, "utf8"));
-  } catch {
-    addFinding(
-      findings,
-      `The local PrePrReadyGate is missing, too large, unreadable, or invalid at ${GATE_RELATIVE_PATH}.`,
-      "run mark-pr-ready preflight and write a fresh PrePrReadyGate",
-    );
-    return null;
-  }
+function readGate(repositoryRoot, findings, expectedOperation) {
+  const claim = claimGate(repositoryRoot, GATE_FILE_NAME, expectedOperation);
+  if (claim.gate !== null) return claim.gate;
+  addFinding(
+    findings,
+    `The local PrePrReadyGate could not be claimed from ${GATE_RELATIVE_PATH}: ${claim.error ?? "unknown lifecycle error"}.`,
+    "run the matching mark-pr-ready preflight and write a fresh one-shot PrePrReadyGate",
+  );
+  return null;
 }
 
 function reviewerKey(reviewer) {
@@ -468,12 +455,12 @@ function validateReviewers(reviewers, repository, findings) {
   return add;
 }
 
-function validateGate(gate, repositoryRoot, findings) {
+function validateGate(gate, repositoryRoot, findings, expectedOperation) {
   if (!isRecord(gate)) {
     addFinding(
       findings,
       "PrePrReadyGate is not a JSON object.",
-      "write a complete version-1 PrePrReadyGate snapshot",
+      "write a complete version-2 PrePrReadyGate snapshot",
     );
     return null;
   }
@@ -484,11 +471,11 @@ function validateGate(gate, repositoryRoot, findings) {
       "write the Ready-for-Review gate, not a different host gate",
     );
   }
-  if (gate.version !== 1) {
+  if (gate.version !== 2) {
     addFinding(
       findings,
-      "PrePrReadyGate.version is not 1.",
-      "write a current version-1 PrePrReadyGate",
+      "PrePrReadyGate.version is not 2.",
+      "write a current version-2 PrePrReadyGate",
     );
   }
   if (!isIsoTimestamp(gate.written_at)) {
@@ -550,11 +537,14 @@ function validateGate(gate, repositoryRoot, findings) {
       "bind the current pull-request head SHA",
     );
   }
-  if (gate.is_draft !== true) {
+  const expectedDraft = expectedOperation === "pre-pr-ready";
+  if (gate.is_draft !== expectedDraft) {
     addFinding(
       findings,
-      "PrePrReadyGate.is_draft must be true for a Ready-for-Review write.",
-      "mark ready only from an authorized current Draft snapshot",
+      `PrePrReadyGate.is_draft must be ${expectedDraft ? "true" : "false"} for ${expectedOperation ?? "this"}.`,
+      expectedDraft
+        ? "mark ready only from an authorized current Draft snapshot"
+        : "request reviewers only from an authorized non-Draft snapshot",
     );
   }
   const linkedIssue = gate.linked_issue;
@@ -962,11 +952,14 @@ function evaluate(input) {
     return makeDeny(findings);
   }
 
-  const gate = readGate(repositoryRoot, findings);
+  const expectedOperation = spec.kind === "pr-ready"
+    ? "pre-pr-ready"
+    : "pre-reviewer-request";
+  const gate = readGate(repositoryRoot, findings, expectedOperation);
   if (gate === null) {
     return makeDeny(findings);
   }
-  const context = validateGate(gate, repositoryRoot, findings);
+  const context = validateGate(gate, repositoryRoot, findings, expectedOperation);
   if (context === null) {
     return makeDeny(findings);
   }

@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -87,10 +88,26 @@ const commit = (cwd: string, message: string, environment: NodeJS.ProcessEnv) =>
   runGit(cwd, ["commit", "-m", message], environment);
 };
 
-const writeGate = (fixture: Omit<Fixture, "primarySnapshot">) => {
+const writeGate = (
+  fixture: Omit<Fixture, "primarySnapshot">,
+  operation: "pre-rebase-start" | "pre-rebase-continue" | "pre-rebase-skip" | "pre-rebase-abort" = "pre-rebase-start",
+) => {
+  const issuedAt = Date.now() - 1_000;
   const gate = {
     schema: "PreRebaseGate",
-    version: 1,
+    version: 2,
+    lifecycle: {
+      schema: "GateLifecycle",
+      version: 1,
+      operation,
+      nonce: randomUUID(),
+      state: "authority",
+      authorizes: true,
+      issued_at: new Date(issuedAt).toISOString(),
+      expires_at: new Date(issuedAt + 5 * 60 * 1000).toISOString(),
+      consumed_at: null,
+      receipt_expires_at: null,
+    },
     workspace: {
       repository,
       path: fixture.target,
@@ -202,7 +219,7 @@ const createFixture = (): Fixture => {
       primary,
       target,
       other,
-      gatePath: join(target, ".cursor", "hooks", "state", "pre-rebase.json"),
+      gatePath: join(target, ".github", "github-plugin", "state", "pre-rebase.json"),
       baseSha,
       headSha,
       targetSha,
@@ -295,6 +312,7 @@ const startConflict = (fixture: Fixture) => {
   const status = runGit(fixture.target, ["status", "--porcelain=v1", "--untracked-files=all"], environment);
   if (status.length > 0) throw new Error(`fixture is dirty before rebase: ${status}`);
   for (const host of ["cursor", "codex"] as Host[]) {
+    writeGate(fixture, "pre-rebase-start");
     assertDecision(fixture, host, `git rebase ${fixture.targetSha}`, true);
   }
   const result = runGitAllowFailure(fixture.target, ["rebase", fixture.targetSha], environment);
@@ -321,6 +339,7 @@ describe.sequential("Issue #6 guarded rebase recovery", () => {
           runGit(fixture.target, ["add", "conflict.txt"], environment);
         }
         for (const host of ["cursor", "codex"] as Host[]) {
+          writeGate(fixture, option === "--continue" ? "pre-rebase-continue" : option === "--skip" ? "pre-rebase-skip" : "pre-rebase-abort");
           assertDecision(fixture, host, `git rebase ${option}`, true);
         }
         const commandEnvironment = { ...environment, GIT_EDITOR: "true" };
@@ -371,7 +390,7 @@ describe.sequential("Issue #6 guarded rebase recovery", () => {
       }
 
       runGit(fixture.primary, ["worktree", "add", "--detach", fixture.other, baseBranch], environment);
-      const otherGatePath = join(fixture.other, ".cursor", "hooks", "state", "pre-rebase.json");
+      const otherGatePath = join(fixture.other, ".github", "github-plugin", "state", "pre-rebase.json");
       writeGate({ ...fixture, target: fixture.target, gatePath: otherGatePath });
       for (const host of ["cursor", "codex"] as Host[]) {
         assertDecision(fixture, host, "git rebase --continue", false, fixture.other);
@@ -396,6 +415,7 @@ describe.sequential("Issue #6 guarded rebase recovery", () => {
         `git -C "${fixture.target}" rebase --abort`,
       ]) {
         for (const host of ["cursor", "codex"] as Host[]) {
+          writeGate(fixture, "pre-rebase-abort");
           assertDecision(fixture, host, command, true);
         }
       }
@@ -421,6 +441,7 @@ describe.sequential("Issue #6 guarded rebase recovery", () => {
       startConflict(fixture);
       expect(activeRebasePaths(fixture, environment)[0].marker).toBe("rebase-apply");
       for (const host of ["cursor", "codex"] as Host[]) {
+        writeGate(fixture, "pre-rebase-abort");
         assertDecision(fixture, host, "git rebase --abort", true);
       }
       runGit(fixture.target, ["rebase", "--abort"], environment);

@@ -2,9 +2,15 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import {
+  claimGate,
+  createPreMergeReceipt,
+  CANONICAL_STATE_RELATIVE_PATH,
+} from "./lib/gate-state.mjs";
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
-const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-merge.json";
+const GATE_FILE_NAME = "pre-merge.json";
+const GATE_RELATIVE_PATH = `${CANONICAL_STATE_RELATIVE_PATH}${GATE_FILE_NAME}`;
 const MAX_GATE_BYTES = 2 * 1024 * 1024;
 const MAX_INPUT_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AUTHORIZATION_SOURCES = new Set([
@@ -997,21 +1003,14 @@ function parseApiMergeArguments(args, endpoint, targetDirectory, findings) {
 }
 
 function readGate(repositoryRoot, findings) {
-  const gatePath = resolve(repositoryRoot, ...GATE_RELATIVE_PATH.split("/"));
-  try {
-    const stats = statSync(gatePath);
-    if (!stats.isFile() || stats.size > MAX_GATE_BYTES) {
-      throw new Error("invalid gate");
-    }
-    return JSON.parse(readFileSync(gatePath, "utf8"));
-  } catch {
-    addFinding(
-      findings,
-      `The local PreMergeGate is missing, too large, unreadable, or invalid at ${GATE_RELATIVE_PATH}.`,
-      "run merge-pull-request preflight and write a fresh PreMergeGate",
-    );
-    return null;
-  }
+  const claim = claimGate(repositoryRoot, GATE_FILE_NAME, "pre-merge");
+  if (claim.gate !== null) return claim.gate;
+  addFinding(
+    findings,
+    `The local PreMergeGate could not be claimed from ${GATE_RELATIVE_PATH}: ${claim.error ?? "unknown lifecycle error"}.`,
+    "run merge-pull-request preflight and write a fresh one-shot PreMergeGate",
+  );
+  return null;
 }
 
 function validateWorkspace(workspace, repositoryRoot, findings) {
@@ -1062,7 +1061,7 @@ function validatePreflight(preflight, gate, findings) {
     addFinding(
       findings,
       "PreMergeGate.preflight is missing or malformed.",
-      "write a fresh version-3 gate with the final live merge preflight",
+      "write a fresh version-4 gate with the final live merge preflight",
     );
     return null;
   }
@@ -1939,11 +1938,11 @@ function validateGate(gate, repositoryRoot, findings) {
   if (!isRecord(gate)) {
     return null;
   }
-  if (gate.schema !== "PreMergeGate" || gate.version !== 3) {
+  if (gate.schema !== "PreMergeGate" || gate.version !== 4) {
     addFinding(
       findings,
       "PreMergeGate has an unsupported schema version.",
-      "write a fresh version-3 PreMergeGate",
+      "write a fresh version-4 PreMergeGate",
     );
   }
   if (!isIsoTimestamp(gate.written_at)) {
@@ -2435,7 +2434,16 @@ function evaluate(input) {
     return makeDeny(findings);
   }
 
-  return findings.length > 0 ? makeDeny(findings) : makeAllow();
+  const receipt = createPreMergeReceipt(repositoryRoot, gate);
+  if (!receipt.ok) {
+    addFinding(
+      findings,
+      `The consumed PreMergeGate could not create its one-shot post-merge receipt: ${receipt.error}.`,
+      "repair the plugin-owned canonical state and write a fresh PreMergeGate",
+    );
+    return makeDeny(findings);
+  }
+  return makeAllow();
 }
 
 function main() {

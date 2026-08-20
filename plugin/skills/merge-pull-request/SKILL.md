@@ -165,12 +165,19 @@ without writing.
 ## Local pre-merge gate
 
 After the final live race check and immediately before the one GitHub merge
-write, write exactly one current version-3
+write, write exactly one current version-4
 [`PreMergeGate`](../../shared/schemas/PreMergeGate.yaml) snapshot to
-`.cursor/hooks/state/pre-merge.json`. The state directory is local-only and is
-already ignored by the repository. Do not reuse an old, partial, stale, or
-identity-mismatched snapshot, and do not repair missing handoffs by editing the
-gate.
+`.github/github-plugin/state/pre-merge.json` through the shared
+`plugin/hooks/lib/gate-state.mjs` writer. Include a fresh `GateLifecycle`
+authority with operation `pre-merge`, cryptographically random nonce,
+five-minute TTL, maximum 60-second future skew, and null consumption fields.
+The state directory is local-only and is ignored by the repository. The writer
+uses a same-directory temporary file and non-overwriting atomic publish,
+rereads the final bytes, and blocks on a pre-existing target, malformed state,
+lock, rename, or cleanup failure. The Hook atomically claims the authority
+before semantic validation, so a failed or interrupted merge cannot reuse it.
+Do not reuse an old, partial, stale, or identity-mismatched snapshot, and do
+not repair missing handoffs by editing the gate.
 
 The snapshot must preserve the exact values from the approved
 `PullRequestMerge`, current `MergeReadiness`, and verified workspace:
@@ -178,7 +185,19 @@ The snapshot must preserve the exact values from the approved
 ```json
 {
   "schema": "PreMergeGate",
-  "version": 3,
+  "version": 4,
+  "lifecycle": {
+    "schema": "GateLifecycle",
+    "version": 1,
+    "operation": "pre-merge",
+    "nonce": "<cryptographically random operation nonce>",
+    "state": "authority",
+    "authorizes": true,
+    "issued_at": "<current ISO-8601 timestamp>",
+    "expires_at": "<issued_at plus five minutes>",
+    "consumed_at": null,
+    "receipt_expires_at": null
+  },
   "workspace": {
     "repository": "<BranchWorkspace.repository>",
     "path": "<BranchWorkspace.worktree_path>"
@@ -254,11 +273,17 @@ Return `status: merged` only when all required verification checks pass. Return
 unavailable, contradictory, or fails. Return `blocked` only when no merge was
 attempted or the single post-error lookup proves no merge occurred.
 
-When the host-specific `post-merge` Hook observes this command, it may inject a
-read-only `PostMergeStatus` containing the same live merge identity, expected
-issue-closure result, cleanup availability, open actions, and deviations. This
-status is diagnostic only and never performs or authorizes issue closure,
-branch deletion, or worktree removal.
+When the host-specific `post-merge` Hook observes this command, consumption of
+the claimed `PreMergeGate` may create exactly one non-authorizing
+`post-merge-receipt.json` in the same canonical state directory. Its lifecycle
+has `state: receipt`, `authorizes: false`, `operation: pre-merge`, the consumed
+nonce, `consumed_at`, and a five-minute `receipt_expires_at`. The post-merge
+Hook consumes and removes that receipt after observation; a second invocation,
+older plugin version, replay marker, or missing receipt cannot derive
+authority. The receipt may inject a read-only `PostMergeStatus` containing the
+same live merge identity, expected issue-closure result, cleanup availability,
+open actions, and deviations. This status is diagnostic only and never
+performs or authorizes issue closure, branch deletion, or worktree removal.
 
 Populate `result.merge_commit_sha`, `merge.method`, and final PR state only
 from observed GitHub data. The user-facing result must state the merge commit
@@ -286,6 +311,7 @@ cleanup workflow only after `status: merged`.
 
 - [ ] Exact final merge authorization covers target, head, base, method, metadata, and deletion effect, with user or `AGENTS.md` evidence.
 - [ ] Current version-3 `MergeReadiness` is `ready` for the exact live head and embeds one complete version-1 `PullRequestReadinessEvidence` snapshot.
+- [ ] Version-4 `PreMergeGate` was written through the canonical lifecycle writer, atomically claimed once, and produced at most one non-authorizing receipt.
 - [ ] Live PR is open, non-Draft, mergeable, and unchanged directly before the write.
 - [ ] Required checks, reviews, approvals, threads, and policy evidence are current and passing.
 - [ ] The exact method is currently allowed and explicitly selected.

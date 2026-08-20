@@ -1107,9 +1107,9 @@ describe.sequential("executable generated project-hook runtime oracle", () => {
   it("does not rely on generated gate placeholders", () => {
     withRuntimeRepository((context) => {
       for (const hook of preHooks) {
-        expect(existsSync(`${context.repositoryRoot}/.cursor/hooks/state/${hook}.json`)).toBe(false);
+        expect(existsSync(`${context.repositoryRoot}/.github/github-plugin/state/${hook}.json`)).toBe(false);
       }
-      expect(readFileSync(`${context.repositoryRoot}/.gitignore`, "utf8")).toContain(".cursor/hooks/state/");
+      expect(readFileSync(`${context.repositoryRoot}/.gitignore`, "utf8")).toContain(".github/github-plugin/state/");
     });
   });
 

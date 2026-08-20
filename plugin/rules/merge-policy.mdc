@@ -41,11 +41,15 @@ replace or override that snapshot.
 ## Deterministic pre-merge gate
 
 Immediately before the GitHub merge write, `merge-pull-request` MUST write a
-current local version-3 `PreMergeGate` containing the exact pull-request
+current local version-4 `PreMergeGate` containing the exact pull-request
 identity, expected head and base SHAs, final live preflight, selected strategy,
 branch-deletion effect, version-3 `MergeReadiness`, its complete version-1
-`PullRequestReadinessEvidence`, and explicit merge authorization. The
-host-specific `pre-merge` Hook MUST fail closed unless the local gate and
+`PullRequestReadinessEvidence`, explicit merge authorization, and a fresh
+version-1 `GateLifecycle` authority for `pre-merge`. Publish it through the
+shared lifecycle writer at `.github/github-plugin/state/pre-merge.json` with a
+five-minute TTL, maximum 60-second future skew, atomic non-overwriting
+publication, and final-byte verification. The host-specific `pre-merge` Hook
+MUST atomically claim the authority before semantic validation and fail closed unless the local gate and
 embedded snapshot agree for:
 
 - open, non-Draft status;
@@ -72,6 +76,13 @@ thread, approval, check, conflict, base, or issue condition changes or is
 unavailable. It may report the missing evidence and a safe next step, but it
 must never resolve a blocker, rerun a check, mutate GitHub, rewrite the gate,
 or perform the merge.
+
+After a successful claimed pre-merge gate, the Hook may publish at most one
+non-authorizing `post-merge-receipt.json` containing the consumed nonce and
+receipt lifecycle. The post-merge Hook consumes and removes that receipt after
+observation; replay, missing, malformed, expired, or legacy receipts never
+authorize or re-enable any action. Receipt handling is diagnostic and does not
+authorize issue closure, branch deletion, or worktree cleanup.
 
 ## Repository strategy and authorization
 

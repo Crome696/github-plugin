@@ -83,10 +83,17 @@ ambiguous write blindly.
 ## Deterministic pre-publication Hook gate
 
 After the live preflight passes and immediately before the GitHub write, write
-exactly one local version-1
+exactly one local version-2
 [`PreReviewSubmitGate`](../../shared/schemas/PreReviewSubmitGate.yaml) to
-`.cursor/hooks/state/pre-review-submit.json`. Create the ignored state
-directory only when it does not exist. The snapshot must preserve the exact
+`.github/github-plugin/state/pre-review-submit.json` through the shared
+`plugin/hooks/lib/gate-state.mjs` writer. The snapshot must include a fresh
+`GateLifecycle` authority with operation `pre-review-submit`, a cryptographic
+nonce, a five-minute TTL, maximum 60-second future skew, and null consumption
+fields. The writer uses a same-directory temporary file, non-overwriting
+atomic publish, and final-byte verification; a pre-existing target or any
+write, lock, rename, cleanup, or lifecycle error blocks before the API write.
+The hook atomically consumes the authority before semantic validation, so a
+failed or interrupted publication cannot reuse it. The snapshot must preserve the exact
 repository, worktree, approved `ReviewDecision`, complete
 `ClassifiedReviewFindings`, complete `DeduplicatedReviewFindings`, exact user
 confirmation record, and current freshness evidence.

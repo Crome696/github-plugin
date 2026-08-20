@@ -2,10 +2,12 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { claimGate, CANONICAL_STATE_RELATIVE_PATH } from "./lib/gate-state.mjs";
 import { loadRepositoryPolicy, policyEnforces } from "./lib/repository-policy.mjs";
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
-const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-rebase.json";
+const GATE_FILE_NAME = "pre-rebase.json";
+const GATE_RELATIVE_PATH = `${CANONICAL_STATE_RELATIVE_PATH}${GATE_FILE_NAME}`;
 const MAX_GATE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AUTHORIZATION_SOURCES = new Set([
   "explicit_user",
@@ -496,22 +498,15 @@ function likelyRebaseCommand(command) {
   );
 }
 
-function readGate(repositoryRoot, findings) {
-  const gatePath = resolve(repositoryRoot, ...GATE_RELATIVE_PATH.split("/"));
-  try {
-    const stats = statSync(gatePath);
-    if (!stats.isFile() || stats.size > MAX_GATE_BYTES) {
-      throw new Error("invalid gate file");
-    }
-    return JSON.parse(readFileSync(gatePath, "utf8"));
-  } catch {
-    addFinding(
-      findings,
-      `The local PreRebaseGate is missing, too large, unreadable, or invalid at ${GATE_RELATIVE_PATH}.`,
-      "run rebase-branch preflight and write a fresh PreRebaseGate",
-    );
-    return null;
-  }
+function readGate(repositoryRoot, findings, expectedOperation) {
+  const claim = claimGate(repositoryRoot, GATE_FILE_NAME, expectedOperation);
+  if (claim.gate !== null) return claim.gate;
+  addFinding(
+    findings,
+    `The local PreRebaseGate could not be claimed from ${GATE_RELATIVE_PATH}: ${claim.error ?? "unknown lifecycle error"}.`,
+    "run rebase-branch preflight and write a fresh one-shot PreRebaseGate",
+  );
+  return null;
 }
 
 function validateWorkspace(workspace, findings) {
@@ -884,11 +879,11 @@ function validateGate(gate, findings) {
   if (!isRecord(gate)) {
     return;
   }
-  if (gate.schema !== "PreRebaseGate" || gate.version !== 1) {
+  if (gate.schema !== "PreRebaseGate" || gate.version !== 2) {
     addFinding(
       findings,
       "PreRebaseGate has an unsupported schema version.",
-      "write a fresh version-1 PreRebaseGate",
+      "write a fresh version-2 PreRebaseGate",
     );
   }
   if (!isIsoTimestamp(gate.written_at)) {
@@ -1624,7 +1619,7 @@ function validateActiveRebase(repositoryRoot, gate, findings) {
     addFinding(
       findings,
       "The gate workspace branch and pull-request head branch do not identify the same authorized operation.",
-      "write a consistent version-1 PreRebaseGate before recovery",
+      "write a consistent version-2 PreRebaseGate before recovery",
     );
   }
 
@@ -1672,7 +1667,7 @@ function validateActiveRebase(repositoryRoot, gate, findings) {
     addFinding(
       findings,
       "The gate workspace HEAD and pull-request HEAD do not identify the same authorized operation.",
-      "write a consistent version-1 PreRebaseGate before recovery",
+      "write a consistent version-2 PreRebaseGate before recovery",
     );
   }
 
@@ -1903,7 +1898,15 @@ function evaluate(input) {
     return makeDeny(findings);
   }
 
-  const gate = readGate(repositoryRoot, findings);
+  const requestedOperation = invocation.args?.[0];
+  const expectedOperation = requestedOperation === "--continue"
+    ? "pre-rebase-continue"
+    : requestedOperation === "--skip"
+      ? "pre-rebase-skip"
+      : requestedOperation === "--abort"
+        ? "pre-rebase-abort"
+        : "pre-rebase-start";
+  const gate = readGate(repositoryRoot, findings, expectedOperation);
   const policy = loadRepositoryPolicy(repositoryRoot);
   const operation = validateRebaseCommand(
     {

@@ -242,10 +242,11 @@ verify repository
   -> inspect checks as warnings
   -> propose optional reviewers
   -> authorize exact Ready-for-Review and reviewer set
-  -> write PrePrReadyGate
+  -> write and atomically claim PrePrReadyGate v2 (pre-pr-ready lifecycle)
   -> verify current open Draft identity
   -> execute one standalone gh pr ready command
   -> verify current open non-Draft identity and linked issue
+  -> write and atomically claim a fresh PrePrReadyGate v2 (pre-reviewer-request lifecycle)
   -> request only the authorized reviewers through one exact POST, if non-empty
 ```
 
@@ -254,8 +255,11 @@ linkage is required. CODEOWNERS matches are optional suggestions, not merge
 policy. Pending CI does not block. An already non-Draft open pull request
 returns `already_ready` without requesting additional reviewers.
 The Ready transition and reviewer assignment are separate race and
-authorization boundaries; compound shell/API commands and incomplete legacy
-gates fail closed.
+authorization boundaries; each uses a one-shot gate under the canonical
+`.github/github-plugin/state/` path. Compound shell/API commands and
+incomplete, expired, replayed, or legacy gates fail closed. The same rule
+applies to `pre-rebase-start`, `pre-rebase-continue`, `pre-rebase-skip`, and
+`pre-rebase-abort`: one fresh lifecycle authority per operation.
 This workflow cannot publish a review, rebase, merge, or clean up.
 
 ## Phase 5: pull-request review
@@ -416,7 +420,11 @@ and worktree removal are not bundled by the integration Command. A repository
 policy can be the authorization source only when it names the exact operation
 and scope. See [Approval gates](../architecture/approval-gates.md).
 
-After a successful merge, `post-merge` returns read-only `PostMergeStatus`.
+After a successful merge, the claimed `pre-merge` authority may produce one
+non-authorizing `post-merge-receipt.json` under the canonical state path.
+`post-merge` observes, consumes, and removes that receipt once, then returns
+read-only `PostMergeStatus`. A second invocation, missing receipt, or replay
+marker cannot authorize a follow-up operation.
 Issue closure and cleanup remain separate workflows. A still-open linked issue
 may be closed through the narrow [`close-linked-issue`](../../skills/close-linked-issue/SKILL.md)
 Skill after automatic closure was verified not to occur; `integrate-pr` may use

@@ -214,12 +214,12 @@ The post-operation checker is read-only.
 
 | Hook | Host events | Contract and behavior |
 | --- | --- | --- |
-| `pre-commit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies exact commit scope, version-2 validation and explicit evidence requirements, worktree identity, authorization, and secret hygiene through `PreCommitGate v3`. |
-| `pre-rebase.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies a new start through the exact target branch, clean workspace, target revision, and `PreRebaseGate`; separately guards only standalone recovery whose active rebase metadata and registered worktree match that gate. |
-| `pre-pr-create.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the commit, push, issue link, description, version-2 validation and explicit evidence requirements, and exact Draft command through `PrePrCreateGate v2`. |
-| `pre-review-submit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the current head, finding evidence, locations, deduplication, confirmation, and exact payload through `PreReviewSubmitGate`. |
-| `pre-pr-ready.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies one exact standalone Ready-for-Review transition or phase-appropriate requested-reviewers POST, complete URL/branch/SHA identity, one linked issue, typed reviewer payload, and `PrePrReadyGate`; rejects incomplete legacy gates and compound commands. |
-| `pre-merge.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Verifies the exact local `PreMergeGate v3`, final live preflight, embedded `MergeReadiness v3`, and complete identity-bound `PullRequestReadinessEvidence v1` without live GitHub or GraphQL reads; every merge command must carry an exact head compare-and-set. |
+| `pre-commit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Claims and verifies the exact one-shot `PreCommitGate v4`, version-2 validation and explicit evidence requirements, worktree identity, authorization, secret hygiene, and canonical lifecycle. |
+| `pre-rebase.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Claims a phase-specific `PreRebaseGate v2` for start, continue, skip, or abort; verifies the exact target, active metadata, clean workspace, target revision, and registered worktree. |
+| `pre-pr-create.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Claims and verifies the one-shot `PrePrCreateGate v3`, commit, push, issue link, description, version-2 validation, explicit evidence, and exact Draft command. |
+| `pre-review-submit.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Claims and verifies the one-shot `PreReviewSubmitGate v2`, current head, finding evidence, locations, deduplication, confirmation, and exact payload. |
+| `pre-pr-ready.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Claims one phase-specific `PrePrReadyGate v2` for either Ready-for-Review or the separate reviewer POST, verifies complete identity, one linked issue, typed reviewer payload, and exact command, and rejects replay or compound commands. |
+| `pre-merge.mjs` | Cursor `beforeShellExecution`; Codex `PreToolUse` for `Bash` | Claims and verifies the exact local `PreMergeGate v4`, final live preflight, embedded `MergeReadiness v3`, complete identity-bound `PullRequestReadinessEvidence v1`, and lifecycle before the exact head compare-and-set merge. |
 | `post-merge.mjs` | Cursor `afterShellExecution`; Codex `PostToolUse` for `Bash` | Observes the completed merge and returns `PostMergeStatus`; it never closes issues, deletes branches, or removes worktrees. |
 
 Cursor and Codex use separate projections in
@@ -232,6 +232,16 @@ deterministic [`generate-project-hooks.mjs`](../../hooks/generate-project-hooks.
 generator to copy them into a target repository. It never writes runtime gate
 snapshots; those remain owning-Skill evidence and continue to fail closed when
 missing or mismatched.
+
+All pre-hooks and the post-merge observer share the host-neutral
+`hooks/lib/gate-state.mjs` runtime. Authoritative state lives only under
+`.github/github-plugin/state/`; gates are published atomically with a fresh
+nonce, five-minute TTL, and maximum 60-second future skew, then claimed before
+semantic validation with persistent replay markers. Invalid or legacy state is
+quarantined without recursive deletion. A consumed pre-merge gate may emit one
+non-authorizing receipt, which `post-merge` consumes and removes once; receipts
+never authorize issue closure or cleanup. The generator copies this helper to
+both host projections and creates no gate files.
 
 The projections deliberately differ only at the host boundary. Cursor keeps
 operation-specific matchers, all invoking the shared dispatcher with

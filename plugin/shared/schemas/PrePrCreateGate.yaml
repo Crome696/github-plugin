@@ -1,7 +1,8 @@
 schema: PrePrCreateGate
-version: 2
-description: Local, read-only snapshot binding one authorized Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, and passed version-2 implementation validation.
+version: 3
+description: Local, one-shot snapshot binding one authorized Draft pull-request publication to a verified commit, pushed branch, unique issue link, complete description, passed version-2 implementation validation, and GateLifecycle authority.
 required:
+  - lifecycle
   - workspace
   - validation
   - commit_proposal
@@ -10,6 +11,10 @@ required:
   - issue_link
   - written_at
 fields:
+  lifecycle:
+    type: object
+    required: [schema, version, operation, nonce, state, authorizes, issued_at, expires_at, consumed_at, receipt_expires_at]
+    description: GateLifecycle authority with operation pre-pr-create and a five-minute TTL.
   workspace:
     type: object
     required: [repository, path, branch, head_sha]

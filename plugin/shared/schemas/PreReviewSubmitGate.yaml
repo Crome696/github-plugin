@@ -1,7 +1,8 @@
 schema: PreReviewSubmitGate
-version: 1
-description: Local, read-only snapshot binding one exact AI pull-request review publication to structurally complete, deduplicated, explicitly confirmed, and current review evidence.
+version: 2
+description: Local, one-shot snapshot binding one exact AI pull-request review publication to structurally complete, deduplicated, explicitly confirmed, and current review evidence with GateLifecycle authority.
 required:
+  - lifecycle
   - workspace
   - review_decision
   - classified_findings
@@ -10,6 +11,10 @@ required:
   - freshness
   - written_at
 fields:
+  lifecycle:
+    type: object
+    required: [schema, version, operation, nonce, state, authorizes, issued_at, expires_at, consumed_at, receipt_expires_at]
+    description: GateLifecycle authority with operation pre-review-submit and a five-minute TTL.
   workspace:
     type: object
     required: [repository, path]

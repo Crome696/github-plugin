@@ -37,10 +37,11 @@ conflicts, push the result, merge a pull request, or clean up Git state.
   --abort`. If the rebase conflicts, leave the rebase stopped and return
   `status: conflicted`.
 - A host-specific pre-rebase Hook may later permit one standalone recovery
-  command only when the existing `PreRebaseGate`, active rebase metadata
-  (`head-name`, `onto`, and `orig-head`), and exact registered worktree still
-  match. That guard does not authorize this Skill to choose, resolve, or run
-  recovery.
+  command only when a fresh operation-specific `PreRebaseGate`, active rebase
+  metadata (`head-name`, `onto`, and `orig-head`), and exact registered
+  worktree still match. A gate for `pre-rebase-start` never authorizes
+  `continue`, `skip`, or `abort`; each phase requires a fresh one-shot gate.
+  That guard does not authorize this Skill to choose, resolve, or run recovery.
 - Do not resolve conflict markers or invoke a conflict-resolution capability.
   Recommend `detect-rebase-conflicts` only as a separate read-only analysis.
 - Keep repository paths relative in durable evidence where possible. Do not
@@ -116,19 +117,38 @@ Any failed, missing, stale, or unknown required preflight result is
 for affirmative user approval only when a clearly applicable repository-policy
 authorization is not recorded in the handoff.
 
-## Write the local PreRebaseGate snapshot
+## Write the one-shot local PreRebaseGate snapshot
 
 After every read-only preflight passes and before invoking Git, write exactly
-one current version-1 [`PreRebaseGate`](../../shared/schemas/PreRebaseGate.yaml)
-snapshot to the ignored path
-`.cursor/hooks/state/pre-rebase.json`. The snapshot must preserve the complete
+one current version-2 [`PreRebaseGate`](../../shared/schemas/PreRebaseGate.yaml)
+snapshot through `plugin/hooks/lib/gate-state.mjs` to the canonical ignored path
+`.github/github-plugin/state/pre-rebase.json`. The snapshot must preserve the complete
 verified workspace, pull-request identity, full `TargetBranchFetch` handoff,
-exact rebase authorization, and current ISO-8601 `written_at` value:
+exact rebase authorization, a fresh operation-specific `GateLifecycle`, and
+current ISO-8601 `written_at` value. Use `pre-rebase-start` for the initial
+rebase. A later standalone `continue`, `skip`, or `abort` must first produce a
+new version-2 gate with the corresponding lifecycle operation and fresh nonce.
+The shared writer uses a same-directory temporary file, non-overwriting atomic
+publish, final-byte reread, and persistent nonce-consumption markers; any
+target, lock, rename, cleanup, TTL, skew, or malformed-state error blocks the
+Git command.
 
 ```json
 {
   "schema": "PreRebaseGate",
-  "version": 1,
+  "version": 2,
+  "lifecycle": {
+    "schema": "GateLifecycle",
+    "version": 1,
+    "operation": "pre-rebase-start",
+    "nonce": "<cryptographically random operation nonce>",
+    "state": "authority",
+    "authorizes": true,
+    "issued_at": "<current ISO-8601 timestamp>",
+    "expires_at": "<issued_at plus five minutes>",
+    "consumed_at": null,
+    "receipt_expires_at": null
+  },
   "workspace": {
     "repository": "owner/repository",
     "path": "C:/absolute/path/to/worktree",

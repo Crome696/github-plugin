@@ -96,6 +96,7 @@ describe("generate-project-hooks", () => {
     expect(existsSync(join(repository, ".cursor", "hooks", "lib", "run-command.mjs"))).toBe(true);
     expect(existsSync(join(repository, ".cursor", "hooks", "lib", "run-command-worker.mjs"))).toBe(true);
     expect(existsSync(join(repository, ".cursor", "hooks", "lib", "repository-policy.mjs"))).toBe(true);
+    expect(existsSync(join(repository, ".cursor", "hooks", "lib", "gate-state.mjs"))).toBe(true);
     expect(
       readFileSync(
         join(repository, ".cursor", "hooks", "pre-commit.mjs"),
@@ -106,10 +107,10 @@ describe("generate-project-hooks", () => {
     ).toBe(true);
     expect(existsSync(join(repository, ".codex", "hooks.json"))).toBe(false);
     expect(readFileSync(join(repository, ".gitignore"), "utf8")).toContain(
-      ".cursor/hooks/state/",
+      ".github/github-plugin/state/",
     );
     expect(readFileSync(join(repository, ".gitignore"), "utf8")).not.toContain(
-      ".codex/hooks/state/",
+      ".cursor/hooks/state/",
     );
 
     const config = readJson(join(repository, ".cursor", "hooks.json"));
@@ -122,10 +123,10 @@ describe("generate-project-hooks", () => {
       }
     }
     expect(readFileSync(join(repository, "AGENTS.md"), "utf8")).toContain(
-      "`.cursor/hooks/state/`",
+      "`.github/github-plugin/state/`",
     );
     expect(
-      existsSync(join(repository, ".cursor", "hooks", "state", "pre-commit.json")),
+      existsSync(join(repository, ".github", "github-plugin", "state", "pre-commit.json")),
     ).toBe(false);
   });
 
@@ -145,11 +146,15 @@ describe("generate-project-hooks", () => {
     expect(existsSync(join(repository, ".codex", "hooks", "dispatch.mjs"))).toBe(true);
     expect(existsSync(join(repository, ".codex", "hooks", "lib", "run-command.mjs"))).toBe(true);
     expect(existsSync(join(repository, ".codex", "hooks", "lib", "run-command-worker.mjs"))).toBe(true);
+    expect(
+      readFileSync(join(repository, ".codex", "hooks", "lib", "gate-state.mjs"), "utf8"),
+    ).toContain(readFileSync(join(pluginRoot, "hooks", "lib", "gate-state.mjs"), "utf8"));
     expect(existsSync(join(repository, ".cursor", "hooks.json"))).toBe(false);
 
     const gitignore = readFileSync(join(repository, ".gitignore"), "utf8");
-    expect(gitignore).toContain(".cursor/hooks/state/");
-    expect(gitignore).toContain(".codex/hooks/state/");
+    expect(gitignore).toContain(".github/github-plugin/state/");
+    expect(gitignore).not.toContain(".cursor/hooks/state/");
+    expect(gitignore).not.toContain(".codex/hooks/state/");
 
     const config = readJson(join(repository, ".codex", "hooks.json"));
     const codexHooks = config.hooks as Record<string, unknown[]>;
@@ -174,8 +179,10 @@ describe("generate-project-hooks", () => {
     }
     const agents = readFileSync(join(repository, "AGENTS.md"), "utf8");
     expect(agents).toContain("generated Codex project-hook projections");
-    expect(agents).toContain("`.cursor/hooks/state/` and `.codex/hooks/state/`");
-    expect(existsSync(join(repository, ".codex", "hooks", "state"))).toBe(false);
+    expect(agents).toContain("`.github/github-plugin/state/`");
+    expect(agents).not.toContain(".cursor/hooks/state/");
+    expect(agents).not.toContain(".codex/hooks/state/");
+    expect(existsSync(join(repository, ".github", "github-plugin", "state"))).toBe(false);
   });
 
   it("generates both projections and is unchanged on a repeat run", () => {
@@ -195,10 +202,10 @@ describe("generate-project-hooks", () => {
       true,
     );
     expect(
-      existsSync(join(repository, ".cursor", "hooks", "state", "pre-commit.json")),
+      existsSync(join(repository, ".github", "github-plugin", "state", "pre-commit.json")),
     ).toBe(false);
     expect(
-      existsSync(join(repository, ".codex", "hooks", "state", "pre-commit.json")),
+      existsSync(join(repository, ".github", "github-plugin", "state", "pre-commit.json")),
     ).toBe(false);
   });
 
@@ -215,6 +222,23 @@ describe("generate-project-hooks", () => {
     expect(readFileSync(join(repository, ".gitignore"), "utf8")).toContain(
       "dist/\n",
     );
+  });
+
+  it("migrates only managed legacy ignore entries and preserves user-owned entries", () => {
+    const repository = createRepository();
+    writeFileSync(
+      join(repository, ".gitignore"),
+      ".cursor/hooks/state/\n# CromeSDK generated GitHub hook state\n.cursor/hooks/state/\n.codex/hooks/state/\nuser-owned/\n",
+    );
+
+    generate(repository, "cursor");
+
+    const gitignore = readFileSync(join(repository, ".gitignore"), "utf8");
+    expect(gitignore).toContain(".cursor/hooks/state/");
+    expect(gitignore).toContain("user-owned/");
+    expect(gitignore).toContain(".github/github-plugin/state/");
+    expect(gitignore.match(/\.cursor\/hooks\/state\//g)).toHaveLength(1);
+    expect(gitignore).not.toContain(".codex/hooks/state/");
   });
 
   it("blocks before writing when a requested projection conflicts", () => {

@@ -1,13 +1,18 @@
 schema: PreRebaseGate
-version: 1
-description: Local, read-only snapshot binding one exact approved rebase start to a verified pull-request branch, clean worktree, current remote context, and unique target base; the same identity evidence may be reused for guarded recovery of that active operation.
+version: 2
+description: Local, one-shot snapshot binding one exact approved rebase start or recovery operation to a verified pull-request branch, clean worktree, current remote context, unique target base, and GateLifecycle authority.
 required:
+  - lifecycle
   - workspace
   - pull_request
   - target_fetch
   - authorization
   - written_at
 fields:
+  lifecycle:
+    type: object
+    required: [schema, version, operation, nonce, state, authorizes, issued_at, expires_at, consumed_at, receipt_expires_at]
+    description: GateLifecycle authority for exactly one of pre-rebase-start, pre-rebase-continue, pre-rebase-skip, or pre-rebase-abort.
   workspace:
     type: object
     required: [repository, path, branch, head_sha]
@@ -150,6 +155,6 @@ invariants:
   - The current worktree HEAD equals workspace.head_sha and pull_request.head_sha before a new rebase start.
   - Live remote context must identify the configured remote default branch and prove that the checked-out pull-request head is not that default branch before a new start.
   - The pre-rebase HEAD is backed by the configured remote feature-branch tracking ref before a new start; missing, divergent, or unknown upstream evidence is unsafe.
-  - Recovery reuses this existing gate without renewal or fabrication and requires exactly one active rebase administrative directory whose head-name, onto, and orig-head match the authorized feature branch, target SHA, and pre-rebase HEAD in the exact registered non-primary worktree.
+  - Each start, continue, skip, and abort operation requires a fresh one-shot GateLifecycle authority; recovery never reuses a consumed start gate.
   - authorization.approved, authorization.exact_target, and authorization.exact_operation are true and the source is explicit_user or repository_policy.
   - A missing, stale, contradictory, or unavailable gate condition blocks the rebase; the hook never repairs or replaces the gate.

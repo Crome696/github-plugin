@@ -912,16 +912,64 @@ const validatePullRequestMerge = (
   return issues;
 };
 
+const lifecycleOperations = new Set([
+  "pre-commit",
+  "pre-pr-create",
+  "pre-review-submit",
+  "pre-rebase-start",
+  "pre-rebase-continue",
+  "pre-rebase-skip",
+  "pre-rebase-abort",
+  "pre-pr-ready",
+  "pre-reviewer-request",
+  "pre-merge",
+]);
+
+const validateGateLifecycle = (
+  payload: Record<string, unknown>,
+  expectedOperations: string[],
+): InvariantIssue[] => {
+  const issues: InvariantIssue[] = [];
+  const lifecycle = objectAt(payload.lifecycle, "$.lifecycle");
+  const path = "$.lifecycle";
+  const issuedAt = typeof lifecycle?.issued_at === "string" ? Date.parse(lifecycle.issued_at) : Number.NaN;
+  const expiresAt = typeof lifecycle?.expires_at === "string" ? Date.parse(lifecycle.expires_at) : Number.NaN;
+  if (
+    lifecycle?.schema !== "GateLifecycle" ||
+    lifecycle.version !== 1 ||
+    !lifecycleOperations.has(String(lifecycle.operation)) ||
+    !expectedOperations.includes(String(lifecycle.operation)) ||
+    typeof lifecycle.nonce !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9_-]{15,127}$/.test(lifecycle.nonce) ||
+    lifecycle.state !== "authority" ||
+    lifecycle.authorizes !== true ||
+    lifecycle.consumed_at !== null ||
+    lifecycle.receipt_expires_at !== null ||
+    !Number.isFinite(issuedAt) ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt - issuedAt !== 5 * 60 * 1000
+  ) {
+    issues.push(
+      issue(
+        "gate_lifecycle_invalid",
+        path,
+        "Every authorizing gate must carry one exact GateLifecycle authority with a five-minute TTL and an unconsumed nonce.",
+      ),
+    );
+  }
+  return issues;
+};
+
 const validatePreMergeGate = (
   payload: Record<string, unknown>,
 ): InvariantIssue[] => {
   const issues: InvariantIssue[] = [];
-  if (payload.schema !== "PreMergeGate" || payload.version !== 3) {
+  if (payload.schema !== "PreMergeGate" || payload.version !== 4) {
     issues.push(
       issue(
         "premerge_gate_version_mismatch",
         "$.version",
-        "A merge gate must use PreMergeGate version 3 with a final live preflight.",
+        "A merge gate must use PreMergeGate version 4 with a final live preflight and lifecycle authority.",
       ),
     );
   }
@@ -942,7 +990,7 @@ const validatePreMergeGate = (
       issue(
         "premerge_preflight_incomplete",
         "$.preflight",
-        "PreMergeGate v3 must bind one complete live preflight to the exact PR and head/base revisions.",
+        "PreMergeGate v4 must bind one complete live preflight to the exact PR and head/base revisions.",
       ),
     );
     return issues;
@@ -1017,7 +1065,7 @@ const validatePreMergeGate = (
       issue(
         "premerge_readiness_mismatch",
         "$.readiness",
-        "PreMergeGate v3 must carry current version-3 ready MergeReadiness bound to the expected head.",
+        "PreMergeGate v4 must carry current version-3 ready MergeReadiness bound to the expected head.",
       ),
     );
   }
@@ -1238,8 +1286,31 @@ export const validateContractInvariants = (
       return validateMergeReadiness(payload);
     case "PullRequestMerge":
       return validatePullRequestMerge(payload);
+    case "GateLifecycle":
+      return validateGateLifecycle(
+        { lifecycle: payload },
+        [...lifecycleOperations],
+      );
+    case "PreCommitGate":
+      return validateGateLifecycle(payload, ["pre-commit"]);
+    case "PrePrCreateGate":
+      return validateGateLifecycle(payload, ["pre-pr-create"]);
+    case "PreReviewSubmitGate":
+      return validateGateLifecycle(payload, ["pre-review-submit"]);
+    case "PreRebaseGate":
+      return validateGateLifecycle(payload, [
+        "pre-rebase-start",
+        "pre-rebase-continue",
+        "pre-rebase-skip",
+        "pre-rebase-abort",
+      ]);
+    case "PrePrReadyGate":
+      return validateGateLifecycle(payload, ["pre-pr-ready", "pre-reviewer-request"]);
     case "PreMergeGate":
-      return validatePreMergeGate(payload);
+      return [
+        ...validateGateLifecycle(payload, ["pre-merge"]),
+        ...validatePreMergeGate(payload),
+      ];
     case "PullRequestReady":
       return validatePullRequestReady(payload);
     case "CleanupResult":
