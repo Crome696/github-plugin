@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.116
+
+- Made project-hook generation transactional and ownership-aware. Desired
+  Cursor/Codex projections, shared guidance, managed ignore entries, and the
+  version-1 `.github/github-plugin/project-hooks-manifest.json` are planned
+  before any write, committed through same-filesystem staging and backups, and
+  verified by final bytes and managed-block hashes.
+- Added deterministic host-deselection cleanup for unchanged manifest-owned
+  files, fail-closed legacy migration, conflict protection for local changes
+  and unknown files, and journal recovery from interrupted transactions under
+  `.github/github-plugin/.project-hooks-transaction/`.
+- Extended generator results with `manifest_path`, `removed_paths`, and
+  `recovered_paths`, while preserving the prohibition on gate snapshots,
+  placeholder state, and uncontrolled deletion.
+
 ## 0.3.115
 
 - Added the host-neutral, canonical `.github/github-plugin/state/` runtime

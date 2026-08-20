@@ -67,6 +67,19 @@ Skills own atomic analysis or external operations. Rules own policy. Contracts
 carry the structured handoffs. Hooks enforce deterministic, local safety
 checks or observe completed operations.
 
+Project-hook generation is a transactional target-repository projection. The
+generator computes Cursor/Codex desired state before any write, records
+version-1 ownership in
+`.github/github-plugin/project-hooks-manifest.json`, and uses same-filesystem
+staging, backups, a journal, controlled replacement, and final hash
+verification. The temporary journal area is
+`.github/github-plugin/.project-hooks-transaction/`; incomplete transactions
+are recovered before the next desired-state calculation. Local changes,
+malformed markers, unsupported manifests, symlinks, and unproven legacy files
+fail closed; host deselection removes only unchanged manifest-owned artifacts.
+Gate files, placeholders, and unknown files are never created or recursively
+deleted.
+
 ## Source map
 
 The following files are the sources of truth for the corresponding concerns:
@@ -85,7 +98,7 @@ The following files are the sources of truth for the corresponding concerns:
 | Structured handoffs and contract inventory | [`../shared/schemas/README.md`](../shared/schemas/README.md) |
 | Repository-owned configurable hook preferences | [`repository-policy.md`](repository-policy.md) |
 | Explicit evidence migration for `0.3.112` | [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md) |
-| Immutable pull-request readiness evidence, atomic merge preflight, and one-shot canonical hook gates for `0.3.115` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
+| Immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, and transactional ownership-safe project-hook generation for `0.3.116` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
 | Contract producers, consumers, and workflow graph | [`../../tests/lib/handoff-graph.ts`](../../tests/lib/handoff-graph.ts), [`../../tests/scenarios/lib/workflow-graphs.ts`](../../tests/scenarios/lib/workflow-graphs.ts) |
 | Host compatibility assumptions and limitations | [`../../README.md`](../../README.md) and the host manifests |
 
@@ -283,12 +296,17 @@ full safety or approval lists.
 
 `hooks/lib/gate-state.mjs` is the shared host-neutral lifecycle runtime copied
 into both projections. Authoritative state lives only under
-`.github/github-plugin/state/`; the generator never creates gate files.
+`.github/github-plugin/state/`; the generator never creates gate files. The
+generator's durable ownership evidence is separate at
+`.github/github-plugin/project-hooks-manifest.json`, while its journal and
+byte-exact backups are temporary under
+`.github/github-plugin/.project-hooks-transaction/`.
 
 cursor-hooks.json and codex-hooks.json are separate host projections; the
 portable manifest contains no Hook declarations. generate-project-hooks.mjs is
-the deterministic projection generator. It writes only selected project
-configuration and checker copies; gate snapshots remain owning-Skill runtime
+the deterministic, all-or-nothing projection generator: it preflights the
+desired state, validates manifest or legacy ownership, preserves user content,
+and verifies final artifact hashes. Gate snapshots remain owning-Skill runtime
 evidence and missing or mismatched snapshots fail closed.
 
 ### Shared Contracts

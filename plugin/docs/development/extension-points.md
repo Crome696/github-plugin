@@ -206,12 +206,19 @@ not register plugin Commands.
 
 The deterministic
 [`generate-project-hooks.mjs`](../../hooks/generate-project-hooks.mjs) script
-may write only the selected host configuration, checker copies, local-state
-ignore entries, and its marked `AGENTS.md` guidance block. It must preflight
-all paths, preserve unrelated content, and block rather than overwrite an
-unrecognized existing file. It must never create a gate snapshot: runtime
-gate JSON is evidence written by the owning operation Skill immediately before
-the protected operation.
+may write only the selected host configuration, checker copies, managed
+local-state/transaction ignore entries, its marked `AGENTS.md` guidance block,
+and `.github/github-plugin/project-hooks-manifest.json`. It must calculate a
+complete desired state before writing, validate every path and ownership proof,
+and block rather than overwrite an unrecognized or locally changed file. The
+version-1 manifest is a generator-owned target artifact, not a Shared Contract;
+its exact-byte and managed-block hash rules are validated in the generator and
+contract tests. Same-filesystem staging, journaled backups, controlled rename,
+rollback, final verification, and next-run recovery are required. Host
+deselection may remove only unchanged artifacts explicitly owned by the prior
+manifest; unknown files and user content remain untouched. It must never create
+a gate snapshot: runtime gate JSON is evidence written by the owning operation
+Skill immediately before the protected operation.
 
 ## External capability extension
 

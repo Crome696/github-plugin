@@ -229,9 +229,12 @@ Cursor and Codex use separate projections in
 The explicit [`generate-project-hooks`](../../skills/generate-project-hooks/SKILL.md)
 Skill asks interactively which host projections to write and uses the
 deterministic [`generate-project-hooks.mjs`](../../hooks/generate-project-hooks.mjs)
-generator to copy them into a target repository. It never writes runtime gate
-snapshots; those remain owning-Skill evidence and continue to fail closed when
-missing or mismatched.
+generator to compute and transactionally project them into a target repository.
+Every successful run writes or verifies the version-1 ownership manifest at
+`.github/github-plugin/project-hooks-manifest.json`; it records exact-byte
+artifacts plus managed hashes for the `AGENTS.md` and `.gitignore` blocks. The
+generator never writes runtime gate snapshots; those remain owning-Skill
+evidence and continue to fail closed when missing or mismatched.
 
 All pre-hooks and the post-merge observer share the host-neutral
 `hooks/lib/gate-state.mjs` runtime. Authoritative state lives only under
@@ -257,6 +260,15 @@ credential-helper descendants), never retries ambiguous or partial results,
 and maps protected failures to native deny responses. Incomplete GraphQL pages
 are never accepted as complete: pre-hooks deny, while post-merge reports
 relationship evidence as unavailable or uncertain.
+
+Project-hook transactions use the same target filesystem for staging, journal,
+and backup data under `.github/github-plugin/.project-hooks-transaction/`.
+Preflight refuses unsafe path components, symlinks, malformed markers,
+modified manifest-owned files, and unproven legacy files. A failed apply is
+rolled back from byte-exact backups; a later run first recovers an incomplete
+journal and removes only its own transaction data. Deselection removes only
+unchanged artifacts owned by the prior manifest, leaving unknown host-directory
+files and user guidance untouched.
 
 ### Shared Contracts
 
