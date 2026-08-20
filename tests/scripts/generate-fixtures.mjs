@@ -55,11 +55,41 @@ const minimalValue = (field, fieldName, forceObject = false) => {
   return null;
 };
 
+const lifecycleOperationFor = (schemaName) => {
+  switch (schemaName) {
+    case "PreCommitGate": return "pre-commit";
+    case "PrePrCreateGate": return "pre-pr-create";
+    case "PreReviewSubmitGate": return "pre-review-submit";
+    case "PreRebaseGate": return "pre-rebase-start";
+    case "PrePrReadyGate": return "pre-pr-ready";
+    case "PreMergeGate": return "pre-merge";
+    default: return "pre-commit";
+  }
+};
+
+const lifecycleFixture = (operation) => ({
+  schema: "GateLifecycle",
+  version: 1,
+  operation,
+  nonce: "0123456789abcdef0123456789abcdef",
+  state: "authority",
+  authorizes: true,
+  issued_at: "2026-01-01T00:00:00.000Z",
+  expires_at: "2026-01-01T00:05:00.000Z",
+  consumed_at: null,
+  receipt_expires_at: null,
+});
+
 const buildPayload = (schema) => {
+  if (schema.schema === "GateLifecycle") return lifecycleFixture("pre-commit");
   const payload = { schema: schema.schema, version: schema.version };
   for (const requiredName of schema.required ?? []) {
     const field = schema.fields?.[requiredName];
-    if (field) payload[requiredName] = minimalValue(field, requiredName, true);
+    if (requiredName === "lifecycle") {
+      payload[requiredName] = lifecycleFixture(lifecycleOperationFor(schema.schema));
+    } else if (field) {
+      payload[requiredName] = minimalValue(field, requiredName, true);
+    }
   }
   if (schema.fields?.status && !Object.hasOwn(payload, "status")) {
     payload.status = minimalValue(schema.fields.status, "status", true);

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.115
+
+- Added the host-neutral, canonical `.github/github-plugin/state/` runtime
+  lifecycle for one-shot hook gates, including cryptographic nonces, five-minute
+  TTLs, bounded future skew, atomic claim and publish operations, persistent
+  replay markers, quarantine, and one-time post-merge receipts.
+- Updated all gate contracts, writers, readers, generator projections, skills,
+  rules, documentation, fixtures, and runtime tests for the breaking lifecycle
+  versions and one-operation-per-gate behavior, including phase-specific Ready
+  and rebase gates and one-time legacy-state migration diagnostics.
+
 ## 0.3.114
 
 - Required exact full-head compare-and-set protection for every supported

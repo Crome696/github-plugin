@@ -59,13 +59,19 @@ The generator writes only the hosts selected by the user:
 
 - Cursor: `.cursor/hooks.json` and the checker copies under `.cursor/hooks/`.
 - Codex: `.codex/hooks.json` and the checker copies under `.codex/hooks/`.
-- The selected local state ignore paths in `.gitignore`.
+- The single canonical local state ignore path `.github/github-plugin/state/`
+  in `.gitignore`.
 - A marked English project-hook guidance block in `AGENTS.md`.
 
-It never writes `.cursor/hooks/state/*.json` or any other valid, empty, or
-placeholder gate snapshot. The owning workflow Skill must write a fresh,
-identity-bound gate immediately before a protected operation. Missing or
-mismatched gate state remains an intentional fail-closed result.
+It never writes `.github/github-plugin/state/*.json`, legacy host state, or any
+other valid, empty, or placeholder gate snapshot. The owning workflow Skill
+must use the shared `gate-state.mjs` writer to write a fresh, identity-bound,
+one-shot gate immediately before a protected operation. Missing or mismatched
+state remains an intentional fail-closed result. The generator copies the same
+host-neutral lifecycle helper into both host projections, emits only the
+canonical ignore/guidance path, and during one release generation quarantines
+known legacy gate files from `.cursor/hooks/state/` and `.codex/hooks/state/`
+without loading them or recursively deleting unknown files.
 
 ## Safety and failure handling
 

@@ -1,7 +1,5 @@
 import {
   existsSync,
-  readFileSync,
-  statSync,
 } from "node:fs";
 import {
   isAbsolute,
@@ -10,11 +8,10 @@ import {
 } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { consumePostMergeReceipt } from "./lib/gate-state.mjs";
 import { runCommandResult } from "./lib/run-command.mjs";
 
 const MAX_INPUT_BYTES = 2 * 1024 * 1024;
-const MAX_GATE_BYTES = 2 * 1024 * 1024;
-const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-merge.json";
 const SAFE_BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 const MERGE_METHODS = new Set(["merge", "squash", "rebase"]);
 
@@ -1504,7 +1501,7 @@ function buildIssueClosure(
   return closure;
 }
 
-function readPreMergeGate(
+function readPreMergeReceipt(
   repositoryRoot,
   repository,
   pullRequest,
@@ -1512,27 +1509,36 @@ function readPreMergeGate(
   tracker,
   deviations,
 ) {
-  const gatePath = resolve(repositoryRoot, ...GATE_RELATIVE_PATH.split("/"));
-  if (!existsSync(gatePath)) {
-    tracker.record("pre-merge-gate", "unavailable", [
-      `No local ${GATE_RELATIVE_PATH} snapshot was available.`,
+  const result = consumePostMergeReceipt(repositoryRoot);
+  if (!result.available) {
+    tracker.record("pre-merge-receipt", "unavailable", [
+      "No canonical post-merge receipt was available; it may already have been consumed by an earlier observation.",
     ]);
     addDeviation(
       deviations,
-      "pre-merge-gate-unavailable",
-      "The local pre-merge gate was not available after the merge.",
+      "pre-merge-receipt-unavailable",
+      "The canonical post-merge receipt was not available after the merge.",
       "The hook cannot determine whether branch deletion was requested by the approved merge operation.",
-      ["The gate is optional for post-merge observation and was not written to the worktree."],
+      ["The receipt is non-authorizing and is consumed at most once."],
     );
     return { present: false, matches: false, deleteBranch: null };
   }
 
-  try {
-    const stats = statSync(gatePath);
-    if (!stats.isFile() || stats.size > MAX_GATE_BYTES) {
-      throw new Error("invalid gate");
-    }
-    const gate = JSON.parse(readFileSync(gatePath, "utf8"));
+  if (result.error !== null || !isRecord(result.receipt)) {
+    tracker.record("pre-merge-receipt", "unavailable", [
+      result.error ?? "The post-merge receipt was not a usable JSON object.",
+    ]);
+    addDeviation(
+      deviations,
+      "pre-merge-receipt-invalid",
+      "The canonical post-merge receipt could not be consumed safely.",
+      "Approval and branch-deletion expectations cannot be attributed to this merge.",
+      [result.error ?? "The receipt was malformed or unavailable."],
+    );
+    return { present: true, matches: false, deleteBranch: null };
+  }
+
+  const gate = result.receipt;
     const gatePullRequest = gate?.pull_request;
     const matches =
       isRecord(gatePullRequest) &&
@@ -1559,19 +1565,19 @@ function readPreMergeGate(
         ? gate.merge.delete_branch
         : null;
     tracker.record(
-      "pre-merge-gate",
+      "pre-merge-receipt",
       "loaded",
       identityMatches
-        ? ["The local PreMergeGate matches the observed pull request and revisions."]
-        : ["A local PreMergeGate was found but does not match the observed pull request or revisions."],
+        ? ["The consumed non-authorizing receipt matches the observed pull request and revisions."]
+        : ["A consumed non-authorizing receipt was found but does not match the observed pull request or revisions."],
     );
     if (!identityMatches) {
       addDeviation(
         deviations,
-        "pre-merge-gate-stale",
-        "The local pre-merge gate does not match the observed post-merge identity.",
+        "pre-merge-receipt-stale",
+        "The consumed post-merge receipt does not match the observed post-merge identity.",
         "Approval and branch-deletion expectations cannot be attributed to this merge.",
-        ["The gate was preserved as evidence but not used as an authorization source."],
+        ["The receipt was consumed and was not used as an authorization source."],
       );
     }
     return {
@@ -1579,19 +1585,6 @@ function readPreMergeGate(
       matches: identityMatches,
       deleteBranch: identityMatches ? deleteBranch : null,
     };
-  } catch {
-    tracker.record("pre-merge-gate", "unavailable", [
-      `The local ${GATE_RELATIVE_PATH} snapshot was invalid or unreadable.`,
-    ]);
-    addDeviation(
-      deviations,
-      "pre-merge-gate-invalid",
-      "The local pre-merge gate could not be parsed.",
-      "Approval and branch-deletion expectations cannot be attributed to this merge.",
-      ["The post-merge hook did not repair or rewrite the gate."],
-    );
-    return { present: true, matches: false, deleteBranch: null };
-  }
 }
 
 function parseWorktreeList(output) {
@@ -2254,7 +2247,7 @@ function evaluate(input) {
   );
   baseStatus.issue_closure = issueClosure;
 
-  const gate = readPreMergeGate(
+  const gate = readPreMergeReceipt(
     repositoryRoot,
     spec.repository,
     {
@@ -2349,9 +2342,9 @@ function evaluate(input) {
       [
         "merge-commit-unavailable",
         "head-branch-unavailable",
-        "pre-merge-gate-unavailable",
-        "pre-merge-gate-stale",
-        "pre-merge-gate-invalid",
+        "pre-merge-receipt-unavailable",
+        "pre-merge-receipt-stale",
+        "pre-merge-receipt-invalid",
         "issue-state-unavailable",
         "issue-state-unknown",
         "issue-relationship-unavailable",

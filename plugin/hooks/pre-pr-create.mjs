@@ -2,10 +2,12 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { claimGate, CANONICAL_STATE_RELATIVE_PATH } from "./lib/gate-state.mjs";
 import { loadRepositoryPolicy, policyEnforces } from "./lib/repository-policy.mjs";
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
-const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-pr-create.json";
+const GATE_FILE_NAME = "pre-pr-create.json";
+const GATE_RELATIVE_PATH = `${CANONICAL_STATE_RELATIVE_PATH}${GATE_FILE_NAME}`;
 const MAX_BODY_FILE_BYTES = 25 * 1024 * 1024;
 const ALLOWED_AUTHORIZATION_SOURCES = new Set([
   "explicit_user",
@@ -133,10 +135,6 @@ function describeEvidenceRequirement(requirement) {
   const source = isRecord(requirement.source) ? requirement.source : {};
   const location = requirement.location === null ? "" : ` at ${safeLabel(requirement.location)}`;
   return `Explicit evidence requirement ${safeLabel(requirement.id)} (${safeLabel(requirement.requirement)}) from ${safeLabel(source.kind)}:${safeLabel(source.reference)} expects ${safeLabel(requirement.expected_kind)}${location} and is ${safeLabel(requirement.status)}.`;
-}
-
-function statePathForRoot(root) {
-  return resolve(root, ...GATE_RELATIVE_PATH.split("/"));
 }
 
 function addFinding(findings, requirement, nextStep) {
@@ -1543,15 +1541,15 @@ function validateGate(gate, findings) {
     addFinding(
       findings,
       "PrePrCreateGate is missing or malformed.",
-      "write a fresh version-2 PrePrCreateGate before gh pr create",
+      "write a fresh version-3 PrePrCreateGate before gh pr create",
     );
     return;
   }
-  if (gate.schema !== "PrePrCreateGate" || gate.version !== 2) {
+  if (gate.schema !== "PrePrCreateGate" || gate.version !== 3) {
     addFinding(
       findings,
       "PrePrCreateGate has an unsupported schema version.",
-      "write a fresh version-2 PrePrCreateGate",
+      "write a fresh version-3 PrePrCreateGate",
     );
   }
   if (!isIsoTimestamp(gate.written_at)) {
@@ -1898,17 +1896,14 @@ function readCommandBody(invocation, commandValues, findings) {
 }
 
 function readGate(repositoryRoot, findings) {
-  const gatePath = statePathForRoot(repositoryRoot);
-  try {
-    return JSON.parse(readFileSync(gatePath, "utf8"));
-  } catch {
-    addFinding(
-      findings,
-      `The local PrePrCreateGate is missing or unreadable at ${GATE_RELATIVE_PATH}.`,
-      "validate the implementation and write a fresh PrePrCreateGate",
-    );
-    return null;
-  }
+  const claim = claimGate(repositoryRoot, GATE_FILE_NAME, "pre-pr-create");
+  if (claim.gate !== null) return claim.gate;
+  addFinding(
+    findings,
+    `The local PrePrCreateGate could not be claimed from ${GATE_RELATIVE_PATH}: ${claim.error ?? "unknown lifecycle error"}`,
+    "validate the implementation and write a fresh PrePrCreateGate",
+  );
+  return null;
 }
 
 function verifyRemoteBranch(repositoryRoot, branchPush, branch, headSha, findings) {

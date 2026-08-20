@@ -1,0 +1,75 @@
+---
+description: Require canonical, host-neutral, one-shot Hook gate state with bounded expiry, nonce replay protection, quarantine, and non-authorizing post-merge receipts.
+alwaysApply: true
+---
+
+# Gate State Lifecycle
+
+All plugin-owned Hook gate state MUST use the canonical, host-neutral path:
+
+```text
+.github/github-plugin/state/
+```
+
+Cursor and Codex projections MUST copy the same `gate-state.mjs` helper and
+MUST NOT create separate host-specific authorities. The generator may update
+only its managed ignore and guidance block. It MUST NOT create gate files,
+placeholder state, or recursively delete unknown files.
+
+## Authority contract
+
+Every authorizing gate MUST carry a version-1 `GateLifecycle` object with:
+
+- `state: authority` and `authorizes: true`;
+- the exact protected operation, including separate operations for each Ready
+  reviewer request and each rebase phase;
+- a cryptographically random, never-reused nonce;
+- `issued_at` and `expires_at` exactly five minutes apart;
+- `issued_at` no more than 60 seconds in the future;
+- `consumed_at: null` and `receipt_expires_at: null`.
+
+The lifecycle clock is authoritative. `written_at` remains fachliche evidence
+only. Missing, malformed, mismatched, expired, future-skewed, old-version,
+non-authorizing, or replayed state MUST fail closed before the protected
+command.
+
+## Atomic writer and claim
+
+Owner Skills MUST call the shared lifecycle writer. It MUST write a temporary
+file in the same directory, flush and sync it, publish it with a
+non-overwriting atomic operation, reread and validate the final bytes, and
+leave an existing destination untouched. Any write, sync, rename, lock, or
+cleanup failure blocks before the external command.
+
+Every protected Hook invocation MUST first atomically claim the authority out
+of the canonical path before fachliche validation. A persistent plugin-owned
+consumption marker keyed by nonce MUST survive process restarts. A command
+failure, timeout, process crash, or failed later semantic check therefore
+cannot make a valid gate reusable.
+
+## Quarantine and legacy migration
+
+Malformed, mismatched, expired, replayed, and non-authorizing states MUST be
+quarantined into plugin-owned paths without recursive deletion. Only known
+legacy gate filenames under `.cursor/hooks/state/` and `.codex/hooks/state/`
+may be detected during the one release-generation migration. They are moved
+to quarantine or reported as a bounded cleanup limitation and are never read
+as authority. Unknown files and user-owned guidance remain untouched. After
+the migration generation, legacy paths are not an authority source.
+
+Abandoned temporary and processing files may be removed only when they match
+the helper's plugin-owned bounded names and age rules. Cleanup diagnostics MUST
+be sanitized, non-recursive, and separate from the protected command result.
+
+## Receipts and rollback
+
+Consuming one `pre-merge` authority may create exactly one
+`post-merge-receipt.json`. A receipt MUST have `state: receipt`,
+`authorizes: false`, operation `pre-merge`, the consumed nonce,
+`consumed_at`, and a five-minute `receipt_expires_at`. The post-merge Hook
+observes and atomically consumes/removes the receipt once. A second invocation
+has no authority and cannot replay the merge.
+
+New receipts and consumed-gate markers are intentionally incompatible with an
+older plugin generation. Rollback MUST leave them unusable; an older version
+may diagnose or quarantine them but MUST NOT restore them as authorizing state.

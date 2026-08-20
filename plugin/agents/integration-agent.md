@@ -102,10 +102,11 @@ thread references, authorization evidence, and failure states.
   version-2 `PullRequestMerge`, `LinkedIssueClosureVerification`, and `CleanupResult`
   lifecycle handoffs. When the close-on-merge fallback runs, it also produces
   version-2 `LinkedIssueClosure`.
-- `PreRebaseGate` remains a version-1 Skill-owned gate. `PreMergeGate` is a
-  version-3 gate carrying the final live preflight, complete version-3
-  readiness result, and embedded version-1 evidence snapshot; neither gate
-  authorizes its own operation.
+- `PreRebaseGate` is a version-2 Skill-owned gate with one fresh lifecycle
+  operation per rebase phase. `PreMergeGate` is a version-4 gate carrying the
+  final live preflight, complete version-3 readiness result, embedded version-1
+  evidence snapshot, and one-shot lifecycle authority; neither gate invents
+  conversational authorization.
 
 ## Mission and language
 
@@ -291,7 +292,8 @@ operation.
 4. Invoke `merge-pull-request` only with the exact approved
    `PullRequestMerge` and current `MergeReadiness`. Immediately before the
    single GitHub merge write, the Skill re-runs the fixed S03 reader chain,
-   writes `PreMergeGate v3` with the final live preflight and immutable
+   writes `PreMergeGate v4` with the final live preflight, fresh one-shot
+   lifecycle authority, and immutable
    snapshot, and includes the exact head compare-and-set in the merge command;
    the host-specific `pre-merge` Hook validates the embedded normalized policy
    evidence deterministically without acquiring GitHub policy, and stops on

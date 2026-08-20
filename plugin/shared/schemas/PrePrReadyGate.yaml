@@ -1,13 +1,14 @@
 schema: PrePrReadyGate
-version: 1
+version: 2
 description: >-
-  Local, read-only snapshot binding two separate exact authorized operations:
-  one standalone Ready-for-Review transition on a current open Draft pull
-  request and, only when approved, one requested-reviewers POST after the
-  transition. The snapshot binds both operations to one unique linked issue,
-  complete pull-request identity, expected head SHA, typed reviewer set, and
+  Local, one-shot snapshot binding one exact authorized operation: either one
+  standalone Ready-for-Review transition on a current open Draft pull request
+  or one requested-reviewers POST after the transition. The snapshot binds the
+  selected phase to one unique linked issue, complete pull-request identity,
+  expected head SHA, typed reviewer set, GateLifecycle authority, and
   independent authorization.
 required:
+  - lifecycle
   - workspace
   - pull_request
   - expected_head_sha
@@ -17,6 +18,10 @@ required:
   - authorization
   - written_at
 fields:
+  lifecycle:
+    type: object
+    required: [schema, version, operation, nonce, state, authorizes, issued_at, expires_at, consumed_at, receipt_expires_at]
+    description: GateLifecycle authority with operation pre-pr-ready or pre-reviewer-request and a five-minute TTL.
   workspace:
     type: object
     required: [repository, path]
@@ -49,7 +54,6 @@ fields:
     format: full git commit SHA
   is_draft:
     type: boolean
-    const: true
   linked_issue:
     type: object
     required: [repository, number, url, unique]
@@ -115,10 +119,10 @@ fields:
     format: iso-8601
 invariants:
   - The gate is local, read-only input to the host hook and never grants Ready-for-Review authority by itself.
-  - schema must be PrePrReadyGate and version must be exactly 1; incomplete legacy gates fail closed.
-  - is_draft must be true and linked_issue.unique must be true for the exact repository, pull request, URL, branches, and expected head SHA.
+  - schema must be PrePrReadyGate and version must be exactly 2; incomplete legacy gates fail closed.
+  - A pre-pr-ready authority has is_draft true and a pre-reviewer-request authority has is_draft false; both bind linked_issue.unique to the exact repository, pull request, URL, branches, and expected head SHA.
   - exact_target, exact_ready_operation, ready_authorized, and reviewers_authorized must all be true, including when reviewers.add is empty.
-  - The host hook allows only the canonical standalone gh pr ready <number> --repo <owner>/<repo> operation while the live pull request is Draft.
-  - After the live pull request is non-Draft, the host hook allows only one canonical requested_reviewers POST with exactly the authorized typed user/team set; an empty reviewers.add set allows no reviewer API write.
+  - The host hook allows only the canonical standalone gh pr ready <number> --repo <owner>/<repo> operation while the live pull request is Draft and the lifecycle operation is pre-pr-ready.
+  - The host hook allows only one canonical requested_reviewers POST after the pull request is non-Draft and the lifecycle operation is pre-reviewer-request; an empty reviewers.add set allows no reviewer API write.
   - User entries map to the API reviewers array; organization/team-slug entries map to team_reviewers after exact organization validation.
   - The hook never executes, rewrites, or broadens a Ready-for-Review transition, reviewer request, title, body, labels, or other pull-request metadata.

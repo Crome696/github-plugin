@@ -85,7 +85,7 @@ The following files are the sources of truth for the corresponding concerns:
 | Structured handoffs and contract inventory | [`../shared/schemas/README.md`](../shared/schemas/README.md) |
 | Repository-owned configurable hook preferences | [`repository-policy.md`](repository-policy.md) |
 | Explicit evidence migration for `0.3.112` | [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md) |
-| Immutable pull-request readiness evidence and atomic merge preflight for `0.3.114` | [`architecture/contracts.md`](architecture/contracts.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
+| Immutable pull-request readiness evidence, atomic merge preflight, and one-shot canonical hook gates for `0.3.115` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
 | Contract producers, consumers, and workflow graph | [`../../tests/lib/handoff-graph.ts`](../../tests/lib/handoff-graph.ts), [`../../tests/scenarios/lib/workflow-graphs.ts`](../../tests/scenarios/lib/workflow-graphs.ts) |
 | Host compatibility assumptions and limitations | [`../../README.md`](../../README.md) and the host manifests |
 
@@ -259,6 +259,7 @@ their explicit invocation boundary.
 | [commit-policy.mdc](../rules/commit-policy.mdc) | Defines exact-scope, validation, authorization, secret, and commit-history checks. |
 | [pull-request-policy.mdc](../rules/pull-request-policy.mdc) | Defines Draft PR content, validation, linkage, duplicate, and ready-state boundaries. |
 | [merge-policy.mdc](../rules/merge-policy.mdc) | Defines current merge evidence, strategy, authorization, and post-merge boundaries. |
+| [gate-state-lifecycle.mdc](../rules/gate-state-lifecycle.mdc) | Defines the canonical host-neutral runtime path, one-shot lifecycle, atomic claim/write, replay markers, quarantine, legacy migration, and receipt rules. |
 | [cli-transport-file-lifecycle.mdc](../rules/cli-transport-file-lifecycle.mdc) | Defines the byte-exact temporary CLI transport lifecycle, safe cleanup, and sanitized diagnostics. |
 | [product-decomposition-policy.mdc](../rules/product-decomposition-policy.mdc) | Defines nearly atomic GitHub product-issue splits with verifiable acceptance and justified dependencies. |
 | [product-interview-policy.mdc](../rules/product-interview-policy.mdc) | Requires an adaptive interview without inventing essential product choices. |
@@ -272,13 +273,17 @@ full safety or approval lists.
 
 | Hook | Host projection | Responsibility |
 | --- | --- | --- |
-| [pre-commit.mjs](../hooks/pre-commit.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Fail closed before an identified AI commit unless the local PreCommitGate and current worktree evidence pass. |
-| [pre-rebase.mjs](../hooks/pre-rebase.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Fail closed before a new local rebase start and allow only metadata-matching recovery of the same active rebase. |
-| [pre-pr-create.mjs](../hooks/pre-pr-create.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Fail closed before gh pr create unless the exact Draft gate passes. |
-| [pre-review-submit.mjs](../hooks/pre-review-submit.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Fail closed before the canonical review API write unless the exact review gate passes. |
-| [pre-pr-ready.mjs](../hooks/pre-pr-ready.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Fail closed before gh pr ready or an authorized reviewer-request write unless the exact Ready gate passes. |
-| [pre-merge.mjs](../hooks/pre-merge.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Fail closed before a PR merge unless the complete identity-bound readiness snapshot passes. |
-| [post-merge.mjs](../hooks/post-merge.mjs) | Cursor afterShellExecution; Codex PostToolUse | Observe a completed merge and return read-only PostMergeStatus. |
+| [pre-commit.mjs](../hooks/pre-commit.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Atomically claim and fail closed before an identified AI commit unless the one-shot PreCommitGate v4 and current worktree evidence pass. |
+| [pre-rebase.mjs](../hooks/pre-rebase.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Atomically claim a phase-specific PreRebaseGate v2 before a new local rebase phase and allow only metadata-matching recovery of that phase. |
+| [pre-pr-create.mjs](../hooks/pre-pr-create.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Atomically claim and fail closed before gh pr create unless the exact one-shot Draft gate v3 passes. |
+| [pre-review-submit.mjs](../hooks/pre-review-submit.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Atomically claim and fail closed before the canonical review API write unless the exact one-shot review gate v2 passes. |
+| [pre-pr-ready.mjs](../hooks/pre-pr-ready.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Atomically claim a phase-specific Ready gate v2 before gh pr ready or an authorized reviewer-request write. |
+| [pre-merge.mjs](../hooks/pre-merge.mjs) | Cursor beforeShellExecution; Codex PreToolUse | Atomically claim PreMergeGate v4 before a PR merge and create at most one non-authorizing receipt. |
+| [post-merge.mjs](../hooks/post-merge.mjs) | Cursor afterShellExecution; Codex PostToolUse | Consume and remove one canonical post-merge receipt, then return read-only PostMergeStatus. |
+
+`hooks/lib/gate-state.mjs` is the shared host-neutral lifecycle runtime copied
+into both projections. Authoritative state lives only under
+`.github/github-plugin/state/`; the generator never creates gate files.
 
 cursor-hooks.json and codex-hooks.json are separate host projections; the
 portable manifest contains no Hook declarations. generate-project-hooks.mjs is

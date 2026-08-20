@@ -2,9 +2,11 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 
 import { readHookInput } from "./lib/read-hook-input.mjs";
+import { claimGate, CANONICAL_STATE_RELATIVE_PATH } from "./lib/gate-state.mjs";
 import { runCommand as runBoundedCommand } from "./lib/run-command.mjs";
 
-const GATE_RELATIVE_PATH = ".cursor/hooks/state/pre-review-submit.json";
+const GATE_FILE_NAME = "pre-review-submit.json";
+const GATE_RELATIVE_PATH = `${CANONICAL_STATE_RELATIVE_PATH}${GATE_FILE_NAME}`;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const VALID_EVENTS = new Set(["COMMENT", "REQUEST_CHANGES", "APPROVE"]);
 const VALID_SEVERITIES = new Set(["blocker", "major", "minor", "suggestion"]);
@@ -1848,21 +1850,14 @@ function normalizeReviewUrl(value) {
 }
 
 function readGate(repositoryRoot, findings) {
-  const gatePath = resolve(repositoryRoot, ...GATE_RELATIVE_PATH.split("/"));
-  try {
-    const fileStats = statSync(gatePath);
-    if (!fileStats.isFile() || fileStats.size > MAX_FILE_BYTES) {
-      throw new Error("invalid gate file");
-    }
-    return JSON.parse(readFileSync(gatePath, "utf8"));
-  } catch {
-    addFinding(
-      findings,
-      `The local PreReviewSubmitGate is missing, too large, unreadable, or invalid at ${GATE_RELATIVE_PATH}.`,
-      "write and verify a fresh PreReviewSubmitGate before review publication",
-    );
-    return null;
-  }
+  const claim = claimGate(repositoryRoot, GATE_FILE_NAME, "pre-review-submit");
+  if (claim.gate !== null) return claim.gate;
+  addFinding(
+    findings,
+    `The local PreReviewSubmitGate could not be claimed from ${GATE_RELATIVE_PATH}: ${claim.error ?? "unknown lifecycle error"}.`,
+    "write and verify a fresh version-2 PreReviewSubmitGate before review publication",
+  );
+  return null;
 }
 
 function readLivePullRequest(workingDirectory, endpoint, decision, findings) {
@@ -1951,7 +1946,7 @@ function validateGate(gate, findings) {
     addFinding(
       findings,
       "PreReviewSubmitGate is missing or malformed.",
-      "write a fresh version-1 PreReviewSubmitGate",
+      "write a fresh version-2 PreReviewSubmitGate",
     );
     return {
       gate,
@@ -1963,11 +1958,11 @@ function validateGate(gate, findings) {
     };
   }
 
-  if (gate.schema !== "PreReviewSubmitGate" || gate.version !== 1) {
+  if (gate.schema !== "PreReviewSubmitGate" || gate.version !== 2) {
     addFinding(
       findings,
       "PreReviewSubmitGate has an unsupported schema version.",
-      "write a fresh version-1 PreReviewSubmitGate",
+      "write a fresh version-2 PreReviewSubmitGate",
     );
   }
   if (!isIsoTimestamp(gate.written_at)) {

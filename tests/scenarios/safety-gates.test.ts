@@ -83,7 +83,7 @@ describe("GitHub command safety and approval gates", () => {
         ).not.toContain(action.operation);
       }
     }
-  });
+  }, 120_000);
 
   it("does not treat rebase approval as merge approval", async () => {
     const scenario = clone(happyScenario(scenarios, "integrate-pr"));

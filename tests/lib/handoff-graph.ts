@@ -316,7 +316,7 @@ export const skillHandoffs: SkillHandoff[] = [
       contract("ValidationResult", 2),
       contract("BranchWorkspace", 1),
     ],
-    produces: [contract("CommitProposal", 1), contract("PreCommitGate", 3)],
+    produces: [contract("CommitProposal", 1), contract("PreCommitGate", 4)],
   },
   {
     name: "create-draft-pr",
@@ -328,7 +328,7 @@ export const skillHandoffs: SkillHandoff[] = [
       contract("BranchPush", 1),
       contract("PullRequestIssueLink", 1),
     ],
-    produces: [contract("PullRequestDraft", 1), contract("PrePrCreateGate", 2)],
+    produces: [contract("PullRequestDraft", 1), contract("PrePrCreateGate", 3)],
   },
   {
     name: "create-worktree",
@@ -515,12 +515,12 @@ export const skillHandoffs: SkillHandoff[] = [
       contract("LoadedPullRequest", 1),
       contract("LinkedIssue", 1),
     ],
-    produces: [contract("PullRequestReady", 1), contract("PrePrReadyGate", 1)],
+    produces: [contract("PullRequestReady", 1), contract("PrePrReadyGate", 2)],
   },
   {
     name: "merge-pull-request",
     consumes: [contract("PullRequestMerge", 2), contract("MergeReadiness", 3)],
-    produces: [contract("PullRequestMerge", 2), contract("PreMergeGate", 3)],
+    produces: [contract("PullRequestMerge", 2), contract("PreMergeGate", 4)],
   },
   {
     name: "prioritize-product-issues",
@@ -557,7 +557,7 @@ export const skillHandoffs: SkillHandoff[] = [
       contract("BranchWorkspace", 1),
       contract("TargetBranchFetch", 1),
     ],
-    produces: [contract("BranchRebase", 1), contract("PreRebaseGate", 1)],
+    produces: [contract("BranchRebase", 1), contract("PreRebaseGate", 2)],
   },
   {
     name: "reply-to-review-thread",
@@ -625,7 +625,7 @@ export const skillHandoffs: SkillHandoff[] = [
       contract("ClassifiedReviewFindings", 1),
       contract("DeduplicatedReviewFindings", 1),
     ],
-    produces: [contract("ReviewDecision", 1), contract("PreReviewSubmitGate", 1)],
+    produces: [contract("ReviewDecision", 1), contract("PreReviewSubmitGate", 2)],
   },
   {
     name: "summarize-feedback-resolution",
@@ -882,7 +882,7 @@ export const agentHandoffs: AgentHandoff[] = [
       contract("LinkedIssue", 1),
       contract("PullRequestCheckInspection", 1),
       contract("PullRequestReady", 1),
-      contract("PrePrReadyGate", 1),
+      contract("PrePrReadyGate", 2),
     ],
     skills: [
       "load-pull-request",
@@ -1050,7 +1050,7 @@ export const commandHandoffs: CommandHandoff[] = [
   },
 ];
 
-export const nestedContracts = new Set(["ReviewFinding", "RepositoryPolicy"]);
+export const nestedContracts = new Set(["GateLifecycle", "ReviewFinding", "RepositoryPolicy"]);
 export const hookEmittedContracts = new Set(["PostMergeStatus"]);
 
 export const allReferencedContracts = (): ContractRef[] => {

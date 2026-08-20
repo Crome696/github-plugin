@@ -568,7 +568,7 @@ describe("deep shared-contract invariants", () => {
     expectInvariant("MergeReadiness", blockedThreadReadiness, "ready_condition_unmet");
   });
 
-  it("requires PreMergeGate v3 final preflight identity and pass evidence", () => {
+  it("requires PreMergeGate v4 final preflight identity and pass evidence", () => {
     const gate = fixture<Record<string, unknown>>("PreMergeGate");
     expectStructurallyValid("PreMergeGate", gate);
     expect(validateContractInvariants("PreMergeGate", gate)).toEqual([]);

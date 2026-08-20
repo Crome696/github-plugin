@@ -212,12 +212,12 @@ repair missing prerequisites or make a product judgment.
 
 | Contract | Before | Required evidence | Hook result |
 | --- | --- | --- | --- |
-| [`PreCommitGate`](../../shared/schemas/PreCommitGate.yaml) | canonical `git -C <verified-worktree> commit --cleanup=verbatim --file=<approved-message-file>` | Version-3 gate with version-2 validation, every explicit evidence requirement satisfied (or an explicitly empty list), exact path union, clean identity, secret check, commit authorization, current `HEAD`, exact message-file bytes, and cached staged-index fingerprint. | Allow only the exact standalone approved commit; wrappers, extra segments, alternate message sources, pathspecs, options, index drift, or unmet explicit evidence fail closed. |
-| [`PreRebaseGate`](../../shared/schemas/PreRebaseGate.yaml) | local `git rebase` start or standalone recovery | For a start: exact pull-request branch, clean worktree, selected target SHA, remote context, and rebase authorization. For recovery: the same gate plus exactly one active `rebase-merge` or `rebase-apply` state, matching `head-name`/`onto`/`orig-head`, and the exact registered non-primary worktree. | Allow only the named bounded start or the standalone recovery of that same active operation; otherwise fail closed. |
-| [`PrePrCreateGate`](../../shared/schemas/PrePrCreateGate.yaml) | `gh pr create` | Version-2 gate with version-2 validation, every explicit evidence requirement satisfied (or an explicitly empty list), verified commit and push, complete Draft body, unique issue link, and exact command. | Allow only the approved Draft PR creation; unmet explicit evidence fails closed. |
-| [`PreReviewSubmitGate`](../../shared/schemas/PreReviewSubmitGate.yaml) | canonical review API write | Current head, exact findings, valid locations, deduplication, confirmation, and publication authorization. | Allow only the exact review payload. |
-| [`PrePrReadyGate`](../../shared/schemas/PrePrReadyGate.yaml) | one canonical `gh pr ready` followed, only when authorized, by one `requested_reviewers POST` | Complete version-1 gate, exact URL/branches/SHA, open Draft or post-ready phase, exactly one linked issue, and typed reviewer set. | Allow only the standalone phase-appropriate operation; reject legacy/incomplete gates, compound commands, identity drift, and payload mismatch. |
-| [`PreMergeGate`](../../shared/schemas/PreMergeGate.yaml) | merge API write | Version-3 gate with final live preflight, version-3 `MergeReadiness`, one complete version-1 `PullRequestReadinessEvidence` snapshot, exact strategy, authorization, and required head compare-and-set. | Fail closed on any missing, mixed, stale, partial, unavailable, or identity-mismatched snapshot or preflight; the Hook performs no live GitHub policy or GraphQL read. |
+| [`PreCommitGate`](../../shared/schemas/PreCommitGate.yaml) | canonical `git -C <verified-worktree> commit --cleanup=verbatim --file=<approved-message-file>` | Version-4 gate with version-2 validation, every explicit evidence requirement satisfied (or an explicitly empty list), exact path union, clean identity, secret check, commit authorization, current `HEAD`, exact message-file bytes, cached staged-index fingerprint, and a fresh `GateLifecycle` authority. | Atomically claim and allow only the exact standalone approved commit; wrappers, extra segments, alternate message sources, pathspecs, options, index drift, replay, expiry, or unmet evidence fail closed. |
+| [`PreRebaseGate`](../../shared/schemas/PreRebaseGate.yaml) | local `git rebase` start or standalone recovery | Version-2 gate with exact pull-request branch, clean worktree, selected target SHA, remote context, rebase authorization, and a lifecycle operation specific to `start`, `continue`, `skip`, or `abort`. | Allow only the one named bounded operation with a fresh claimed gate; a gate for one rebase phase never authorizes another phase. |
+| [`PrePrCreateGate`](../../shared/schemas/PrePrCreateGate.yaml) | `gh pr create` | Version-3 gate with version-2 validation, every explicit evidence requirement satisfied (or an explicitly empty list), verified commit and push, complete Draft body, unique issue link, exact command, and a fresh lifecycle authority. | Allow only the approved Draft PR creation once; failure or replay cannot reuse the gate. |
+| [`PreReviewSubmitGate`](../../shared/schemas/PreReviewSubmitGate.yaml) | canonical review API write | Version-2 gate with current head, exact findings, valid locations, deduplication, confirmation, publication authorization, and a fresh lifecycle authority. | Allow only the exact review payload once; the claim precedes semantic validation. |
+| [`PrePrReadyGate`](../../shared/schemas/PrePrReadyGate.yaml) | one canonical `gh pr ready` and, separately, one `requested_reviewers POST` | Version-2 gate with exact URL/branches/SHA, phase-specific Draft state, exactly one linked issue, typed reviewer set, and operation-specific lifecycle authority (`pre-pr-ready` or `pre-reviewer-request`). | Allow only one standalone phase-appropriate operation; reject legacy/incomplete gates, compound commands, identity drift, replay, and payload mismatch. |
+| [`PreMergeGate`](../../shared/schemas/PreMergeGate.yaml) | merge API write | Version-4 gate with final live preflight, version-3 `MergeReadiness`, one complete version-1 `PullRequestReadinessEvidence` snapshot, exact strategy, authorization, required head compare-and-set, and a fresh lifecycle authority. | Fail closed on any missing, mixed, stale, partial, unavailable, identity-mismatched, expired, or replayed state; one consumed gate may create at most one non-authorizing receipt. |
 | [`PostMergeStatus`](../../shared/schemas/PostMergeStatus.yaml) | after merge | Completed command, PR state, merge commit, target branch, issue closure, and cleanup availability. | Return read-only status and open actions; never mutate cleanup state. |
 
 The six pre-operation checkers are reached through the shared
@@ -226,9 +226,42 @@ operation-specific, fail-closed matchers, while Codex registers one dispatcher
 for `PreToolUse` and one for `PostToolUse`; the latter routes only merge
 completion to `post-merge.mjs`. The dispatcher classifies quoted shell tokens
 without live reads, rejects compound protected commands before a checker starts,
-and returns the native host envelope for irrelevant commands. The local state
-files used by the checkers are ignored development state, not authority. A gate
-snapshot records evidence; it does not grant approval by itself.
+and returns the native host envelope for irrelevant commands. The canonical
+runtime state used by the checkers is ignored local state at
+`.github/github-plugin/state/`. The state is host-neutral: Cursor and Codex
+copy and invoke the same `hooks/lib/gate-state.mjs` helper. A gate snapshot
+records evidence and an already-authorized operation; it does not create
+conversation approval by itself.
+
+## Canonical one-shot lifecycle
+
+Every authorizing gate contains a version-1 `GateLifecycle` object. Its
+`operation` identifies exactly one protected mutation, `nonce` is a fresh
+cryptographically random operation identifier, and `issued_at`/`expires_at`
+are the authoritative five-minute lifetime. `issued_at` may be at most 60
+seconds in the future. An authority has `state: authority`, `authorizes: true`,
+and null consumption fields. `written_at` remains domain evidence and never
+replaces the lifecycle clock.
+
+Owner Skills publish through the common helper with a same-directory temporary
+file, flush/sync, non-overwriting atomic publish, and final-byte reread. The
+Hook first atomically claims the authority out of the canonical path and only
+then performs the existing semantic checks. A persistent plugin-owned
+consumption marker prevents nonce replay after allow, command failure,
+semantic denial, timeout, or process restart. Missing, malformed, mismatched,
+expired, future-skewed, old-version, or already-consumed state is fail-closed
+and is quarantined without recursive deletion. Processing and cleanup errors
+remain bounded diagnostics and never become permission.
+
+`pre-pr-ready` and `pre-reviewer-request` are separate one-shot operations,
+as are `pre-rebase-start`, `pre-rebase-continue`, `pre-rebase-skip`, and
+`pre-rebase-abort`. A consumed `pre-merge` authority may create exactly one
+`post-merge-receipt.json`; the receipt has `state: receipt`,
+`authorizes: false`, `operation: pre-merge`, the consumed nonce,
+`consumed_at`, and a five-minute `receipt_expires_at`. `post-merge` observes,
+atomically consumes, and removes it once. A replay, missing receipt, or older
+plugin version cannot derive merge, issue-closure, branch-deletion, or
+worktree-cleanup authority.
 
 ## Deterministic dispatch and bounded runtime
 
@@ -268,11 +301,15 @@ the marked `AGENTS.md` guidance block. It preflights all requested paths and blo
 an existing conflicting file. It may replace only its own marked output or an
 unchanged prior projection.
 
-The generator never creates
-`.cursor/hooks/state/<gate>.json` or `.codex/hooks/state/<gate>.json`. Those
-files are written by the owning operation Skill immediately before a protected
-operation. Missing, stale, or mismatched gate state remains an intentional
-fail-closed result rather than a setup failure that the generator may repair.
+The generator copies the common `gate-state.mjs` helper into both projections,
+emits only `.github/github-plugin/state/` in its managed ignore and guidance,
+and never creates gate files or placeholders. During one release generation it
+may detect only known legacy gate filenames under `.cursor/hooks/state/` and
+`.codex/hooks/state/`; those files are quarantined or reported as bounded
+cleanup limitations, never loaded as authority. Unknown files are never
+recursively deleted. Missing, stale, or mismatched canonical state remains an
+intentional fail-closed result rather than a setup failure the generator may
+repair.
 
 ## Stop conditions
 

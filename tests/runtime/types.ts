@@ -136,4 +136,6 @@ export interface GateOptions {
   malformed?: boolean;
   stale?: boolean;
   mismatched?: boolean;
+  reviewerRequest?: boolean;
+  rebaseOperation?: "pre-rebase-start" | "pre-rebase-continue" | "pre-rebase-skip" | "pre-rebase-abort";
 }

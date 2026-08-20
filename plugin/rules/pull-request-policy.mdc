@@ -67,12 +67,17 @@ blocker, or ambiguous handoff.
 ## Deterministic pre-publication gate
 
 Immediately before `gh pr create`, the `create-draft-pr` Skill MUST write a
-current local version-2 `PrePrCreateGate` containing the exact active
+current local version-3 `PrePrCreateGate` containing the exact active
 `BranchWorkspace`, passed `ValidationResult`, created `CommitProposal`,
 verified non-force `BranchPush`, linked `PullRequestIssueLink`, and unpublished
-`PullRequestDraft`. The host `pre-pr-create` Hook MUST fail closed unless the
-gate, live HEAD, live remote branch, exact command, complete English
-description, and unique issue link all match.
+`PullRequestDraft`, plus a fresh `GateLifecycle` authority for
+`pre-pr-create`. It MUST publish through `plugin/hooks/lib/gate-state.mjs` at
+`.github/github-plugin/state/pre-pr-create.json`; the writer must refuse
+replacement, use atomic same-directory publication, verify final bytes, and
+enforce the five-minute TTL and 60-second future skew. The host
+`pre-pr-create` Hook MUST atomically claim the gate before semantic checks and
+fail closed unless the claimed lifecycle, gate, live HEAD, live remote branch,
+exact command, complete English description, and unique issue link all match.
 
 The Hook MUST only read the gate, command, body file, and live Git state. It
 MUST never invent or rewrite a title, body, issue link, branch, SHA, or
@@ -118,15 +123,21 @@ MUST:
 
 - Keep unique issue linkage. Missing, mentioned-only, or ambiguous issue
   candidates block the transition.
-- Write a current local version-1 `PrePrReadyGate` immediately before
-  `gh pr ready`. The host `pre-pr-ready` Hook MUST fail closed unless the
-  gate, live identity, Draft state, unique issue, command, and authorized
-  reviewer set match.
+- Write a current local version-2 `PrePrReadyGate` immediately before
+  `gh pr ready` with a fresh `pre-pr-ready` lifecycle authority. Write it at
+  `.github/github-plugin/state/pre-pr-ready.json` through the shared atomic
+  lifecycle writer; the host Hook MUST claim it before semantic validation and
+  fail closed unless the lifecycle, gate, live identity, Draft state, unique
+  issue, command, and authorized reviewer set match.
 - Treat an already non-Draft open pull request as `already_ready` after
   identity verification. Do not request additional reviewers.
 - Request reviewers only from the authorized `reviewers.add` set after the
   ready transition. An empty set is valid. CODEOWNERS matches are optional
   suggestions and MUST NOT be treated as merge-required policy.
+- When the reviewer set is non-empty, create a separate fresh version-2 gate
+  with `is_draft: false` and lifecycle operation `pre-reviewer-request` before
+  the requested-reviewers POST. Never reuse the Ready gate; an empty set emits
+  no reviewer write and needs no second gate.
 - Treat pending or failed CI as a warning, not a Ready-for-Review blocker.
   `MergeReadiness.status: ready` is not a prerequisite.
 

@@ -99,9 +99,9 @@ invent a value to complete a contract.
   `LoadedIssue` handoffs.
 - The delivery chain produces version-2 `ValidationResult`, `CommitProposal`,
   `BranchPush`, `PullRequestIssueLink`, and `PullRequestDraft` handoffs.
-- The local `PreCommitGate` snapshot is version-3 and the local `PrePrCreateGate`
-  snapshot is version-2; both are mutation gates owned by their respective
-  Skills.
+- The local `PreCommitGate` snapshot is version-4 and the local `PrePrCreateGate`
+  snapshot is version-3; both are one-shot mutation gates owned by their
+  respective Skills and share the canonical lifecycle helper and state path.
 
 ## Mission and language
 

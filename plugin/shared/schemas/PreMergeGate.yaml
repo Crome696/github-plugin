@@ -1,7 +1,8 @@
 schema: PreMergeGate
-version: 3
-description: Local, read-only snapshot binding one exact approved GitHub pull-request merge to one immutable readiness evidence snapshot and explicit merge authorization.
+version: 4
+description: Local, one-shot snapshot binding one exact approved GitHub pull-request merge to one immutable readiness evidence snapshot, explicit merge authorization, and a non-authorizing post-merge receipt lifecycle.
 required:
+  - lifecycle
   - workspace
   - pull_request
   - expected_head_sha
@@ -12,6 +13,10 @@ required:
   - readiness
   - written_at
 fields:
+  lifecycle:
+    type: object
+    required: [schema, version, operation, nonce, state, authorizes, issued_at, expires_at, consumed_at, receipt_expires_at]
+    description: GateLifecycle authority with operation pre-merge; the consumed gate may produce one non-authorizing receipt.
   workspace:
     type: object
     required: [repository, path]
@@ -252,7 +257,7 @@ fields:
     type: string
     format: iso-8601
 invariants:
-  - The snapshot is local-only and is written immediately before one exact GitHub pull-request merge command; it never performs or authorizes a merge by itself.
+  - The snapshot is local-only and is written immediately before one exact GitHub pull-request merge command; its GateLifecycle authority is consumed before semantic validation and never performs or authorizes a merge by itself.
   - The hook validates the complete version-3 MergeReadiness handoff, its embedded version-1 PullRequestReadinessEvidence, and the final live preflight without acquiring GitHub policy or network state itself.
   - readiness.status is ready, readiness.head_sha equals expected_head_sha, and readiness evidence is complete and identity-matched; readiness never substitutes for explicit merge authorization.
   - readiness.issue_coverage.status must be either `covered` or `waived`; when `waived`, the embedded `issue_coverage.waiver` object must be present and complete.
@@ -260,3 +265,4 @@ invariants:
   - preflight is the final live identity and policy handoff; its repository, PR number, URL, head/base branches, live head/base SHAs, and every required result equal the gate, and its evidence is non-empty.
   - A requested branch deletion requires authorization.delete_branch_authorized to be true; no branch is deleted implicitly.
   - Any changed, missing, stale, unavailable, ambiguous, failed, pending, skipped, or unknown merge condition blocks without repairing the condition or rewriting the snapshot.
+  - A valid consumed PreMergeGate may create exactly one post-merge-receipt.json with state receipt, authorizes false, consumed_at set, and receipt_expires_at five minutes after consumption; post-merge consumes and removes that receipt once.

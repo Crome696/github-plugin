@@ -1,0 +1,62 @@
+schema: GateLifecycle
+version: 1
+description: >-
+  Shared host-neutral lifecycle metadata for one-shot local hook authority and
+  the single non-authorizing receipt derived from a consumed pre-merge gate.
+required:
+  - schema
+  - version
+  - operation
+  - nonce
+  - state
+  - authorizes
+  - issued_at
+  - expires_at
+  - consumed_at
+  - receipt_expires_at
+fields:
+  schema:
+    type: string
+    const: GateLifecycle
+  version:
+    type: integer
+    const: 1
+  operation:
+    type: enum
+    values:
+      - pre-commit
+      - pre-pr-create
+      - pre-review-submit
+      - pre-rebase-start
+      - pre-rebase-continue
+      - pre-rebase-skip
+      - pre-rebase-abort
+      - pre-pr-ready
+      - pre-reviewer-request
+      - pre-merge
+  nonce:
+    type: string
+    format: cryptographically-random-operation-nonce
+  state:
+    type: enum
+    values: [authority, receipt]
+  authorizes:
+    type: boolean
+  issued_at:
+    type: string
+    format: iso-8601
+  expires_at:
+    type: string
+    format: iso-8601
+  consumed_at:
+    type: string | null
+    format: iso-8601
+  receipt_expires_at:
+    type: string | null
+    format: iso-8601
+invariants:
+  - An authority has state authority, authorizes true, null consumed_at, null receipt_expires_at, and expires_at exactly five minutes after issued_at.
+  - An authority operation is one of the protected one-shot pre-operation names and its nonce is cryptographically random and never reused.
+  - issued_at may be at most 60 seconds in the future and an authority is invalid when the current time reaches expires_at.
+  - A receipt is state receipt, authorizes false, operation pre-merge, has consumed_at set, and expires exactly five minutes after consumed_at.
+  - Lifecycle validity is checked centrally by the shared runtime helper before fachliche Gate-Validierung; malformed, mismatched, expired, replayed, or legacy state never authorizes.

@@ -13,7 +13,7 @@ authorization state so the next Skill can make a bounded decision.
 
 ## Contract families
 
-The plugin currently defines 84 versioned contracts.
+The plugin currently defines 85 versioned contracts.
 
 ### Issue and linkage contracts
 
@@ -118,13 +118,14 @@ The plugin currently defines 84 versioned contracts.
 | `ProductPlannerRun` | Interactive parent-issue product-planning record through analysis, interview, mapping, decomposition, atomicity, dependencies, prioritization, sub-issue drafting, and publication handoff only after exact user approval. |
 | `ProductSubIssuePublication` | Exact-set publication result mapping approved product-plan unit IDs to GitHub issue numbers and URLs, with parent and hard-dependency relationship outcomes and failed operations. |
 | `CleanupResult` | Authorized branch/worktree cleanup results, preserved unsafe targets, and local/remote outcomes. |
-| `PreCommitGate` | Version-3 local snapshot binding one exact canonical commit to validated scope, worktree identity, authorization, exact message bytes, and cached staged-index contents. |
-| `PreRebaseGate` | Local snapshot binding one exact rebase start to the verified branch, target, worktree, and authorization; its identity evidence can be reused only for a matching active-rebase recovery. |
-| `PrePrCreateGate` | Version-2 local snapshot binding one exact Draft PR publication to commit, push, issue link, description, and version-2 validation. |
-| `PreReviewSubmitGate` | Local snapshot binding one exact review payload to current evidence, deduplication, confirmation, and authorization. |
-| `PrePrReadyGate` | Version-1 local snapshot binding one standalone Ready-for-Review transition and, only when authorized after that transition, one exact requested-reviewers POST to complete Draft/URL/branch/SHA identity, unique issue, typed reviewer set, and authorization. |
-| `PreMergeGate` | Version-3 local snapshot binding one exact merge to a final live preflight, version-3 readiness with an embedded version-1 immutable snapshot, and exact merge authorization. |
-| `PostMergeStatus` | Read-only post-merge PR, merge-commit, linked-issue, and cleanup status. |
+| `GateLifecycle` | Version-1 host-neutral lifecycle authority or non-authorizing receipt with operation-specific nonce, five-minute expiry, bounded future skew, consumption, and receipt-expiry semantics. |
+| `PreCommitGate` | Version-4 local snapshot binding one exact canonical commit to validated scope, worktree identity, authorization, exact message bytes, cached staged-index contents, and one-shot lifecycle authority. |
+| `PreRebaseGate` | Version-2 local snapshot binding one exact rebase phase to the verified branch, target, worktree, authorization, and a fresh phase-specific lifecycle authority. |
+| `PrePrCreateGate` | Version-3 local snapshot binding one exact Draft PR publication to commit, push, issue link, description, version-2 validation, and one-shot lifecycle authority. |
+| `PreReviewSubmitGate` | Version-2 local snapshot binding one exact review payload to current evidence, deduplication, confirmation, authorization, and one-shot lifecycle authority. |
+| `PrePrReadyGate` | Version-2 local snapshot binding one standalone Ready-for-Review transition or one separately authorized requested-reviewers POST to complete Draft/URL/branch/SHA identity, unique issue, typed reviewer set, and phase-specific lifecycle authority. |
+| `PreMergeGate` | Version-4 local snapshot binding one exact merge to a final live preflight, version-3 readiness with an embedded version-1 immutable snapshot, exact merge authorization, and one-shot lifecycle authority. |
+| `PostMergeStatus` | Read-only post-merge PR, merge-commit, linked-issue, and cleanup status sourced from one non-authorizing, one-time receipt when available. |
 
 The grouping is explanatory. A contract's authoritative fields, versions,
 status values, and approval semantics are defined only in its YAML file.
@@ -214,7 +215,7 @@ producer and consumer.
 
 The plugin's contract tests validate:
 
-- all 84 schema descriptions and minimal valid fixtures;
+- all 85 schema descriptions and minimal valid fixtures;
 - required fields, versions, enums, and nested payloads;
 - producer/consumer compatibility;
 - Command-to-Agent ownership and forbidden operation graphs;

@@ -225,11 +225,16 @@ and prepare the approved `body` in an operating-system temporary file without
 translation or normalization. The body file and the one direct
 payload-consuming `gh pr create` invocation belong to the same `try/finally`
 lifecycle; cleanup also runs if gate preparation or verification is handled as
-a failure. Then write exactly one local version-2
+a failure. Then write exactly one local version-3
 `PrePrCreateGate` snapshot to
-`.cursor/hooks/state/pre-pr-create.json`. Create the ignored state directory
-only when it does not exist. Do not use an old, partial, or stale snapshot as
-evidence and do not repair missing handoffs by editing the snapshot.
+`.github/github-plugin/state/pre-pr-create.json`. Publish it through the shared
+`plugin/hooks/lib/gate-state.mjs` writer. The writer creates the canonical
+state directory only when needed, uses a same-directory temporary file and
+non-overwriting atomic publish, rereads the final bytes, and blocks on a
+pre-existing target, malformed lifecycle, lock, rename, or cleanup failure.
+Do not use an old, partial, or stale snapshot as evidence and do not repair
+missing handoffs by editing the snapshot. The hook consumes this authority
+before semantic validation, so a failed `gh pr create` cannot reuse it.
 
 The snapshot must contain the exact, identity-matched values from the current
 handoffs:
@@ -237,7 +242,19 @@ handoffs:
 ```json
 {
   "schema": "PrePrCreateGate",
-  "version": 2,
+  "version": 3,
+  "lifecycle": {
+    "schema": "GateLifecycle",
+    "version": 1,
+    "operation": "pre-pr-create",
+    "nonce": "<cryptographically random operation nonce>",
+    "state": "authority",
+    "authorizes": true,
+    "issued_at": "<current ISO-8601 timestamp>",
+    "expires_at": "<issued_at plus five minutes>",
+    "consumed_at": null,
+    "receipt_expires_at": null
+  },
   "workspace": {
     "repository": "<BranchWorkspace.repository>",
     "path": "<BranchWorkspace.worktree_path>",

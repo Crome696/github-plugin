@@ -14,10 +14,12 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 const pluginRoot = resolve(testDirectory, "..", "..", "plugin");
 const schemaDirectory = join(pluginRoot, "shared", "schemas");
 const expectedVersionTwo = new Set([
+  "PrePrReadyGate",
+  "PreRebaseGate",
+  "PreReviewSubmitGate",
   "IssueDraft",
   "LinkedIssueClosure",
   "LoadedPullRequestDiscussions",
-  "PrePrCreateGate",
   "PullRequestMerge",
   "ReviewThreadReply",
   "ReviewThreadResolution",
@@ -25,6 +27,9 @@ const expectedVersionTwo = new Set([
 ]);
 const expectedVersionThree = new Set([
   "MergeReadiness",
+  "PrePrCreateGate",
+]);
+const expectedVersionFour = new Set([
   "PreCommitGate",
   "PreMergeGate",
 ]);
@@ -113,8 +118,8 @@ describe("shared contract schema inventory", () => {
   it("parses every YAML contract and keeps the filename identity stable", async () => {
     const paths = await listSchemaPaths(schemaDirectory);
 
-    expect(paths).toHaveLength(84);
-    expect(schemas).toHaveLength(84);
+    expect(paths).toHaveLength(85);
+    expect(schemas).toHaveLength(85);
     for (const schema of schemas) {
       expect(schema.schema).toBe(basename(schema.path, ".yaml"));
       expect(schema.description.trim()).not.toBe("");
@@ -136,10 +141,16 @@ describe("shared contract schema inventory", () => {
         .map((schema) => schema.schema),
     );
     expect(versionThree).toEqual(expectedVersionThree);
+    const versionFour = new Set(
+      schemas
+        .filter((schema) => schema.version === 4)
+        .map((schema) => schema.schema),
+    );
+    expect(versionFour).toEqual(expectedVersionFour);
     expect(
       schemas.filter(
         (schema) =>
-          schema.version !== 1 && schema.version !== 2 && schema.version !== 3,
+          schema.version !== 1 && schema.version !== 2 && schema.version !== 3 && schema.version !== 4,
       ),
     ).toHaveLength(0);
   });
@@ -175,7 +186,7 @@ describe("shared contract schema inventory", () => {
     ].map((match) => match[1]!);
     const names = schemas.map((schema) => schema.schema).sort();
 
-    expect(entries).toHaveLength(84);
+    expect(entries).toHaveLength(85);
     expect(new Set(entries).size).toBe(entries.length);
     expect([...entries].sort()).toEqual(names);
   });

@@ -1,5 +1,16 @@
 schema: PrePrCreateGate
-version: 2
+version: 3
+lifecycle:
+  schema: GateLifecycle
+  version: 1
+  operation: pre-pr-create
+  nonce: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  state: authority
+  authorizes: true
+  issued_at: '2026-01-01T00:00:00.000Z'
+  expires_at: '2026-01-01T00:05:00.000Z'
+  consumed_at: null
+  receipt_expires_at: null
 workspace:
   repository: octo-org/widgets
   path: C:/workspace/github

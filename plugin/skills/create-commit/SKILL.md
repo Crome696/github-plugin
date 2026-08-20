@@ -29,13 +29,17 @@ rewrite, or approve the proposal.
 - Do not bypass hooks with `--no-verify` or equivalent flags.
 - Do not expose or commit secrets, tokens, private keys, credential-bearing
   values, `.env` contents, or other confidential data.
-- Before the final status check, write one local version-3 `PreCommitGate`
-  snapshot to `.cursor/hooks/state/pre-commit.json` containing the exact
+- Before the final status check, write one local version-4 `PreCommitGate`
+  snapshot to `.github/github-plugin/state/pre-commit.json` containing the exact
   approved `CommitProposal`, the complete current `ValidationResult`, the
   verified worktree identity, the pre-commit `HEAD`, the exact approved
-  message-file bytes, and the complete cached staged-index fingerprint. The
-  hook state path is ignored and must never be staged. Version-1 and version-2
-  snapshots fail closed and must be regenerated as version 3.
+  message-file bytes, the complete cached staged-index fingerprint, and a
+  fresh `GateLifecycle` authority with operation `pre-commit`. The shared
+  lifecycle helper writes the ignored state atomically, refuses to overwrite
+  an existing gate, and verifies the final bytes; the hook claims the gate
+  before semantic validation, so this one gate cannot be reused after a
+  failed or interrupted commit. Version-1 through version-3 snapshots fail
+  closed and must be regenerated as version 4.
 - A normal commit uses the existing task-scoped delivery authorization and
   does not ask for a second conversational approval. A repository instruction
   may explicitly re-enable an interactive commit gate for its scope.
@@ -167,17 +171,33 @@ The cached name set must equal the approved path union exactly. A missing,
 extra, duplicate, unmerged, or uncheckable path blocks the commit. Do not
 unstage or clean automatically; report the exact diagnostic state.
 
-### 4. Write the local PreCommitGate snapshot
+### 4. Write and verify the one-shot local PreCommitGate
 
-After the cached scope and whitespace checks pass, write exactly one
-repository-local, ignored JSON snapshot at
-`.cursor/hooks/state/pre-commit.json`. Create the ignored state directory only
-when it does not exist. The snapshot must have this version-3 shape:
+After the cached scope and whitespace checks pass, call the shared
+`plugin/hooks/lib/gate-state.mjs` writer to publish exactly one repository-local,
+ignored JSON snapshot at `.github/github-plugin/state/pre-commit.json`. The
+writer creates only plugin-owned runtime subdirectories, publishes through a
+same-directory temporary file and non-overwriting atomic rename, and rereads
+the final file. A pre-existing target, malformed lifecycle, lock failure, or
+cleanup failure blocks the commit before Git is invoked. The snapshot must
+have this version-4 shape:
 
 ```json
 {
   "schema": "PreCommitGate",
-  "version": 3,
+  "version": 4,
+  "lifecycle": {
+    "schema": "GateLifecycle",
+    "version": 1,
+    "operation": "pre-commit",
+    "nonce": "<cryptographically random operation nonce>",
+    "state": "authority",
+    "authorizes": true,
+    "issued_at": "<current ISO-8601 timestamp>",
+    "expires_at": "<issued_at plus five minutes>",
+    "consumed_at": null,
+    "receipt_expires_at": null
+  },
   "workspace": {
     "repository": "<verified owner/repository>",
     "path": "<verified absolute worktree path>",
@@ -214,6 +234,9 @@ put secrets, tokens, private keys, `.env` contents, or credential-bearing
 values into the snapshot. If the snapshot cannot be written or verified as
 valid JSON, return `status: blocked` and leave the index and files unchanged.
 Do not rewrite or delete a stale snapshot as a repair step.
+The lifecycle helper enforces the five-minute TTL, maximum 60-second future
+skew, nonce format, and one-time consumption marker; those checks are
+authoritative and are separate from the gate's `written_at` evidence timestamp.
 
 ### 5. Check status immediately before committing
 
