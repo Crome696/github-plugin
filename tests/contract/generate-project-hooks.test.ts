@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -21,8 +22,12 @@ type GeneratorResult = {
   status: string;
   target: string;
   hosts: string[];
+  plugin_version: string;
+  manifest_path: string;
   written_paths: string[];
   unchanged_paths: string[];
+  removed_paths: string[];
+  recovered_paths: string[];
   blocked: Array<{ path: string | null; reason: string }>;
   limitations: string[];
 };
@@ -37,12 +42,31 @@ const createRepository = (): string => {
   return repository;
 };
 
-const generate = (repository: string, hosts: string): GeneratorResult => {
+type FaultSpec = {
+  phase: string;
+  occurrence?: number;
+  mode?: "error" | "interrupt";
+};
+
+const generate = (
+  repository: string,
+  hosts: string,
+  fault?: FaultSpec,
+): GeneratorResult => {
+  const environment = { ...process.env };
+  if (fault) {
+    environment.CROMESDK_PROJECT_HOOKS_TEST_MODE = "1";
+    environment.CROMESDK_PROJECT_HOOKS_TEST_FAULT = JSON.stringify(fault);
+  } else {
+    delete environment.CROMESDK_PROJECT_HOOKS_TEST_MODE;
+    delete environment.CROMESDK_PROJECT_HOOKS_TEST_FAULT;
+  }
   const output = execFileSync(
     process.execPath,
     [generator, "--target", repository, "--hosts", hosts],
     {
       cwd: pluginRoot,
+      env: environment,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -53,9 +77,10 @@ const generate = (repository: string, hosts: string): GeneratorResult => {
 const generateExpectingFailure = (
   repository: string,
   hosts: string,
+  fault?: FaultSpec,
 ): GeneratorResult => {
   try {
-    generate(repository, hosts);
+    generate(repository, hosts, fault);
   } catch (error) {
     const stdout =
       error && typeof error === "object" && "stdout" in error
@@ -68,6 +93,12 @@ const generateExpectingFailure = (
 
 const readJson = (path: string): Record<string, unknown> =>
   JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+
+const hash = (contents: Buffer): string =>
+  createHash("sha256").update(contents).digest("hex");
+
+const manifestFor = (repository: string): Record<string, unknown> =>
+  readJson(join(repository, ".github", "github-plugin", "project-hooks-manifest.json"));
 
 afterEach(() => {
   for (const repository of temporaryRepositories.splice(0)) {
@@ -209,6 +240,98 @@ describe("generate-project-hooks", () => {
     ).toBe(false);
   });
 
+  it("writes a version-1 ownership manifest with verifiable artifact hashes", () => {
+    const repository = createRepository();
+    const result = generate(repository, "both");
+    const manifest = manifestFor(repository);
+    const artifacts = manifest.artifacts as Array<Record<string, string | null>>;
+
+    expect(result.manifest_path).toBe(
+      join(repository, ".github", "github-plugin", "project-hooks-manifest.json"),
+    );
+    expect(manifest.schema).toBe("ProjectHookManifest");
+    expect(manifest.version).toBe(1);
+    expect(manifest.plugin).toBe("github");
+    expect(manifest.plugin_version).toBe("0.3.116");
+    expect(manifest.hosts).toEqual(["cursor", "codex"]);
+    expect(artifacts.some((artifact) => artifact.path === "AGENTS.md" && artifact.mode === "marked-block")).toBe(true);
+    expect(artifacts.some((artifact) => artifact.path === ".gitignore" && artifact.mode === "managed-entries")).toBe(true);
+    expect(artifacts.some((artifact) => artifact.path === ".github/github-plugin/project-hooks-manifest.json")).toBe(false);
+
+    for (const artifact of artifacts) {
+      const artifactPath = join(repository, ...(artifact.path as string).split("/"));
+      const contents = readFileSync(artifactPath);
+      let hashedContents = contents;
+      if (artifact.mode === "marked-block") {
+        const text = contents.toString("utf8");
+        hashedContents = Buffer.from(
+          text.slice(
+            text.indexOf("<!-- BEGIN CromeSDK generated GitHub project hooks -->"),
+            text.indexOf("<!-- END CromeSDK generated GitHub project hooks -->") +
+              "<!-- END CromeSDK generated GitHub project hooks -->".length,
+          ),
+          "utf8",
+        );
+      }
+      if (artifact.mode === "managed-entries") {
+        const text = contents.toString("utf8");
+        hashedContents = Buffer.from(
+          text.slice(
+            text.indexOf("# BEGIN CromeSDK generated GitHub hook state"),
+            text.indexOf("# END CromeSDK generated GitHub hook state") +
+              "# END CromeSDK generated GitHub hook state".length,
+          ),
+          "utf8",
+        );
+      }
+      expect(artifact.sha256).toBe(hash(hashedContents));
+    }
+  });
+
+  it("migrates a proven legacy projection into a new manifest", () => {
+    const repository = createRepository();
+    generate(repository, "cursor");
+    rmSync(join(repository, ".github", "github-plugin", "project-hooks-manifest.json"));
+
+    const result = generate(repository, "cursor");
+
+    expect(result.status).toBe("written");
+    expect(result.written_paths).toEqual([
+      join(repository, ".github", "github-plugin", "project-hooks-manifest.json"),
+    ]);
+    expect(manifestFor(repository).version).toBe(1);
+  });
+
+  it("removes only unchanged manifest-owned artifacts after host deselection", () => {
+    const repository = createRepository();
+    generate(repository, "both");
+    const userFile = join(repository, ".codex", "hooks", "user-owned.mjs");
+    writeFileSync(userFile, "export const userOwned = true;\n");
+
+    const result = generate(repository, "cursor");
+
+    expect(result.status).toBe("written");
+    expect(result.removed_paths).toContain(join(repository, ".codex", "hooks.json"));
+    expect(existsSync(join(repository, ".codex", "hooks.json"))).toBe(false);
+    expect(existsSync(join(repository, ".codex", "hooks", "user-owned.mjs"))).toBe(true);
+    expect((manifestFor(repository).hosts as string[])).toEqual(["cursor"]);
+  });
+
+  it("blocks host deselection when a removed projection was locally changed", () => {
+    const repository = createRepository();
+    generate(repository, "both");
+    const changedPath = join(repository, ".codex", "hooks", "pre-merge.mjs");
+    writeFileSync(changedPath, `${readFileSync(changedPath, "utf8")}\n// local change\n`);
+
+    const result = generateExpectingFailure(repository, "cursor");
+
+    expect(result.status).toBe("blocked");
+    expect(result.written_paths).toEqual([]);
+    expect(result.removed_paths).toEqual([]);
+    expect(readFileSync(changedPath, "utf8")).toContain("// local change");
+    expect(existsSync(join(repository, ".codex", "hooks.json"))).toBe(true);
+  });
+
   it("preserves existing repository guidance and gitignore entries", () => {
     const repository = createRepository();
     writeFileSync(join(repository, "AGENTS.md"), "# Existing instructions\n");
@@ -221,6 +344,24 @@ describe("generate-project-hooks", () => {
     expect(agents).toContain("CromeSDK GitHub project hooks");
     expect(readFileSync(join(repository, ".gitignore"), "utf8")).toContain(
       "dist/\n",
+    );
+  });
+
+  it("preserves CRLF in managed guidance and ignore blocks", () => {
+    const repository = createRepository();
+    writeFileSync(
+      join(repository, "AGENTS.md"),
+      "# Existing instructions\r\n",
+      "utf8",
+    );
+    writeFileSync(join(repository, ".gitignore"), "dist/\r\n", "utf8");
+
+    generate(repository, "cursor");
+
+    expect(readFileSync(join(repository, "AGENTS.md"), "utf8")).toContain("\r\n");
+    expect(readFileSync(join(repository, ".gitignore"), "utf8")).toContain("\r\n");
+    expect(readFileSync(join(repository, ".gitignore"), "utf8")).not.toContain(
+      "# BEGIN CromeSDK generated GitHub hook state\n",
     );
   });
 
@@ -261,5 +402,152 @@ describe("generate-project-hooks", () => {
     );
     expect(existsSync(join(repository, "AGENTS.md"))).toBe(false);
     expect(existsSync(join(repository, ".gitignore"))).toBe(false);
+  });
+
+  it("blocks a changed manifest-owned artifact without changing the projection", () => {
+    const repository = createRepository();
+    generate(repository, "cursor");
+    const generatedPath = join(repository, ".cursor", "hooks", "pre-commit.mjs");
+    const beforeManifest = readFileSync(
+      join(repository, ".github", "github-plugin", "project-hooks-manifest.json"),
+    );
+    writeFileSync(generatedPath, `${readFileSync(generatedPath, "utf8")}\n// local change\n`);
+
+    const result = generateExpectingFailure(repository, "cursor");
+
+    expect(result.status).toBe("blocked");
+    expect(result.written_paths).toEqual([]);
+    expect(result.removed_paths).toEqual([]);
+    expect(readFileSync(generatedPath, "utf8")).toContain("// local change");
+    expect(
+      readFileSync(
+        join(repository, ".github", "github-plugin", "project-hooks-manifest.json"),
+      ),
+    ).toEqual(beforeManifest);
+  });
+
+  it("blocks malformed guidance markers before creating any projection", () => {
+    const repository = createRepository();
+    writeFileSync(
+      join(repository, "AGENTS.md"),
+      "# user guidance\n<!-- BEGIN CromeSDK generated GitHub project hooks -->\n",
+    );
+
+    const result = generateExpectingFailure(repository, "cursor");
+
+    expect(result.status).toBe("blocked");
+    expect(result.written_paths).toEqual([]);
+    expect(existsSync(join(repository, ".cursor", "hooks.json"))).toBe(false);
+    expect(existsSync(join(repository, ".github", "github-plugin", "project-hooks-manifest.json"))).toBe(false);
+  });
+
+  it("blocks an unsupported manifest before writing or removing anything", () => {
+    const repository = createRepository();
+    generate(repository, "cursor");
+    writeFileSync(
+      join(repository, ".github", "github-plugin", "project-hooks-manifest.json"),
+      JSON.stringify({ schema: "ProjectHookManifest", version: 99 }),
+    );
+    const generatedPath = join(repository, ".cursor", "hooks", "pre-commit.mjs");
+    const before = readFileSync(generatedPath);
+
+    const result = generateExpectingFailure(repository, "cursor");
+
+    expect(result.status).toBe("blocked");
+    expect(result.written_paths).toEqual([]);
+    expect(result.removed_paths).toEqual([]);
+    expect(readFileSync(generatedPath)).toEqual(before);
+  });
+
+  it("rolls back a normal injected apply failure to the complete old state", () => {
+    const repository = createRepository();
+    const result = generateExpectingFailure(repository, "both", {
+      phase: "apply",
+      occurrence: 2,
+      mode: "error",
+    });
+
+    expect(result.status).toBe("partial");
+    expect(result.written_paths).toEqual([]);
+    expect(result.removed_paths).toEqual([]);
+    expect(existsSync(join(repository, ".cursor", "hooks.json"))).toBe(false);
+    expect(existsSync(join(repository, ".codex", "hooks.json"))).toBe(false);
+    expect(existsSync(join(repository, ".github", "github-plugin", "project-hooks-manifest.json"))).toBe(false);
+    expect(existsSync(join(repository, ".github", "github-plugin", ".project-hooks-transaction"))).toBe(false);
+  });
+
+  it("fails before target writes when staging is injected to fail", () => {
+    const repository = createRepository();
+    const result = generateExpectingFailure(repository, "cursor", {
+      phase: "stage",
+      occurrence: 1,
+      mode: "error",
+    });
+
+    expect(result.status).toBe("blocked");
+    expect(result.written_paths).toEqual([]);
+    expect(result.removed_paths).toEqual([]);
+    expect(existsSync(join(repository, ".cursor"))).toBe(false);
+    expect(existsSync(join(repository, ".github", "github-plugin", ".project-hooks-transaction"))).toBe(false);
+  });
+
+  it.each(["backup", "manifest"])(
+    "rolls back an injected %s failure without leaving transaction data",
+    (phase) => {
+      const repository = createRepository();
+      const result = generateExpectingFailure(repository, "cursor", {
+        phase,
+        occurrence: 1,
+        mode: "error",
+      });
+
+      expect(result.status).toBe("partial");
+      expect(result.written_paths).toEqual([]);
+      expect(result.removed_paths).toEqual([]);
+      expect(existsSync(join(repository, ".cursor"))).toBe(false);
+      expect(existsSync(join(repository, ".github", "github-plugin", "project-hooks-manifest.json"))).toBe(false);
+      expect(existsSync(join(repository, ".github", "github-plugin", ".project-hooks-transaction"))).toBe(false);
+    },
+  );
+
+  it("retains committed evidence when cleanup is injected to fail", () => {
+    const repository = createRepository();
+    const result = generateExpectingFailure(repository, "cursor", {
+      phase: "cleanup",
+      occurrence: 1,
+      mode: "error",
+    });
+
+    expect(result.status).toBe("partial");
+    expect(result.written_paths.length).toBeGreaterThan(0);
+    expect(existsSync(join(repository, ".cursor", "hooks.json"))).toBe(true);
+    expect(existsSync(join(repository, ".github", "github-plugin", "project-hooks-manifest.json"))).toBe(true);
+    expect(existsSync(join(repository, ".github", "github-plugin", ".project-hooks-transaction", "journal.json"))).toBe(true);
+
+    const recovered = generate(repository, "cursor");
+
+    expect(recovered.status).toBe("unchanged");
+    expect(recovered.recovered_paths.length).toBeGreaterThan(0);
+    expect(existsSync(join(repository, ".github", "github-plugin", ".project-hooks-transaction"))).toBe(false);
+  });
+
+  it("recovers an interrupted journal on the next run", () => {
+    const repository = createRepository();
+    const interrupted = generateExpectingFailure(repository, "both", {
+      phase: "apply",
+      occurrence: 2,
+      mode: "interrupt",
+    });
+
+    expect(interrupted.status).toBe("partial");
+    expect(existsSync(join(repository, ".github", "github-plugin", ".project-hooks-transaction", "journal.json"))).toBe(true);
+
+    const recovered = generate(repository, "both");
+
+    expect(recovered.status).toBe("written");
+    expect(recovered.recovered_paths.length).toBeGreaterThan(0);
+    expect(existsSync(join(repository, ".cursor", "hooks.json"))).toBe(true);
+    expect(existsSync(join(repository, ".codex", "hooks.json"))).toBe(true);
+    expect(existsSync(join(repository, ".github", "github-plugin", ".project-hooks-transaction"))).toBe(false);
   });
 });

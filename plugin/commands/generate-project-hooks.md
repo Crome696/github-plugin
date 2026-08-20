@@ -15,7 +15,7 @@ selection question, run the generator itself, or repeat the Skill procedure.
 2. Start `host-hooks-agent` with the verified target repository and
    `$ARGUMENTS`.
 3. Display the Agent's complete result, including the interactive host
-   selection, target, status, written paths, unchanged paths, blocked paths,
-   and limitations.
+   selection, target, status, manifest path, written paths, unchanged paths,
+   removed paths, recovered paths, blocked paths, and limitations.
 4. Do not commit, modify GitHub, create gate snapshots, invoke another Agent,
    or perform a second projection.

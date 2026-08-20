@@ -25,8 +25,9 @@ or create any file itself.
 2. Invoke only
    [`plugin/skills/generate-project-hooks/SKILL.md`](plugin/skills/generate-project-hooks/SKILL.md).
    The Skill asks the user interactively to select Cursor, Codex, or both.
-3. Return the Skill's complete result without rewriting its status, paths,
-   blocked conditions, limitations, or host-selection evidence.
+3. Return the Skill's complete result without rewriting its status, manifest
+   path, written/unchanged/removed/recovered paths, blocked conditions,
+   limitations, or host-selection evidence.
 
 The Agent must not infer the host from the current runtime, arguments,
 existing files, or prior sessions. It must not commit, modify GitHub, create

@@ -209,7 +209,11 @@ const createFixture = (): Fixture => {
       encoding: "utf8",
       windowsHide: true,
     });
-    runGit(target, ["add", ".gitignore"], environment);
+    runGit(
+      target,
+      ["add", ".gitignore", ".github/github-plugin/project-hooks-manifest.json"],
+      environment,
+    );
     runGit(target, ["commit", "-m", "generate isolated host hook projections"], environment);
     const headSha = runGit(target, ["rev-parse", "HEAD"], environment);
     runGit(primary, ["update-ref", `refs/remotes/origin/${branch}`, headSha], environment);

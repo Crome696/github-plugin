@@ -1,12 +1,24 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  lstat,
   mkdir,
+  readdir,
   readFile,
+  rename,
+  rmdir,
   stat,
+  unlink,
   writeFile,
 } from "node:fs/promises";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import {
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HOOKS_DIRECTORY = dirname(fileURLToPath(import.meta.url));
@@ -36,6 +48,16 @@ const GENERATED_BLOCK_START =
 const GENERATED_BLOCK_END =
   "<!-- END CromeSDK generated GitHub project hooks -->";
 const CANONICAL_STATE_PATH = ".github/github-plugin/state/";
+const MANIFEST_RELATIVE_PATH = ".github/github-plugin/project-hooks-manifest.json";
+const TRANSACTION_RELATIVE_PATH = ".github/github-plugin/.project-hooks-transaction";
+const MANIFEST_SCHEMA = "ProjectHookManifest";
+const TRANSACTION_SCHEMA = "ProjectHookTransaction";
+const MANIFEST_VERSION = 1;
+const GITIGNORE_BLOCK_START = "# BEGIN CromeSDK generated GitHub hook state";
+const GITIGNORE_BLOCK_END = "# END CromeSDK generated GitHub hook state";
+const LEGACY_GITIGNORE_MARKER = "# CromeSDK generated GitHub hook state";
+const TRANSACTION_GITIGNORE_PATH = `${TRANSACTION_RELATIVE_PATH}/`;
+const MANAGED_GITIGNORE_ENTRIES = [CANONICAL_STATE_PATH, TRANSACTION_GITIGNORE_PATH];
 
 const isRecord = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -184,6 +206,8 @@ const generatedAgentsBlock = ({ hosts }) => {
 };
 
 const replaceMarkedBlock = (source, replacement, start, end) => {
+  const newline = source.includes("\r\n") ? "\r\n" : "\n";
+  const normalizedReplacement = replacement.replace(/\r?\n/g, newline);
   const startIndex = source.indexOf(start);
   const endIndex = source.indexOf(end);
   if ((startIndex === -1) !== (endIndex === -1)) {
@@ -192,38 +216,158 @@ const replaceMarkedBlock = (source, replacement, start, end) => {
   if (startIndex !== -1 && endIndex < startIndex) {
     throw new Error("Generated AGENTS.md block markers are out of order.");
   }
+  if (countMarker(source, start) > 1 || countMarker(source, end) > 1) {
+    throw new Error("Generated AGENTS.md block contains duplicate markers.");
+  }
   if (startIndex !== -1) {
     const afterEnd = endIndex + end.length;
-    return `${source.slice(0, startIndex)}${replacement}${source.slice(afterEnd)}`;
+    return `${source.slice(0, startIndex)}${normalizedReplacement}${source.slice(afterEnd)}`;
   }
-  const separator = source.length === 0 ? "" : source.endsWith("\n") ? "\n" : "\n\n";
-  return `${source}${separator}${replacement}\n`;
+  const separator = source.length === 0 ? "" : source.endsWith("\n") ? newline : `${newline}${newline}`;
+  return `${source}${separator}${normalizedReplacement}${newline}`;
+};
+
+const countMarker = (source, marker) => {
+  let count = 0;
+  let offset = 0;
+  while (true) {
+    const index = source.indexOf(marker, offset);
+    if (index === -1) return count;
+    count += 1;
+    offset = index + marker.length;
+  }
+};
+
+const extractMarkedBlock = (source, start, end, label) => {
+  const startIndex = source.indexOf(start);
+  const endIndex = source.indexOf(end);
+  if ((startIndex === -1) !== (endIndex === -1)) {
+    throw new Error(`${label} markers are incomplete.`);
+  }
+  if (startIndex >= 0 && endIndex < startIndex) {
+    throw new Error(`${label} markers are out of order.`);
+  }
+  if (countMarker(source, start) > 1 || countMarker(source, end) > 1) {
+    throw new Error(`${label} contains duplicate markers.`);
+  }
+  if (startIndex === -1) return null;
+  return source.slice(startIndex, endIndex + end.length);
+};
+
+const toPosix = (value) => value.split(sep).join("/");
+
+const repositoryRelativePath = (repositoryRoot, absolutePath) => {
+  const relativeValue = relative(repositoryRoot, absolutePath);
+  return toPosix(relativeValue);
+};
+
+const isWithinRepository = (repositoryRoot, absolutePath) => {
+  const relativeValue = relative(repositoryRoot, absolutePath);
+  return relativeValue === "" ||
+    (!isAbsolute(relativeValue) &&
+      relativeValue !== ".." &&
+      !relativeValue.startsWith(`..${sep}`));
+};
+
+const safePath = async (repositoryRoot, targetPath) => {
+  const absolutePath = resolve(targetPath);
+  if (!isWithinRepository(repositoryRoot, absolutePath)) {
+    throw new Error(`Path escapes target repository: ${absolutePath}`);
+  }
+  const relativeValue = relative(repositoryRoot, absolutePath);
+  let current = repositoryRoot;
+  for (const component of relativeValue.split(sep).filter(Boolean)) {
+    current = join(current, component);
+    try {
+      const info = await lstat(current);
+      if (info.isSymbolicLink()) {
+        throw new Error(`Symbolic links are not supported for managed paths: ${current}`);
+      }
+      if (current !== absolutePath && !info.isDirectory()) {
+        throw new Error(`Managed path parent is not a directory: ${current}`);
+      }
+    } catch (error) {
+      if (error?.code === "ENOENT") break;
+      throw error;
+    }
+  }
+  return absolutePath;
+};
+
+const inspectPath = async (repositoryRoot, targetPath) => {
+  const absolutePath = await safePath(repositoryRoot, targetPath);
+  try {
+    const info = await lstat(absolutePath);
+    if (info.isSymbolicLink()) {
+      return { kind: "symlink", path: absolutePath };
+    }
+    if (info.isDirectory()) return { kind: "directory", path: absolutePath };
+    if (!info.isFile()) return { kind: "other", path: absolutePath };
+    return {
+      kind: "file",
+      path: absolutePath,
+      contents: await readFile(absolutePath),
+    };
+  } catch (error) {
+    if (error?.code === "ENOENT") return { kind: "missing", path: absolutePath };
+    throw error;
+  }
+};
+
+const ensureManagedFile = (inspection, pathLabel) => {
+  if (inspection.kind === "missing") return;
+  if (inspection.kind !== "file") {
+    throw new Error(`${pathLabel} is not a regular file.`);
+  }
 };
 
 const mergeGitignore = (source, hosts) => {
   const original = source ?? "";
   const newline = original.includes("\r\n") ? "\r\n" : "\n";
   const lines = original.split(/\r?\n/);
-  const legacyPaths = new Set([".cursor/hooks/state/", ".codex/hooks/state/"]);
-  const markerText = "# CromeSDK generated GitHub hook state";
-  const markerIndex = lines.findIndex((line) => line.trim() === markerText);
-  if (markerIndex >= 0) {
-    for (let index = lines.length - 1; index > markerIndex; index -= 1) {
-      if (legacyPaths.has(lines[index].trim()) || lines[index].trim() === CANONICAL_STATE_PATH) {
-        lines.splice(index, 1);
-      }
-    }
-    lines.splice(markerIndex + 1, 0, CANONICAL_STATE_PATH);
-    return lines.join(newline);
+  const legacyPaths = new Set([
+    ".cursor/hooks/state/",
+    ".codex/hooks/state/",
+    ...MANAGED_GITIGNORE_ENTRIES,
+  ]);
+  const startIndex = lines.findIndex((line) => line.trim() === GITIGNORE_BLOCK_START);
+  const endIndex = lines.findIndex((line) => line.trim() === GITIGNORE_BLOCK_END);
+  if ((startIndex === -1) !== (endIndex === -1)) {
+    throw new Error("Generated .gitignore block markers are incomplete.");
+  }
+  if (startIndex >= 0 && endIndex < startIndex) {
+    throw new Error("Generated .gitignore block markers are out of order.");
   }
 
-  if (lines.some((line) => line.trim() === CANONICAL_STATE_PATH)) return original;
-  const linePrefix =
-    original.length === 0 || original.endsWith("\n") || original.endsWith("\r")
-      ? ""
-      : newline;
-  const marker = `# CromeSDK generated GitHub hook state${newline}`;
-  return `${original}${linePrefix}${marker}${CANONICAL_STATE_PATH}${newline}`;
+  let remaining = lines;
+  if (startIndex >= 0) {
+    remaining = [...lines.slice(0, startIndex), ...lines.slice(endIndex + 1)];
+  } else {
+    const legacyIndex = lines.findIndex(
+      (line) => line.trim() === LEGACY_GITIGNORE_MARKER,
+    );
+    if (legacyIndex === -1 && lines.some((line) =>
+      MANAGED_GITIGNORE_ENTRIES.includes(line.trim()))) {
+      throw new Error("Unmarked managed .gitignore entries cannot be claimed safely.");
+    }
+    if (legacyIndex >= 0) {
+      remaining = lines.filter((line, index) => {
+        if (index === legacyIndex) return false;
+        return index < legacyIndex || !legacyPaths.has(line.trim());
+      });
+    }
+  }
+
+  const managedBlock = [
+    GITIGNORE_BLOCK_START,
+    LEGACY_GITIGNORE_MARKER,
+    ...MANAGED_GITIGNORE_ENTRIES,
+    GITIGNORE_BLOCK_END,
+  ];
+  while (remaining.at(-1) === "") remaining.pop();
+  while (remaining.at(0) === "") remaining.shift();
+  const prefix = remaining.length > 0 ? `${remaining.join(newline)}${newline}${newline}` : "";
+  return `${prefix}${managedBlock.join(newline)}${newline}`;
 };
 
 const transformCommand = (command, host, windows = false) => {
@@ -391,6 +535,871 @@ const createHostOutputs = async ({ repositoryRoot, host, pluginVersion }) => {
   };
 };
 
+const artifactPathFor = (repositoryRoot, absolutePath) =>
+  repositoryRelativePath(repositoryRoot, absolutePath);
+
+const artifactHash = (record, contents) => {
+  if (record.mode === "exact") return sha256(contents);
+  const text = contents.toString("utf8");
+  const block =
+    record.mode === "marked-block"
+      ? extractMarkedBlock(
+          text,
+          GENERATED_BLOCK_START,
+          GENERATED_BLOCK_END,
+          "Generated AGENTS.md block",
+        )
+      : extractMarkedBlock(
+          text,
+          GITIGNORE_BLOCK_START,
+          GITIGNORE_BLOCK_END,
+          "Generated .gitignore block",
+        );
+  if (block === null) {
+    throw new Error(`Managed block is missing from ${record.path}.`);
+  }
+  return sha256(Buffer.from(block, "utf8"));
+};
+
+const validateManifest = (value) => {
+  if (!isRecord(value)) return "Manifest must be a JSON object.";
+  if (value.schema !== MANIFEST_SCHEMA) return "Manifest schema is unsupported.";
+  if (value.version !== MANIFEST_VERSION) return "Manifest version is unsupported.";
+  if (value.plugin !== "github") return "Manifest plugin identity is invalid.";
+  if (typeof value.plugin_version !== "string" || value.plugin_version.length === 0) {
+    return "Manifest plugin_version is invalid.";
+  }
+  if (!Array.isArray(value.hosts)) return "Manifest hosts must be an array.";
+  let normalizedHosts;
+  try {
+    normalizedHosts = normalizeHostList(value.hosts.join(","));
+  } catch {
+    return "Manifest hosts are invalid.";
+  }
+  if (normalizedHosts.length !== value.hosts.length ||
+      normalizedHosts.some((host, index) => host !== value.hosts[index])) {
+    return "Manifest hosts must be sorted and unique.";
+  }
+  if (!Array.isArray(value.artifacts)) return "Manifest artifacts must be an array.";
+  const seen = new Set();
+  for (const artifact of value.artifacts) {
+    if (!isRecord(artifact)) return "Manifest contains an invalid artifact.";
+    if (typeof artifact.path !== "string" ||
+        artifact.path.length === 0 ||
+        artifact.path.includes("\\") ||
+        artifact.path.startsWith("/") ||
+        artifact.path.split("/").includes("..") ||
+        artifact.path === MANIFEST_RELATIVE_PATH ||
+        artifact.path.startsWith(`${TRANSACTION_RELATIVE_PATH}/`)) {
+      return "Manifest contains an unsafe artifact path.";
+    }
+    if (seen.has(artifact.path)) return "Manifest contains duplicate artifact paths.";
+    seen.add(artifact.path);
+    if (artifact.host !== null && !HOSTS.has(artifact.host)) {
+      return "Manifest contains an invalid artifact host.";
+    }
+    if (artifact.host !== null && !normalizedHosts.includes(artifact.host)) {
+      return "Manifest artifact host is not selected in the manifest hosts.";
+    }
+    if (!["exact", "marked-block", "managed-entries"].includes(artifact.mode)) {
+      return "Manifest contains an invalid artifact mode.";
+    }
+    if (!/^[a-f0-9]{64}$/.test(artifact.sha256)) {
+      return "Manifest contains an invalid artifact SHA-256.";
+    }
+    if (artifact.mode === "exact" &&
+        (artifact.host === null ||
+          !(artifact.path === `.${artifact.host}/hooks.json` ||
+            artifact.path.startsWith(`.${artifact.host}/hooks/`)))) {
+      return "Manifest exact artifact ownership is invalid.";
+    }
+    if (artifact.mode === "marked-block" &&
+        (artifact.path !== "AGENTS.md" || artifact.host !== null)) {
+      return "Manifest AGENTS.md ownership is invalid.";
+    }
+    if (artifact.mode === "managed-entries" &&
+        (artifact.path !== ".gitignore" || artifact.host !== null)) {
+      return "Manifest .gitignore ownership is invalid.";
+    }
+  }
+  return null;
+};
+
+const manifestRecord = ({ repositoryRoot, path, host, mode, contents }) => {
+  const record = {
+    path: artifactPathFor(repositoryRoot, path),
+    host,
+    mode,
+    sha256: "",
+  };
+  record.sha256 = artifactHash(record, contents);
+  return record;
+};
+
+const buildManifest = ({ pluginVersion, hosts, records }) => ({
+  schema: MANIFEST_SCHEMA,
+  version: MANIFEST_VERSION,
+  plugin: "github",
+  plugin_version: pluginVersion,
+  hosts: [...hosts],
+  artifacts: [...records].sort((left, right) => left.path.localeCompare(right.path)),
+});
+
+const manifestBytes = (manifest) =>
+  Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+class TransactionInterruptedError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "TransactionInterruptedError";
+  }
+}
+
+const createFaultController = () => {
+  if (process.env.CROMESDK_PROJECT_HOOKS_TEST_MODE !== "1") return null;
+  const raw = process.env.CROMESDK_PROJECT_HOOKS_TEST_FAULT;
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw);
+    if (!isRecord(value) || typeof value.phase !== "string") return null;
+    const occurrence = Number(value.occurrence ?? 1);
+    if (!Number.isInteger(occurrence) || occurrence < 1) return null;
+    return {
+      phase: value.phase,
+      occurrence,
+      mode: value.mode === "interrupt" ? "interrupt" : "error",
+      count: 0,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const maybeInjectFault = (controller, phase) => {
+  if (!controller || controller.phase !== phase) return;
+  controller.count += 1;
+  if (controller.count !== controller.occurrence) return;
+  const message = `Injected project-hook transaction fault at ${phase} #${controller.count}.`;
+  if (controller.mode === "interrupt") throw new TransactionInterruptedError(message);
+  throw new Error(message);
+};
+
+const transactionPaths = (repositoryRoot) => {
+  const root = join(repositoryRoot, TRANSACTION_RELATIVE_PATH);
+  return {
+    root,
+    journal: join(root, "journal.json"),
+    journalTemporary: join(root, "journal.tmp"),
+    stage: join(root, "stage"),
+    backup: join(root, "backup"),
+  };
+};
+
+const assertDirectoryOrMissing = async (repositoryRoot, targetPath) => {
+  const inspection = await inspectPath(repositoryRoot, targetPath);
+  if (inspection.kind !== "missing" && inspection.kind !== "directory") {
+    throw new Error(`Managed transaction path is not a directory: ${targetPath}`);
+  }
+  return inspection;
+};
+
+const writeTransactionJournal = async ({
+  repositoryRoot,
+  paths,
+  journal,
+  faultController,
+}) => {
+  maybeInjectFault(faultController, "journal");
+  await safePath(repositoryRoot, paths.journalTemporary);
+  await writeFile(
+    paths.journalTemporary,
+    Buffer.from(`${JSON.stringify(journal, null, 2)}\n`, "utf8"),
+    { flag: "w" },
+  );
+  await rename(paths.journalTemporary, paths.journal);
+};
+
+const transactionOperationForJournal = (operation) => ({
+  path: operation.relativePath,
+  action: operation.action,
+  stage_path: operation.stageRelativePath,
+  backup_path: operation.backupRelativePath,
+  desired_sha256: operation.desiredFileSha256,
+  original_sha256: operation.originalSha256,
+  had_original: operation.hadOriginal,
+  parent_paths: operation.parentRelativePaths,
+  existing_parent_paths: operation.existingParentRelativePaths,
+  state: operation.state,
+});
+
+const validateTransactionJournal = (journal) => {
+  if (!isRecord(journal) || journal.schema !== TRANSACTION_SCHEMA || journal.version !== 1) {
+    return "Transaction journal schema is unsupported.";
+  }
+  if (!["prepared", "backed-up", "applying", "committed"].includes(journal.status)) {
+    return "Transaction journal status is invalid.";
+  }
+  if (journal.manifest_path !== MANIFEST_RELATIVE_PATH ||
+      !/^[a-f0-9]{64}$/.test(journal.manifest_sha256)) {
+    return "Transaction journal manifest evidence is invalid.";
+  }
+  if (!Array.isArray(journal.artifacts) || !Array.isArray(journal.operations)) {
+    return "Transaction journal operation data is invalid.";
+  }
+  for (const operation of journal.operations) {
+    if (!isRecord(operation) ||
+        typeof operation.path !== "string" ||
+        !["write", "remove"].includes(operation.action) ||
+        typeof operation.stage_path !== "string" ||
+        typeof operation.backup_path !== "string" ||
+        !Array.isArray(operation.parent_paths) ||
+        !Array.isArray(operation.existing_parent_paths) ||
+        !["planned", "backed-up", "applied"].includes(operation.state)) {
+      return "Transaction journal contains an invalid operation.";
+    }
+  }
+  return null;
+};
+
+const relativeTransactionTarget = (repositoryRoot, relativePath) => {
+  if (relativePath.includes("\\") || relativePath.startsWith("/") ||
+      relativePath.split("/").includes("..")) {
+    throw new Error(`Transaction journal contains an unsafe path: ${relativePath}`);
+  }
+  return resolve(repositoryRoot, relativePath.split("/").join(sep));
+};
+
+const verifyManifestArtifacts = async (repositoryRoot, manifest) => {
+  const failures = [];
+  for (const record of manifest.artifacts) {
+    const targetPath = relativeTransactionTarget(repositoryRoot, record.path);
+    const inspection = await inspectPath(repositoryRoot, targetPath);
+    if (inspection.kind !== "file") {
+      failures.push(`${record.path}: missing or not a regular file`);
+      continue;
+    }
+    try {
+      if (artifactHash(record, inspection.contents) !== record.sha256) {
+        failures.push(`${record.path}: managed hash mismatch`);
+      }
+    } catch (error) {
+      failures.push(`${record.path}: ${error.message}`);
+    }
+  }
+  return failures;
+};
+
+const verifyCommittedTransaction = async (repositoryRoot, journal) => {
+  const manifestPath = relativeTransactionTarget(repositoryRoot, journal.manifest_path);
+  const inspection = await inspectPath(repositoryRoot, manifestPath);
+  if (inspection.kind !== "file" || sha256(inspection.contents) !== journal.manifest_sha256) {
+    throw new Error("Committed transaction manifest evidence is missing or changed.");
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(inspection.contents.toString("utf8"));
+  } catch {
+    throw new Error("Committed transaction manifest is not valid JSON.");
+  }
+  const manifestError = validateManifest(manifest);
+  if (manifestError) throw new Error(manifestError);
+  const failures = await verifyManifestArtifacts(repositoryRoot, manifest);
+  if (failures.length > 0) {
+    throw new Error(`Committed transaction artifact evidence failed: ${failures.join("; ")}`);
+  }
+};
+
+const removeTransactionEntry = async (repositoryRoot, targetPath) => {
+  const inspection = await inspectPath(repositoryRoot, targetPath);
+  if (inspection.kind === "missing") return;
+  if (inspection.kind !== "file") {
+    throw new Error(`Transaction entry is not a regular file: ${targetPath}`);
+  }
+  await unlink(targetPath);
+};
+
+const rollbackTransaction = async (repositoryRoot, paths, journal) => {
+  const recoveredPaths = [];
+  for (const operation of [...journal.operations].reverse()) {
+    const targetPath = relativeTransactionTarget(repositoryRoot, operation.path);
+    const stagePath = relativeTransactionTarget(repositoryRoot, operation.stage_path);
+    const backupPath = relativeTransactionTarget(repositoryRoot, operation.backup_path);
+    const target = await inspectPath(repositoryRoot, targetPath);
+    const backup = await inspectPath(repositoryRoot, backupPath);
+    const hasBackup = backup.kind === "file";
+
+    if (hasBackup) {
+      if (target.kind === "file") {
+        const currentHash = sha256(target.contents);
+        if (currentHash === operation.original_sha256) {
+          await unlink(backupPath);
+        } else if (currentHash === operation.desired_sha256 || operation.action === "remove") {
+          await unlink(targetPath);
+          await rename(backupPath, targetPath);
+          recoveredPaths.push(targetPath);
+        } else {
+          throw new Error(`Cannot safely restore ${operation.path}; current bytes are unknown.`);
+        }
+      } else if (target.kind === "missing") {
+        await rename(backupPath, targetPath);
+        recoveredPaths.push(targetPath);
+      } else {
+        throw new Error(`Cannot safely restore ${operation.path}; target is not a file.`);
+      }
+    } else if (operation.state === "applied" ||
+        (operation.action === "write" && operation.original_sha256 === null)) {
+      if (target.kind === "file") {
+        if (operation.action === "write" &&
+            sha256(target.contents) === operation.desired_sha256) {
+          await unlink(targetPath);
+          recoveredPaths.push(targetPath);
+        } else {
+          throw new Error(`Cannot safely remove interrupted output ${operation.path}.`);
+        }
+      } else if (target.kind !== "missing") {
+        throw new Error(`Cannot safely remove interrupted output ${operation.path}.`);
+      }
+    }
+    await removeTransactionEntry(repositoryRoot, stagePath);
+  }
+  return recoveredPaths;
+};
+
+const removeCreatedParentDirectories = async (repositoryRoot, operations) => {
+  const existing = new Set(
+    operations.flatMap((operation) =>
+      operation.existing_parent_paths ?? operation.existingParentRelativePaths ?? [],
+    ),
+  );
+  const candidates = [
+    ...new Set(operations.flatMap((operation) =>
+      operation.parent_paths ?? operation.parentRelativePaths ?? [],
+    )),
+  ].sort((left, right) => right.split("/").length - left.split("/").length);
+  for (const relativePath of candidates) {
+    if (existing.has(relativePath)) continue;
+    const directoryPath = relativeTransactionTarget(repositoryRoot, relativePath);
+    const inspection = await inspectPath(repositoryRoot, directoryPath);
+    if (inspection.kind === "missing") continue;
+    if (inspection.kind !== "directory") {
+      throw new Error(`Created parent path is no longer a directory: ${directoryPath}`);
+    }
+    const entries = await readdir(directoryPath, { withFileTypes: true });
+    if (entries.length === 0) await rmdir(directoryPath);
+  }
+};
+
+const cleanupTransaction = async (repositoryRoot, paths, faultController) => {
+  const inspection = await inspectPath(repositoryRoot, paths.root);
+  if (inspection.kind === "missing") return;
+  if (inspection.kind !== "directory") {
+    throw new Error("Transaction path is not a managed directory.");
+  }
+  maybeInjectFault(faultController, "cleanup");
+  const removeDirectory = async (directoryPath) => {
+    const entries = await readdir(directoryPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const entryPath = join(directoryPath, entry.name);
+      if (entry.isDirectory()) {
+        await removeDirectory(entryPath);
+      } else if (entry.isFile()) {
+        await unlink(entryPath);
+      } else {
+        throw new Error(`Unsafe transaction cleanup entry: ${entryPath}`);
+      }
+    }
+    await rmdir(directoryPath);
+  };
+  await removeDirectory(paths.root);
+};
+
+const recoverPendingTransaction = async (repositoryRoot) => {
+  const paths = transactionPaths(repositoryRoot);
+  const inspection = await inspectPath(repositoryRoot, paths.root);
+  if (inspection.kind === "missing") return { recoveredPaths: [] };
+  if (inspection.kind !== "directory") {
+    throw new Error("The project-hook transaction path is occupied by an unsafe entry.");
+  }
+  const entries = await readdir(paths.root, { withFileTypes: true });
+  const allowed = new Set(["journal.json", "journal.tmp", "stage", "backup"]);
+  if (entries.some((entry) => !allowed.has(entry.name))) {
+    throw new Error("The project-hook transaction contains unknown recovery data.");
+  }
+  const journalInspection = await inspectPath(repositoryRoot, paths.journal);
+  if (journalInspection.kind !== "file") {
+    throw new Error("The project-hook transaction journal is missing or unreadable.");
+  }
+  let journal;
+  try {
+    journal = JSON.parse(journalInspection.contents.toString("utf8"));
+  } catch {
+    throw new Error("The project-hook transaction journal is malformed.");
+  }
+  const journalError = validateTransactionJournal(journal);
+  if (journalError) throw new Error(journalError);
+
+  if (journal.status === "committed") {
+    await verifyCommittedTransaction(repositoryRoot, journal);
+    await cleanupTransaction(repositoryRoot, paths, null);
+    return { recoveredPaths: [paths.root] };
+  }
+
+  const recoveredPaths = await rollbackTransaction(repositoryRoot, paths, journal);
+  await cleanupTransaction(repositoryRoot, paths, null);
+  await removeCreatedParentDirectories(repositoryRoot, journal.operations);
+  return { recoveredPaths: [...new Set([...recoveredPaths, paths.root])] };
+};
+
+const hostOutputForPath = (hostOutputs, absolutePath) =>
+  hostOutputs
+    .map((hostOutput) => ({
+      hostOutput,
+      file: hostOutput.files.find((candidate) => candidate.path === absolutePath),
+    }))
+    .find((entry) => entry.file);
+
+const legacyOwnsHostFile = async ({ repositoryRoot, hostOutput, file, inspection }) => {
+  if (inspection.kind !== "file") return false;
+  const text = inspection.contents.toString("utf8");
+  if (file.path === hostOutput.configPath) {
+    const readmeInspection = await inspectPath(repositoryRoot, hostOutput.readmePath);
+    if (readmeInspection.kind !== "file" ||
+        !readmeInspection.contents
+          .toString("utf8")
+          .startsWith("<!-- CromeSDK generated by generate-project-hooks;")) {
+      return false;
+    }
+    const previousHash = readmeInspection.contents
+      .toString("utf8")
+      .match(/config-sha256=([a-f0-9]{64})\b/i)?.[1];
+    return previousHash === sha256(inspection.contents);
+  }
+  if (file.path === hostOutput.readmePath) {
+    const configInspection = await inspectPath(repositoryRoot, hostOutput.configPath);
+    const previousHash = text.match(/config-sha256=([a-f0-9]{64})\b/i)?.[1];
+    return text.startsWith("<!-- CromeSDK generated by generate-project-hooks;") &&
+      configInspection.kind === "file" &&
+      previousHash === sha256(configInspection.contents);
+  }
+  const sourceHash = text.match(
+    /^\/\/ CromeSDK generated by generate-project-hooks\. Do not edit directly\.\r?\n\/\/ source-sha256: ([a-f0-9]{64})\r?\n/i,
+  )?.[1];
+  return typeof sourceHash === "string";
+};
+
+const legacyOwnsAgents = (contents) => {
+  try {
+    return extractMarkedBlock(
+      contents.toString("utf8"),
+      GENERATED_BLOCK_START,
+      GENERATED_BLOCK_END,
+      "Generated AGENTS.md block",
+    ) !== null;
+  } catch {
+    return false;
+  }
+};
+
+const legacyOwnsGitignore = (contents) => {
+  const text = contents.toString("utf8");
+  if (text.includes(GITIGNORE_BLOCK_START) || text.includes(GITIGNORE_BLOCK_END)) {
+    try {
+      return extractMarkedBlock(
+        text,
+        GITIGNORE_BLOCK_START,
+        GITIGNORE_BLOCK_END,
+        "Generated .gitignore block",
+      ) !== null;
+    } catch {
+      return false;
+    }
+  }
+  const lines = text.split(/\r?\n/).map((line) => line.trim());
+  return lines.includes(LEGACY_GITIGNORE_MARKER) &&
+    lines.some((line) => MANAGED_GITIGNORE_ENTRIES.includes(line) ||
+      line === ".cursor/hooks/state/" || line === ".codex/hooks/state/");
+};
+
+const readExistingManifest = async (repositoryRoot) => {
+  const manifestPath = join(repositoryRoot, MANIFEST_RELATIVE_PATH);
+  const inspection = await inspectPath(repositoryRoot, manifestPath);
+  if (inspection.kind === "missing") return { path: manifestPath, manifest: null };
+  if (inspection.kind !== "file") {
+    throw new Error("The project-hook manifest path is not a regular file.");
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(inspection.contents.toString("utf8"));
+  } catch {
+    throw new Error("The project-hook manifest is malformed JSON.");
+  }
+  const manifestError = validateManifest(manifest);
+  if (manifestError) throw new Error(manifestError);
+  return { path: manifestPath, manifest };
+};
+
+const verifyExistingManifestOwnership = async (repositoryRoot, manifest) => {
+  const records = new Map();
+  const blocked = [];
+  for (const record of manifest?.artifacts ?? []) {
+    const targetPath = relativeTransactionTarget(repositoryRoot, record.path);
+    const inspection = await inspectPath(repositoryRoot, targetPath);
+    if (inspection.kind !== "file") {
+      blocked.push({
+        path: targetPath,
+        reason: "Manifest-owned artifact is missing or is not a regular file.",
+      });
+      continue;
+    }
+    try {
+      const actualHash = artifactHash(record, inspection.contents);
+      if (actualHash !== record.sha256) {
+        blocked.push({
+          path: targetPath,
+          reason: "Manifest-owned artifact was changed outside the generator.",
+        });
+        continue;
+      }
+      records.set(record.path, { record, inspection });
+    } catch (error) {
+      blocked.push({ path: targetPath, reason: error.message });
+    }
+  }
+  return { records, blocked };
+};
+
+const createSharedDesiredFiles = async ({ repositoryRoot, hosts }) => {
+  const agentsPath = join(repositoryRoot, "AGENTS.md");
+  const agentsSource = (await readOptional(agentsPath)) ?? "";
+  const agentsContents = replaceMarkedBlock(
+    agentsSource,
+    generatedAgentsBlock({ hosts }),
+    GENERATED_BLOCK_START,
+    GENERATED_BLOCK_END,
+  );
+  const gitignorePath = join(repositoryRoot, ".gitignore");
+  const gitignoreSource = (await readOptional(gitignorePath)) ?? "";
+  const gitignoreContents = mergeGitignore(gitignoreSource, hosts);
+  return [
+    {
+      path: agentsPath,
+      contents: Buffer.from(agentsContents, "utf8"),
+      host: null,
+      mode: "marked-block",
+    },
+    {
+      path: gitignorePath,
+      contents: Buffer.from(gitignoreContents, "utf8"),
+      host: null,
+      mode: "managed-entries",
+    },
+  ];
+};
+
+const operationForWrite = ({ repositoryRoot, path, contents, record, isManifest = false }) => ({
+  action: "write",
+  path,
+  relativePath: repositoryRelativePath(repositoryRoot, path),
+  contents,
+  record,
+  isManifest,
+  state: "planned",
+  desiredFileSha256: sha256(contents),
+  originalSha256: null,
+  hadOriginal: false,
+  parentRelativePaths: [],
+  existingParentRelativePaths: [],
+});
+
+const operationForRemoval = ({ repositoryRoot, path, record }) => ({
+  action: "remove",
+  path,
+  relativePath: repositoryRelativePath(repositoryRoot, path),
+  contents: null,
+  record,
+  isManifest: false,
+  state: "planned",
+  desiredFileSha256: null,
+  originalSha256: record.sha256,
+  hadOriginal: false,
+  parentRelativePaths: [],
+  existingParentRelativePaths: [],
+});
+
+const buildTransactionJournal = ({ manifest, operations, repositoryRoot, status }) => ({
+  schema: TRANSACTION_SCHEMA,
+  version: 1,
+  status,
+  target: repositoryRelativePath(repositoryRoot, repositoryRoot),
+  manifest_path: MANIFEST_RELATIVE_PATH,
+  manifest_sha256: sha256(manifestBytes(manifest)),
+  artifacts: manifest.artifacts,
+  operations: operations.map(transactionOperationForJournal),
+});
+
+const verifyFinalState = async ({ repositoryRoot, manifest, removals }) => {
+  const failures = await verifyManifestArtifacts(repositoryRoot, manifest);
+  for (const removal of removals) {
+    const inspection = await inspectPath(repositoryRoot, removal.path);
+    if (inspection.kind !== "missing") {
+      failures.push(`${removal.relativePath}: removed artifact still exists`);
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(`Final project-hook verification failed: ${failures.join("; ")}`);
+  }
+};
+
+const captureParentDirectoryState = async (repositoryRoot, operation) => {
+  if (operation.action !== "write") return;
+  const parents = [];
+  let current = dirname(operation.path);
+  while (current !== repositoryRoot && isWithinRepository(repositoryRoot, current)) {
+    parents.unshift(current);
+    current = dirname(current);
+  }
+  operation.parentRelativePaths = parents.map((path) =>
+    repositoryRelativePath(repositoryRoot, path),
+  );
+  operation.existingParentRelativePaths = [];
+  for (const parent of parents) {
+    const inspection = await inspectPath(repositoryRoot, parent);
+    if (inspection.kind === "directory") {
+      operation.existingParentRelativePaths.push(
+        repositoryRelativePath(repositoryRoot, parent),
+      );
+    } else if (inspection.kind !== "missing") {
+      throw new Error(`Managed parent path is not a directory: ${parent}`);
+    }
+  }
+};
+
+const executeTransaction = async ({
+  repositoryRoot,
+  manifest,
+  operations,
+  removals,
+  normalizedHosts,
+  pluginVersion,
+  recoveredPaths,
+}) => {
+  const paths = transactionPaths(repositoryRoot);
+  const faultController = createFaultController();
+  const allOperations = [...operations, ...removals];
+  const orderedOperations = [
+    ...allOperations.filter((operation) => !operation.isManifest),
+    ...allOperations.filter((operation) => operation.isManifest),
+  ];
+  for (const [index, operation] of orderedOperations.entries()) {
+    const stagePath = join(paths.stage, `op-${String(index).padStart(4, "0")}.bin`);
+    const backupPath = join(paths.backup, `op-${String(index).padStart(4, "0")}.bin`);
+    operation.stagePath = stagePath;
+    operation.backupPath = backupPath;
+    operation.stageRelativePath = repositoryRelativePath(repositoryRoot, stagePath);
+    operation.backupRelativePath = repositoryRelativePath(repositoryRoot, backupPath);
+  }
+  for (const operation of orderedOperations) {
+    await captureParentDirectoryState(repositoryRoot, operation);
+  }
+
+  let journal = buildTransactionJournal({
+    manifest,
+    operations: orderedOperations,
+    repositoryRoot,
+    status: "prepared",
+  });
+  let journalPersisted = false;
+  let committed = false;
+  let transactionCreated = false;
+  const persistJournal = async () => {
+    journal.operations = orderedOperations.map(transactionOperationForJournal);
+    await writeTransactionJournal({
+      repositoryRoot,
+      paths,
+      journal,
+      faultController,
+    });
+  };
+  try {
+    await safePath(repositoryRoot, paths.root);
+    await assertDirectoryOrMissing(repositoryRoot, paths.root);
+    await mkdir(paths.root, { recursive: true });
+    await mkdir(paths.stage, { recursive: true });
+    await mkdir(paths.backup, { recursive: true });
+    transactionCreated = true;
+
+    for (const operation of orderedOperations.filter((item) => item.action === "write")) {
+      maybeInjectFault(faultController, "stage");
+      await writeFile(operation.stagePath, operation.contents, { flag: "wx" });
+    }
+    await persistJournal();
+    journalPersisted = true;
+
+    for (const operation of orderedOperations) {
+      maybeInjectFault(faultController, "backup");
+      const current = await inspectPath(repositoryRoot, operation.path);
+      if (current.kind === "file") {
+        operation.hadOriginal = true;
+        operation.originalSha256 = sha256(current.contents);
+        await rename(current.path, operation.backupPath);
+      } else if (current.kind !== "missing") {
+        throw new Error(`Cannot back up managed path ${operation.path}.`);
+      }
+      operation.state = "backed-up";
+    }
+    journal.status = "backed-up";
+    await persistJournal();
+
+    journal.status = "applying";
+    await persistJournal();
+    for (const operation of orderedOperations) {
+      maybeInjectFault(faultController, operation.isManifest ? "manifest" : "apply");
+      if (operation.action === "write") {
+        await safePath(repositoryRoot, operation.path);
+        await mkdir(dirname(operation.path), { recursive: true });
+        await rename(operation.stagePath, operation.path);
+      }
+      operation.state = "applied";
+      await persistJournal();
+    }
+
+    await verifyFinalState({ repositoryRoot, manifest, removals });
+    journal.status = "committed";
+    await persistJournal();
+    committed = true;
+    await cleanupTransaction(repositoryRoot, paths, faultController);
+    return {
+      status: operations.length > 0 || removals.length > 0 ? "written" : "unchanged",
+      target: repositoryRoot,
+      hosts: normalizedHosts,
+      plugin_version: pluginVersion,
+      manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+      written_paths: operations.map((operation) => operation.path),
+      unchanged_paths: [],
+      removed_paths: removals.map((operation) => operation.path),
+      recovered_paths: recoveredPaths,
+      blocked: [],
+      limitations: normalizedHosts.includes("codex")
+        ? [
+            "Codex project hooks require a trusted project and explicit hook review/trust before they run.",
+          ]
+        : [],
+    };
+  } catch (error) {
+    if (committed) {
+      return {
+        status: "partial",
+        target: repositoryRoot,
+        hosts: normalizedHosts,
+        plugin_version: pluginVersion,
+        manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+        written_paths: orderedOperations.filter((operation) => operation.action === "write").map((operation) => operation.path),
+        unchanged_paths: [],
+        removed_paths: orderedOperations.filter((operation) => operation.action === "remove").map((operation) => operation.path),
+        recovered_paths: recoveredPaths,
+        blocked: [{ path: paths.root, reason: error.message }],
+        limitations: [
+          "The projection committed and was verified, but transaction cleanup requires a later generator run.",
+        ],
+      };
+    }
+
+    if (error instanceof TransactionInterruptedError && journalPersisted) {
+      return {
+        status: "partial",
+        target: repositoryRoot,
+        hosts: normalizedHosts,
+        plugin_version: pluginVersion,
+        manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+        written_paths: [],
+        unchanged_paths: [],
+        removed_paths: [],
+        recovered_paths: recoveredPaths,
+        blocked: [{ path: paths.root, reason: error.message }],
+        limitations: [
+          "The transaction was intentionally interrupted after its journal was persisted; the next run will recover it deterministically.",
+        ],
+      };
+    }
+
+    if (!journalPersisted) {
+      if (transactionCreated) {
+        try {
+          await cleanupTransaction(repositoryRoot, paths, null);
+          await removeCreatedParentDirectories(repositoryRoot, orderedOperations);
+        } catch (cleanupError) {
+          return {
+            status: "blocked",
+            target: repositoryRoot,
+            hosts: normalizedHosts,
+            plugin_version: pluginVersion,
+            manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+            written_paths: [],
+            unchanged_paths: [],
+            removed_paths: [],
+            recovered_paths: recoveredPaths,
+            blocked: [{ path: paths.root, reason: cleanupError.message }],
+            limitations: ["Staging failed before a recoverable journal was persisted."],
+          };
+        }
+      }
+      return {
+        status: "blocked",
+        target: repositoryRoot,
+        hosts: normalizedHosts,
+        plugin_version: pluginVersion,
+        manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+        written_paths: [],
+        unchanged_paths: [],
+        removed_paths: [],
+        recovered_paths: recoveredPaths,
+        blocked: [{ path: paths.root, reason: error.message }],
+        limitations: ["No target file was committed because staging did not complete."],
+      };
+    }
+
+    try {
+      const rollbackPaths = await rollbackTransaction(repositoryRoot, paths, journal);
+      await cleanupTransaction(repositoryRoot, paths, null);
+      await removeCreatedParentDirectories(repositoryRoot, journal.operations);
+      return {
+        status: "partial",
+        target: repositoryRoot,
+        hosts: normalizedHosts,
+        plugin_version: pluginVersion,
+        manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+        written_paths: [],
+        unchanged_paths: [],
+        removed_paths: [],
+        recovered_paths: [...new Set([...recoveredPaths, ...rollbackPaths, paths.root])],
+        blocked: [{ path: error.path ?? paths.root, reason: error.message }],
+        limitations: [
+          "The transaction failed and was rolled back to the complete previous projection.",
+        ],
+      };
+    } catch (rollbackError) {
+      return {
+        status: "partial",
+        target: repositoryRoot,
+        hosts: normalizedHosts,
+        plugin_version: pluginVersion,
+        manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+        written_paths: [],
+        unchanged_paths: [],
+        removed_paths: [],
+        recovered_paths: recoveredPaths,
+        blocked: [
+          { path: paths.root, reason: `Transaction failed: ${error.message}` },
+          { path: paths.root, reason: `Rollback requires attention: ${rollbackError.message}` },
+        ],
+        limitations: [
+          "Rollback could not be fully verified; the transaction journal was retained for the next run.",
+        ],
+      };
+    }
+  }
+};
+
 const inspectConfigAgainstPreviousProjection = async ({
   hostOutput,
   existingReadme,
@@ -418,136 +1427,308 @@ const inspectConfigAgainstPreviousProjection = async ({
 const generateProjectHooks = async ({ target, hosts }) => {
   const normalizedHosts = normalizeHostList(hosts.join(","));
   const repositoryRoot = resolveRepositoryRoot(target);
-  const pluginVersion = await readPluginVersion();
-  const hostOutputs = await Promise.all(
-    normalizedHosts.map((host) =>
-      createHostOutputs({ repositoryRoot, host, pluginVersion }),
-    ),
-  );
-
-  const existingReadmes = new Map();
-  for (const hostOutput of hostOutputs) {
-    existingReadmes.set(
-      hostOutput.host,
-      await readOptional(hostOutput.readmePath),
-    );
-  }
-
-  const operations = [];
-  const blocked = [];
-  for (const hostOutput of hostOutputs) {
-    for (const file of hostOutput.files) {
-      const inspection =
-        file.path === hostOutput.configPath
-          ? await inspectConfigAgainstPreviousProjection({
-              hostOutput,
-              existingReadme: existingReadmes.get(hostOutput.host),
-            })
-          : await inspectOutput(file);
-      if (inspection.status === "blocked") {
-        blocked.push({ path: file.path, reason: inspection.reason });
-      } else {
-        operations.push({ ...file, status: inspection.status });
-      }
-    }
-  }
-
-  const gitignorePath = join(repositoryRoot, ".gitignore");
-  const gitignore = await readOptional(gitignorePath);
-  const mergedGitignore = mergeGitignore(gitignore, normalizedHosts);
-  if (mergedGitignore !== (gitignore ?? "")) {
-    operations.push({
-      path: gitignorePath,
-      contents: Buffer.from(mergedGitignore, "utf8"),
-      status: "write",
-    });
-  }
-
-  const agentsPath = join(repositoryRoot, "AGENTS.md");
-  const agentsSource = (await readOptional(agentsPath)) ?? "";
-  let mergedAgents;
+  let pluginVersion = "unknown";
   try {
-    mergedAgents = replaceMarkedBlock(
-      agentsSource,
-      generatedAgentsBlock({ hosts: normalizedHosts }),
-      GENERATED_BLOCK_START,
-      GENERATED_BLOCK_END,
-    );
+    pluginVersion = await readPluginVersion();
   } catch (error) {
-    blocked.push({ path: agentsPath, reason: error.message });
-    mergedAgents = agentsSource;
-  }
-  if (mergedAgents !== agentsSource) {
-    operations.push({
-      path: agentsPath,
-      contents: Buffer.from(mergedAgents, "utf8"),
-      status: "write",
-    });
-  }
-
-  if (blocked.length > 0) {
     return {
       status: "blocked",
       target: repositoryRoot,
       hosts: normalizedHosts,
       plugin_version: pluginVersion,
+      manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
       written_paths: [],
-      unchanged_paths: operations
-        .filter((operation) => operation.status === "unchanged")
-        .map((operation) => operation.path),
-      blocked,
-      limitations: [
-        "No files were written because one or more existing paths conflict with the requested projection.",
-      ],
+      unchanged_paths: [],
+      removed_paths: [],
+      recovered_paths: [],
+      blocked: [{ path: join(PLUGIN_ROOT, "plugin.json"), reason: error.message }],
+      limitations: ["The plugin version could not be read before planning."],
     };
   }
 
-  const writtenPaths = [];
-  const unchangedPaths = [];
+  let recoveredPaths = [];
   try {
-    for (const operation of operations) {
-      if (operation.status === "unchanged") {
-        unchangedPaths.push(operation.path);
-        continue;
-      }
-      await mkdir(dirname(operation.path), { recursive: true });
-      await writeFile(operation.path, operation.contents, { flag: "w" });
-      writtenPaths.push(operation.path);
-    }
+    const recovery = await recoverPendingTransaction(repositoryRoot);
+    recoveredPaths = recovery.recoveredPaths;
   } catch (error) {
     return {
-      status: "partial",
+      status: "blocked",
       target: repositoryRoot,
       hosts: normalizedHosts,
       plugin_version: pluginVersion,
-      written_paths: writtenPaths,
-      unchanged_paths: unchangedPaths,
-      blocked: [
-        {
-          path: error.path ?? repositoryRoot,
-          reason: "A generated file could not be written.",
-        },
-      ],
-      limitations: [
-        "The write stopped after an I/O failure; inspect the listed paths before retrying.",
-      ],
+      manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+      written_paths: [],
+      unchanged_paths: [],
+      removed_paths: [],
+      recovered_paths: [],
+      blocked: [{ path: join(repositoryRoot, TRANSACTION_RELATIVE_PATH), reason: error.message }],
+      limitations: ["An incomplete transaction could not be proven safe to recover."],
     };
   }
 
-  return {
-    status: writtenPaths.length > 0 ? "written" : "unchanged",
-    target: repositoryRoot,
-    hosts: normalizedHosts,
-    plugin_version: pluginVersion,
-    written_paths: writtenPaths,
-    unchanged_paths: unchangedPaths,
-    blocked: [],
-    limitations: normalizedHosts.includes("codex")
-      ? [
-          "Codex project hooks require a trusted project and explicit hook review/trust before they run.",
-        ]
-      : [],
-  };
+  try {
+    const manifestState = await readExistingManifest(repositoryRoot);
+    const allHostOutputs = await Promise.all(
+      ["cursor", "codex"].map((host) =>
+        createHostOutputs({ repositoryRoot, host, pluginVersion }),
+      ),
+    );
+    const sharedFiles = await createSharedDesiredFiles({
+      repositoryRoot,
+      hosts: normalizedHosts,
+    });
+
+    const pathsToValidate = [
+      ...allHostOutputs.flatMap((hostOutput) => hostOutput.files.map((file) => file.path)),
+      ...sharedFiles.map((file) => file.path),
+      join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+      join(repositoryRoot, TRANSACTION_RELATIVE_PATH),
+    ];
+    for (const path of pathsToValidate) await safePath(repositoryRoot, path);
+
+    const oldOwnership = await verifyExistingManifestOwnership(
+      repositoryRoot,
+      manifestState.manifest,
+    );
+    const blocked = [...oldOwnership.blocked];
+    const oldRecords = oldOwnership.records;
+    const legacyProof = new Map();
+    if (!manifestState.manifest) {
+      for (const hostOutput of allHostOutputs) {
+        for (const file of hostOutput.files) {
+          const inspection = await inspectPath(repositoryRoot, file.path);
+          legacyProof.set(
+            file.path,
+            await legacyOwnsHostFile({
+              repositoryRoot,
+              hostOutput,
+              file,
+              inspection,
+            }),
+          );
+        }
+      }
+      const agentsInspection = await inspectPath(repositoryRoot, join(repositoryRoot, "AGENTS.md"));
+      const gitignoreInspection = await inspectPath(repositoryRoot, join(repositoryRoot, ".gitignore"));
+      legacyProof.set(
+        join(repositoryRoot, "AGENTS.md"),
+        agentsInspection.kind === "file" && legacyOwnsAgents(agentsInspection.contents),
+      );
+      legacyProof.set(
+        join(repositoryRoot, ".gitignore"),
+        gitignoreInspection.kind === "file" && legacyOwnsGitignore(gitignoreInspection.contents),
+      );
+    }
+
+    const desiredFiles = [
+      ...allHostOutputs
+        .filter((hostOutput) => normalizedHosts.includes(hostOutput.host))
+        .flatMap((hostOutput) =>
+          hostOutput.files.map((file) => ({
+            ...file,
+            host: hostOutput.host,
+            mode: "exact",
+          })),
+        ),
+      ...sharedFiles,
+    ];
+    const desiredRecords = desiredFiles.map((file) => ({
+      ...file,
+      record: manifestRecord({
+        repositoryRoot,
+        path: file.path,
+        host: file.host,
+        mode: file.mode,
+        contents: file.contents,
+      }),
+    }));
+    const desiredByPath = new Map(
+      desiredRecords.map((file) => [file.path, file]),
+    );
+    const operations = [];
+    const removals = [];
+    const unchangedPaths = [];
+
+    for (const desired of desiredRecords) {
+      const inspection = await inspectPath(repositoryRoot, desired.path);
+      const relativeTarget = artifactPathFor(repositoryRoot, desired.path);
+      const oldRecord = oldRecords.get(relativeTarget);
+      const legacyOwned = legacyProof.get(desired.path) === true;
+      if (inspection.kind === "missing") {
+        operations.push(
+          operationForWrite({
+            repositoryRoot,
+            path: desired.path,
+            contents: desired.contents,
+            record: desired.record,
+          }),
+        );
+        continue;
+      }
+      if (inspection.kind !== "file") {
+        blocked.push({ path: desired.path, reason: "Target path is not a regular file." });
+        continue;
+      }
+      if (inspection.contents.equals(desired.contents)) {
+        if (manifestState.manifest || oldRecord || legacyOwned || desired.mode !== "exact") {
+          unchangedPaths.push(desired.path);
+        } else {
+          blocked.push({
+            path: desired.path,
+            reason: "Existing bytes match but legacy ownership cannot be proven.",
+          });
+        }
+        continue;
+      }
+      const canReplace = Boolean(oldRecord || legacyOwned ||
+        (!manifestState.manifest && desired.mode !== "exact"));
+      if (canReplace) {
+        operations.push(
+          operationForWrite({
+            repositoryRoot,
+            path: desired.path,
+            contents: desired.contents,
+            record: desired.record,
+          }),
+        );
+      } else {
+        blocked.push({
+          path: desired.path,
+          reason: "Existing file differs and generator ownership cannot be proven.",
+        });
+      }
+    }
+
+    for (const hostOutput of allHostOutputs) {
+      if (normalizedHosts.includes(hostOutput.host)) continue;
+      for (const file of hostOutput.files) {
+        const inspection = await inspectPath(repositoryRoot, file.path);
+        if (inspection.kind !== "file") continue;
+        const relativeTarget = artifactPathFor(repositoryRoot, file.path);
+        const oldRecord = oldRecords.get(relativeTarget);
+        const legacyOwned = legacyProof.get(file.path) === true;
+        if (oldRecord || legacyOwned) {
+          const record = oldRecord?.record ?? {
+            path: relativeTarget,
+            host: hostOutput.host,
+            mode: "exact",
+            sha256: sha256(inspection.contents),
+          };
+          removals.push(
+            operationForRemoval({
+              repositoryRoot,
+              path: file.path,
+              record,
+            }),
+          );
+        }
+      }
+    }
+
+    const nextManifest = buildManifest({
+      pluginVersion,
+      hosts: normalizedHosts,
+      records: desiredRecords.map((desired) => desired.record),
+    });
+    const nextManifestBytes = manifestBytes(nextManifest);
+    const manifestInspection = await inspectPath(
+      repositoryRoot,
+      join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+    );
+    const manifestPath = join(repositoryRoot, MANIFEST_RELATIVE_PATH);
+    if (manifestInspection.kind === "missing") {
+      operations.push(
+        operationForWrite({
+          repositoryRoot,
+          path: manifestPath,
+          contents: nextManifestBytes,
+          record: null,
+          isManifest: true,
+        }),
+      );
+    } else if (manifestInspection.kind === "file" &&
+      !manifestInspection.contents.equals(nextManifestBytes)) {
+      operations.push(
+        operationForWrite({
+          repositoryRoot,
+          path: manifestPath,
+          contents: nextManifestBytes,
+          record: null,
+          isManifest: true,
+        }),
+      );
+    } else if (manifestInspection.kind === "file") {
+      unchangedPaths.push(manifestPath);
+    } else {
+      blocked.push({ path: manifestPath, reason: "Manifest path is not a regular file." });
+    }
+
+    if (blocked.length > 0) {
+      return {
+        status: "blocked",
+        target: repositoryRoot,
+        hosts: normalizedHosts,
+        plugin_version: pluginVersion,
+        manifest_path: manifestPath,
+        written_paths: [],
+        unchanged_paths: unchangedPaths,
+        removed_paths: [],
+        recovered_paths: recoveredPaths,
+        blocked,
+        limitations: [
+          "No files were written or removed because the desired state has one or more ownership or path conflicts.",
+        ],
+      };
+    }
+
+    if (operations.length === 0 && removals.length === 0) {
+      return {
+        status: "unchanged",
+        target: repositoryRoot,
+        hosts: normalizedHosts,
+        plugin_version: pluginVersion,
+        manifest_path: manifestPath,
+        written_paths: [],
+        unchanged_paths: unchangedPaths,
+        removed_paths: [],
+        recovered_paths: recoveredPaths,
+        blocked: [],
+        limitations: normalizedHosts.includes("codex")
+          ? [
+              "Codex project hooks require a trusted project and explicit hook review/trust before they run.",
+            ]
+          : [],
+      };
+    }
+
+    const transactionResult = await executeTransaction({
+      repositoryRoot,
+      manifest: nextManifest,
+      operations,
+      removals,
+      normalizedHosts,
+      pluginVersion,
+      recoveredPaths,
+    });
+    transactionResult.unchanged_paths = unchangedPaths;
+    return transactionResult;
+  } catch (error) {
+    return {
+      status: "blocked",
+      target: repositoryRoot,
+      hosts: normalizedHosts,
+      plugin_version: pluginVersion,
+      manifest_path: join(repositoryRoot, MANIFEST_RELATIVE_PATH),
+      written_paths: [],
+      unchanged_paths: [],
+      removed_paths: [],
+      recovered_paths: recoveredPaths,
+      blocked: [{ path: error.path ?? repositoryRoot, reason: error.message }],
+      limitations: [
+        "No files were written or removed because preflight could not prove a safe desired state.",
+      ],
+    };
+  }
 };
 
 const main = async () => {
@@ -570,9 +1751,14 @@ if (invokedPath === fileURLToPath(import.meta.url)) {
       `${JSON.stringify(
         {
           status: "failed",
+          target: process.cwd(),
           hosts: [],
+          plugin_version: "unknown",
+          manifest_path: join(process.cwd(), MANIFEST_RELATIVE_PATH),
           written_paths: [],
           unchanged_paths: [],
+          removed_paths: [],
+          recovered_paths: [],
           blocked: [
             {
               path: null,

@@ -297,19 +297,30 @@ The deterministic
 [`generate-project-hooks.mjs`](../../hooks/generate-project-hooks.mjs) script
 writes only the selected `.cursor/hooks.json` and/or `.codex/hooks.json`,
 the shared dispatcher, checker and runner copies, local-state ignore paths, and
-the marked `AGENTS.md` guidance block. It preflights all requested paths and blocks the complete operation on
-an existing conflicting file. It may replace only its own marked output or an
-unchanged prior projection.
+the marked `AGENTS.md` guidance block, and the version-1 ownership manifest at
+`.github/github-plugin/project-hooks-manifest.json`. It computes the complete
+desired state in memory and preflights every target path, directory, symlink,
+marker, ownership record, and conflict before the first target write. It may
+replace only an unchanged manifest-owned artifact or a legacy artifact whose
+generated header/source hash/readme configuration hash proves ownership.
+
+The write lifecycle is all-or-nothing: same-filesystem staging, a persisted
+journal, byte-exact backups, controlled rename/replace steps, and final
+manifest/artifact hash verification. Normal failures roll back the complete
+old state. An incomplete journal under
+`.github/github-plugin/.project-hooks-transaction/` is deterministically
+restored on the next run; a committed journal is accepted only after its
+manifest and artifact hashes are reverified. Cleanup failures remain explicit
+`partial` evidence. Host deselection removes only unchanged artifacts listed
+for the removed host in the manifest, while unknown files and user content are
+preserved.
 
 The generator copies the common `gate-state.mjs` helper into both projections,
-emits only `.github/github-plugin/state/` in its managed ignore and guidance,
-and never creates gate files or placeholders. During one release generation it
-may detect only known legacy gate filenames under `.cursor/hooks/state/` and
-`.codex/hooks/state/`; those files are quarantined or reported as bounded
-cleanup limitations, never loaded as authority. Unknown files are never
-recursively deleted. Missing, stale, or mismatched canonical state remains an
-intentional fail-closed result rather than a setup failure the generator may
-repair.
+emits only `.github/github-plugin/state/` and the temporary transaction path in
+its managed ignore block, and never creates gate files or placeholders. Unknown
+files are never claimed or recursively deleted. Missing, stale, or mismatched
+canonical state remains an intentional fail-closed result rather than a setup
+failure the generator may repair.
 
 ## Stop conditions
 
