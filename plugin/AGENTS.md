@@ -230,7 +230,7 @@ evidence and missing or mismatched snapshots continue to fail closed.
 ## Contracts
 
 `shared/schemas/README.md` is the contract inventory and handoff-graph source
-of truth. It must contain exactly the 82 versioned YAML contracts under
+of truth. It must contain exactly the 83 versioned YAML contracts under
 `shared/schemas/`: issue snapshots and drafts, repository and planning
 handoffs, worktree and delivery handoffs, review and feedback handoffs,
 integration and cleanup handoffs, host gate snapshots, the autonomous

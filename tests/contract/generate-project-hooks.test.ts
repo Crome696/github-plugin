@@ -95,6 +95,7 @@ describe("generate-project-hooks", () => {
     );
     expect(existsSync(join(repository, ".cursor", "hooks", "lib", "run-command.mjs"))).toBe(true);
     expect(existsSync(join(repository, ".cursor", "hooks", "lib", "run-command-worker.mjs"))).toBe(true);
+    expect(existsSync(join(repository, ".cursor", "hooks", "lib", "repository-policy.mjs"))).toBe(true);
     expect(
       readFileSync(
         join(repository, ".cursor", "hooks", "pre-commit.mjs"),

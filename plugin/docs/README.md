@@ -82,6 +82,7 @@ The following files are the sources of truth for the corresponding concerns:
 | Policy and safety boundaries | [`../rules/`](../rules/) |
 | Host Hook projections and checkers | [`../hooks/`](../hooks/) |
 | Structured handoffs and contract inventory | [`../shared/schemas/README.md`](../shared/schemas/README.md) |
+| Repository-owned configurable hook preferences | [`repository-policy.md`](repository-policy.md) |
 | Contract producers, consumers, and workflow graph | [`../../tests/lib/handoff-graph.ts`](../../tests/lib/handoff-graph.ts), [`../../tests/scenarios/lib/workflow-graphs.ts`](../../tests/scenarios/lib/workflow-graphs.ts) |
 | Host compatibility assumptions and limitations | [`../README.md`](../README.md) and the host manifests |
 

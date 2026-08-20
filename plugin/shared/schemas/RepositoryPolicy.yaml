@@ -1,0 +1,66 @@
+schema: RepositoryPolicy
+version: 1
+description: Versioned repository-owned policy for configurable GitHub plugin workflow preferences.
+required: [version]
+fields:
+  schema:
+    type: string
+    value: RepositoryPolicy
+  version:
+    type: integer
+    value: 1
+  pull_request:
+    type: object
+    fields:
+      mode:
+        type: enum
+        values: [enforce, warn, disable]
+      language:
+        type: string
+      required_headings:
+        type: list
+        items:
+          type: object
+          required: [names, label]
+          fields:
+            names:
+              type: list
+              items: string
+            label:
+              type: string
+  rebase:
+    type: object
+    fields:
+      mode:
+        type: enum
+        values: [enforce, warn, disable]
+      worktree:
+        type: enum
+        values: [dedicated, primary, any]
+      require_remote_upstream:
+        type: boolean
+      require_remote_backup:
+        type: boolean
+  secrets:
+    type: object
+    fields:
+      mode:
+        type: enum
+        values: [enforce, warn, disable]
+      filename_patterns:
+        type: list
+        items: string
+      content_patterns:
+        type: list
+        items: string
+      scan_scope:
+        type: enum
+        values: [index_and_worktree, index, worktree]
+      max_file_bytes:
+        type: integer
+        minimum: 1
+invariants:
+  - Missing policy uses the documented compatibility default.
+  - Malformed or unsupported policy never weakens non-configurable operation, identity, authorization, gate-integrity, or evidence guards.
+  - Policy modes apply only to configurable repository preferences and are surfaced as policy-source diagnostics by consuming workflows.
+  - Secret patterns are configuration values only; secret material is never stored or emitted by the plugin.

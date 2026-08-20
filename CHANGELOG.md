@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.3.109
+## 0.3.110
+
+- Added the versioned `RepositoryPolicy` contract and shared runtime loader for
+  repository-owned PR description, rebase posture, and secret-scan preferences.
+- Preserved compatibility defaults and fail-closed core operation, identity,
+  authorization, gate-integrity, and evidence checks for malformed or unknown
+  policies.
+- Applied the policy loader to generated Cursor and Codex project hooks and
+  added contract fixtures and synchronized release metadata.
 
 - Replaced duplicate Codex protected-hook starts with one deterministic shared
   Cursor/Codex dispatcher while preserving the native host response envelopes.
