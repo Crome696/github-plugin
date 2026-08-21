@@ -100,12 +100,20 @@ fields:
         items: string
   plan:
     type: object | null
-    required: [status, plan_id, head_sha, mandatory_item_ids]
+    required: [status, plan_id, plan_contract, plan_version, source_kind, head_sha, mandatory_item_ids]
     fields:
       status:
         type: string
       plan_id:
         type: string
+      plan_contract:
+        type: enum
+        values: [PullRequestFixPlan, null]
+      plan_version:
+        type: integer | null
+      source_kind:
+        type: enum
+        values: [ci, null]
       head_sha:
         type: string
       mandatory_item_ids:
@@ -228,6 +236,7 @@ fields:
         type: string
 invariants:
   - The run identifies exactly one repository and pull request.
+  - Every fix iteration references PullRequestFixPlan v1 with source_kind ci; legacy CiFixPlan input is represented only through a lossless, fail-closed adapter.
   - Every iteration records its input and verified output head identity.
   - checks_green requires no remaining failed or missing required checks and no open blocker.
   - pending or unavailable policy evidence never produces checks_green.

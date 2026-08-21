@@ -11,6 +11,9 @@ starts the canonical `feedback-agent` with `mode: fix`, and displays the
 version-2 `ReviewFixRun` compatibility projection of its version-1
 `FeedbackLifecycleRun` result.
 
+The fix handoff is `PullRequestFixPlan v1` with `source_kind: review`;
+`ReviewFixRun` remains only the compatibility projection.
+
 The Command contains no review, plan, implementation, Git, or GitHub write
 procedure. It never publishes a review, changes a thread, creates a second
 pull request, marks Ready-for-Review, rebases, merges, force-pushes, deletes,

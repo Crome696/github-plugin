@@ -332,7 +332,8 @@ verify repository and exact pull request
   -> analyze the current diff
   -> detect, deduplicate, and classify findings
   -> collect, resolve-candidate, and classify open feedback
-  -> create one FeedbackLifecyclePlan in fix mode and confirm its selected items
+  -> create one FeedbackLifecyclePlan in fix mode and one bounded
+     PullRequestFixPlan with source_kind review for selected findings
   -> attach or reuse the existing head worktree
   -> resolve external implementation capability
   -> inspect, classify, validate, and scope-check changes
@@ -363,7 +364,7 @@ verify repository and exact pull request
   -> wait for required checks without treating pending as pass
   -> rerun only exactly authorized required names
   -> wait again
-  -> confirm one host-neutral CiFixPlan
+  -> confirm one host-neutral PullRequestFixPlan with source_kind ci
   -> attach or reuse the existing head worktree
   -> resolve external implementation capability
   -> inspect, classify, validate, and scope-check changes
@@ -387,6 +388,9 @@ verify exact pull request and current head
   -> collect review threads, findings, comments, and failed checks
   -> identify advisory resolved candidates
   -> classify explicitly selected open feedback
+  -> build PullRequestFixPlan with source_kind feedback, preserving feedback
+     IDs, resolution groups, affected areas, dependencies, non-goals, and
+     external handoffs
   -> select FeedbackLifecyclePlan mode full or follow_up
   -> for full: coordinate separately authorized worktree, commit, and push
   -> after push: reload and validate the new head

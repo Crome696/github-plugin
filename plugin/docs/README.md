@@ -99,7 +99,7 @@ The following files are the sources of truth for the corresponding concerns:
 | Canonical typed workflow graph | [`../shared/schemas/HandoffGraph.yaml`](../shared/schemas/HandoffGraph.yaml), [`../shared/graphs/handoff-graph.yaml`](../shared/graphs/handoff-graph.yaml), and its [`handoff-graph.mmd`](../shared/graphs/handoff-graph.mmd) projection |
 | Repository-owned configurable hook preferences | [`repository-policy.md`](repository-policy.md) |
 | Explicit evidence migration for `0.3.112` | [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md) |
-| Canonical head-bound feedback lifecycle contracts, the shared external-capability firewall, independent effect authorization, immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, and transactional ownership-safe project-hook generation for `0.3.119` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/external-capabilities.md`](architecture/external-capabilities.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
+| Common `PullRequestFixPlan v1` for review, feedback, and CI-fix sources, lossless legacy adapters, canonical head-bound feedback lifecycle contracts, the shared external-capability firewall, independent effect authorization, immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, and transactional ownership-safe project-hook generation for `0.3.120` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md), [`architecture/external-capabilities.md`](architecture/external-capabilities.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
 | Contract inventory and workflow ownership | [`../shared/schemas/README.md`](../shared/schemas/README.md) and the owning Agent, Command, and Skill sources listed below |
 | Host compatibility assumptions and limitations | [`../../README.md`](../../README.md) and the host manifests |
 
@@ -186,9 +186,9 @@ their explicit invocation boundary.
 | assess-issue-quality | Assess issue completeness, understandability, implementability, testability, scope, and contradictions. |
 | assess-merge-readiness | Transform one complete immutable pull-request readiness snapshot into deterministic diagnostic MergeReadiness. |
 | build-pr-readiness-evidence | Normalize fixed-order pull-request reader handoffs into one complete, identity-bound readiness snapshot. |
-| build-feedback-resolution-plan | Build a bounded external implementation handoff for selected feedback. |
-| build-review-fix-plan | Confirm current findings and open feedback as a host-neutral ReviewFixPlan. |
-| build-ci-fix-plan | Confirm remaining failed required checks as a host-neutral CiFixPlan. |
+| build-feedback-resolution-plan | Build a bounded `PullRequestFixPlan v1` with `source_kind: feedback` for selected feedback. |
+| build-review-fix-plan | Confirm current findings and open feedback as a host-neutral `PullRequestFixPlan v1` with `source_kind: review`. |
+| build-ci-fix-plan | Confirm remaining failed required checks as a host-neutral `PullRequestFixPlan v1` with `source_kind: ci`. |
 | build-implementation-plan | Build an evidence-based, task-authorized implementation plan without implementing it. |
 | build-product-dependency-graph | Map evidenced product and mandatory technical dependencies among classified sub-issue candidates. |
 | generate-project-hooks | Ask for Cursor, Codex, or both, then generate only selected project-hook projections without creating gate snapshots, committing, or changing GitHub. |
@@ -326,6 +326,21 @@ documentation; breaking changes require a version change. Workflow ownership
 and forbidden operations remain documented by the owning components.
 Repository validation and synchronization rules belong to the root
 [AGENTS.md](../../AGENTS.md).
+
+`PullRequestFixPlan v1` is the common planning interface for review, feedback,
+and CI-fix implementation delivery. The top-level `source_kind` discriminator
+is `review`, `feedback`, or `ci`; the tagged candidate union preserves
+`review_finding`, `review_feedback`, and `required_check_failure` evidence
+without flattening. All downstream consumers validate one repository, PR,
+base, head, scope, workspace, and authorization identity. `clarify`, unclear
+candidates, optional checks, stale evidence, mixed heads, source-kind
+conflicts, scope drift, and authorization mismatches fail closed.
+
+`ReviewFixPlan v1`, `CiFixPlan v1`, and `FeedbackResolutionPlan v1` remain
+historical legacy contracts and are accepted only through explicit, lossless
+adapters. The adapters preserve IDs, evidence, scope, and authorization
+state; they never create new effects. `FeedbackLifecyclePlan v1` remains the
+separate lifecycle/effect authority.
 
 ## Canonical typed workflow graph
 

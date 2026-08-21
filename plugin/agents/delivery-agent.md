@@ -76,6 +76,7 @@ The stable handoff contracts are:
 
 - `plugin/shared/schemas/LoadedIssue.yaml`
 - `plugin/shared/schemas/ImplementationPlan.yaml`
+- `plugin/shared/schemas/PullRequestFixPlan.yaml`
 - `plugin/shared/schemas/ExternalCapabilityResolution.yaml`
 - `plugin/shared/schemas/BranchWorkspace.yaml`
 - `plugin/shared/schemas/WorkingTreeInspection.yaml`
@@ -96,8 +97,10 @@ invent a value to complete a contract.
 
 ## Contract handoffs
 
-- The Agent consumes version-1 `ImplementationPlan`, `BranchWorkspace`, and
-  `LoadedIssue` handoffs.
+- The Agent consumes version-1 `ImplementationPlan` or `PullRequestFixPlan`,
+  `BranchWorkspace`, and `LoadedIssue` handoffs. Review, feedback, and CI-fix
+  delivery must use the common plan; legacy plan identities are accepted only
+  through lossless, fail-closed adapters.
 - The delivery chain produces version-2 `ValidationResult`, `CommitProposal`,
   `BranchPush`, `PullRequestIssueLink`, and `PullRequestDraft` handoffs.
 - The local `PreCommitGate` snapshot is version-4 and the local `PrePrCreateGate`

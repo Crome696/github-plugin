@@ -23,9 +23,9 @@ version changes.
 | `ClassifiedReviewFeedback` | Version 1 read-only classification of collected feedback by cause, severity, affected component, and required follow-up action. |
 | `ExternalCapabilityResolution` | Version 1 canonical pure resolution of normalized context or feedback requirements against current host-session evidence, preserving available, unavailable, missing, ambiguous, provenance, and fail-closed gaps. |
 | `FeedbackResolutionCapabilities` | Legacy version 1 lossless, fail-closed transition projection of ExternalCapabilityResolution for explicitly confirmed open feedback. |
-| `FeedbackResolutionPlan` | Version 1 read-only, scope-bounded plan for explicitly confirmed open feedback, with ordered corrections and external implementation handoffs. |
+| `FeedbackResolutionPlan` | Legacy version 1 read-only plan retained as a lossless, fail-closed ingress shape for the common fix-plan contract. |
 | `ResolvedReviewFeedback` | Version 1 read-only comparison of collected feedback with the latest pull-request state, later commits, current diff, and explicit test evidence, preserving only clearly supported resolved candidates. |
-| `FeedbackResolutionValidation` | Version 1 read-only validation of every confirmed feedback item after external follow-up, with current-state evidence, remaining problems, and advisory thread-resolution eligibility. |
+| `FeedbackResolutionValidation` | Version 1 read-only validation of every confirmed feedback item after external follow-up, consuming the common feedback fix plan with current-state evidence, remaining problems, and advisory thread-resolution eligibility. |
 | `FeedbackResolutionSummary` | Version 1 read-only summary of validated feedback follow-up, grouping each item as resolved, open, disputed, or blocked with evidence-linked next steps and diagnostic merge impact. |
 | `LinkedIssue` | Version 1 read-only resolution of one pull request's issue candidates from explicit references, closing keywords, and GitHub relationships, with nested issue loading only after unique linkage. |
 | `LinkedIssueStatusAssessment` | Version 1 read-only assessment of one pull request's linked issue state, explicit acceptance-criteria coverage, closing relationship, and integration consistency. |
@@ -82,7 +82,8 @@ version changes.
 | `LifecycleRun` | Version 1 task-authorized record of one autonomous issue-to-draft-PR run through create or an existing-issue refine entry, then preparation, external implementation, and Draft pull-request delivery, stopping before review. Absent `entry_phase` means `issue_create`. |
 | `ReviewFinding` | Evidence-based finding with severity, location, impact, recommendation, and verification. |
 | `ReviewDecision` | Version 1 composition-only or authorization-gated review event payload, confirmation evidence, publication result, and verification. |
-| `ReviewFixPlan` | Version 1 host-neutral, interactively confirmed plan of mandatory fixes for one existing pull-request head branch. |
+| `PullRequestFixPlan` | Version 1 common head-bound fix plan with `source_kind: review|feedback|ci`, lossless tagged candidates, shared scope/authorization/validation rules, and explicit legacy adapters. |
+| `ReviewFixPlan` | Legacy version 1 review-fix plan retained as a lossless, fail-closed ingress shape for `PullRequestFixPlan`. |
 | `FeedbackLifecyclePlan` | Version 1 canonical head-bound feedback plan with `fix`, `full`, and `follow_up` modes, typed transitions, validation requirements, and independent effect authorization. |
 | `FeedbackLifecycleRun` | Version 1 canonical lifecycle state record preserving transitions, current head, implementation delivery evidence, feedback IDs, blockers, and separately authorized thread effects. |
 | `ReviewFixRun` | Version 2 compatibility projection of the canonical `FeedbackLifecycleRun` fix mode; it does not own independent review-fix state. |
@@ -97,7 +98,7 @@ version changes.
 | `CleanupResult` | Version 1 explicitly authorized worktree/branch cleanup actions and evidence, including preserved unsafe or recoverable targets and separate local/remote outcomes. |
 | `RequiredCheckWait` | Evidence-backed wait for required pull-request checks after a verified head push, reporting pass, fail, pending, skipped, and missing required outcomes without treating pending or unavailable policy evidence as a pass. |
 | `RequiredCheckRerun` | Exact authorization-gated rerun of failed required pull-request checks with live run-identity verification; optional checks and unauthorized names fail closed with no GitHub write. |
-| `CiFixPlan` | Host-neutral, interactively confirmed plan for failed required checks on one existing pull-request head branch. |
+| `CiFixPlan` | Legacy version 1 required-check plan retained as a lossless, fail-closed ingress shape for `PullRequestFixPlan`. |
 | `CiFixRun` | Lifecycle record for one pull-request CI wait, authorized required-check rerun, and bounded external-fix loop on an existing head branch. |
 | `IssueClosure` | Explicitly authorized triage closure of exactly one verified GitHub issue without a merged pull request, covering duplicate, not-planned, and consciously not-delivered reasons with live preflight and post-write verification. |
 
@@ -200,6 +201,27 @@ The former full handoff Mermaid block is intentionally not maintained as an inde
   and state contracts for one feedback lifecycle. Their `fix`, `full`, and
   `follow_up` modes preserve exact head continuity and independently authorize
   worktree, commit, push, reply, and resolution effects.
+- `PullRequestFixPlan v1` is the common plan source for review, feedback, and
+  CI-fix implementation delivery. Its top-level `source_kind` is exactly one
+  of `review`, `feedback`, or `ci`; its tagged candidate union preserves
+  `review_finding`, `review_feedback`, and `required_check_failure` evidence
+  without flattening. Repository, PR, base, head, scope, workspace, and
+  authorization must all bind to the same current head.
+- `ReviewFixPlan v1`, `CiFixPlan v1`, and `FeedbackResolutionPlan v1` are
+  historical legacy contracts. The only supported ingress is the explicit
+  adapter mapping each legacy shape to `PullRequestFixPlan v1`; missing common
+  or source-specific fields, stale evidence, mixed heads, source-kind
+  conflicts, and non-representable authorization fail closed. Adapters never
+  create commit, push, review, thread, Ready-for-Review, rebase, merge,
+  deletion, cleanup, or default-branch authorization.
+- The explicit adapter matrix is `ReviewFixPlan v1 -> PullRequestFixPlan v1`
+  with `source_kind: review`, `CiFixPlan v1 -> PullRequestFixPlan v1` with
+  `source_kind: ci`, and `FeedbackResolutionPlan v1 -> PullRequestFixPlan v1`
+  with `source_kind: feedback`. Each mapping preserves source IDs, evidence,
+  scope, head identity, and authorization state or returns `blocked`.
+- `FeedbackLifecyclePlan v1` remains the separate lifecycle and effect
+  authority. It is not merged into `PullRequestFixPlan` and no second
+  lifecycle is introduced.
 - `ReviewFixRun` v2 is a compatibility projection for `fix` mode. It retains
   the discoverable review-fix identity without owning a competing state
   machine.

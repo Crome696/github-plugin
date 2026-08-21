@@ -6,7 +6,7 @@ description: Consolidates implementation-result evaluation with working-tree ins
 # Validate Implementation Result
 
 Consolidate the completed implementation's functional result with its
-`ImplementationPlan` or `ReviewFixPlan`, `WorkingTreeInspection`, `ChangeClassification`, and
+`ImplementationPlan` or `PullRequestFixPlan`, `WorkingTreeInspection`, `ChangeClassification`, and
 conditional `UnrelatedChangeDetection` evidence. Check scope, acceptance and
 completion criteria, planned steps, required validations, unexpected changes,
 and explicit deviations. It incorporates the implementation-result evaluation
@@ -57,9 +57,12 @@ handoffs:
    (`status: classified`, or `status: partial` with trusted identity and a
    useful change list).
 3. Either `ImplementationPlan` with its `validation`, scope, acceptance
-   criteria, implementation steps, and workspace values, or `ReviewFixPlan`
-   with its confirmed review-fix scope, implementation steps, validation, and
-   workspace values.
+   criteria, implementation steps, and workspace values, or
+   `PullRequestFixPlan` with its common `source_kind`, exact repository/PR/
+   base/head identity, selection, scope, implementation steps, validation,
+   and workspace values. A common plan is the normative input for review,
+   feedback, and CI-fix delivery; legacy plan identities are accepted only by
+   the explicit lossless ingress adapter.
 
 The effective workspace identity is the intersection of the supplied
 repository, branch, worktree path, and observed head revision. A missing or
@@ -86,20 +89,20 @@ required handoff returns `status: blocked`,
 Use concise, reproducible references:
 
 - `handoff:ImplementationPlan.validation.required_tests[<index>]` or
-  `handoff:ReviewFixPlan.validation.required_tests[<index>]`
+  `handoff:PullRequestFixPlan.validation.required_tests[<index>]`
 - `handoff:ImplementationPlan.validation.required_checks[<index>]` or
-  `handoff:ReviewFixPlan.validation.required_checks[<index>]`
+  `handoff:PullRequestFixPlan.validation.required_checks[<index>]`
 - `handoff:ImplementationPlan.validation.success_criteria[<index>]` or
-  `handoff:ReviewFixPlan.validation.success_criteria[<index>]`
+  `handoff:PullRequestFixPlan.validation.success_criteria[<index>]`
 - `handoff:ImplementationPlan.validation.evidence_requirements[<id>]` or
-  `handoff:ReviewFixPlan.validation.evidence_requirements[<id>]`
+  `handoff:PullRequestFixPlan.validation.evidence_requirements[<id>]`
 - `handoff:ImplementationPlan.acceptance_criteria[<index>]`
 - `handoff:ImplementationPlan.implementation_steps[<id>]` or
-  `handoff:ReviewFixPlan.implementation_steps[<id>]`
+  `handoff:PullRequestFixPlan.implementation_steps[<id>]`
 - `handoff:ImplementationPlan.in_scope[<path>]` or
-  `handoff:ReviewFixPlan.scope.in_scope[<path>]`
+  `handoff:PullRequestFixPlan.scope.in_scope[<path>]`
 - `handoff:ImplementationPlan.out_of_scope[<path>]` or
-  `handoff:ReviewFixPlan.scope.out_of_scope[<path>]`
+  `handoff:PullRequestFixPlan.scope.out_of_scope[<path>]`
 - `handoff:WorkingTreeInspection.entries[<path>]`
 - `handoff:WorkingTreeInspection.unexpected_states[<index>]`
 - `handoff:ChangeClassification.changes[<path>]`
@@ -124,6 +127,12 @@ instead of resolving it by inference.
 - Confirm that repository, branch, and worktree path agree across the plan,
   inspection, classification, optional detection, and optional workspace.
 - Confirm that the inspected head revision is the revision being evaluated.
+- When the plan is a `PullRequestFixPlan`, confirm that `source_kind` is
+  exactly one of `review`, `feedback`, or `ci`, that every candidate variant
+  matches it, and that `head.sha`, `scope.head_sha`, `workspace.head_sha`,
+  inspection head, and all supplied evidence refer to the same current head.
+  Mixed heads, source-kind conflicts, stale evidence, or an adapter with
+  missing preservation fields are blockers.
 - Reject a blocked inspection or classification. A partial source may be
   processed only when its identity and path/change inventory remain trusted;
   preserve its limitations and do not return `passed` from incomplete source
@@ -139,7 +148,10 @@ instead of resolving it by inference.
 - Use `ChangeClassification.summary.scope_alignment` as the primary
   classification signal, then reconcile each change with
   `ImplementationPlan.in_scope`, `out_of_scope`, affected areas, and step
-  paths.
+  paths, or `PullRequestFixPlan.scope.in_scope`, `scope.out_of_scope`,
+  `scope.exact_path_allowlist`, and step paths. A common plan's scope and
+  authorization must be checked against the same head before classification
+  can be considered aligned.
 - Treat `planned` and corroborated `supporting` paths as related only when
   the supplied diff or plan evidence supports that relationship.
 - Treat `potentially_foreign`, `uncertain`, conflicting, or missing
@@ -180,12 +192,13 @@ the handoff or bounded inspection supports the claim.
 
 ### 4. Evaluate acceptance and completion criteria
 
-- Evaluate each `ImplementationPlan.acceptance_criteria` item, preserving
-  exact wording in the result.
+- Evaluate each `ImplementationPlan.acceptance_criteria` item or each
+  `PullRequestFixPlan.validation.success_criteria` item, preserving exact
+  wording in the result.
 - Add issue acceptance criteria only when an optional `LoadedIssue` supplies
   them and identify that source.
-- Evaluate each
-  `ImplementationPlan.validation.success_criteria` item as a completion
+- Evaluate each `ImplementationPlan.validation.success_criteria` or
+  `PullRequestFixPlan.validation.success_criteria` item as a completion
   criterion.
 - If no acceptance or completion criteria are supplied for a result that
   claims implementation completion, add an `insufficient_context` blocker.
@@ -204,7 +217,14 @@ Combine, without deduplicating away provenance:
 
 - `ImplementationPlan.validation.required_tests`
 - `ImplementationPlan.validation.required_checks`
+- `PullRequestFixPlan.validation.required_tests`
+- `PullRequestFixPlan.validation.required_checks`
 - any explicitly supplied check evidence for the same workspace revision
+
+For `source_kind: ci`, preserve `required_check_failure` wait/rerun and
+failure evidence and require fresh check reassessment whenever
+`validation.reassessment_required` is true. A pending, optional, skipped, or
+unavailable check cannot satisfy a required item.
 
 For each required item, add one `checks` entry with `required: true`,
 `result`, command, and evidence. Use `pass` only for a successful observed

@@ -13,7 +13,8 @@ model: inherit
 
 The `ci-fix-agent` coordinates one host-neutral `/auto-ci-fix-pr` run for one
 verified repository and open pull request. It returns a version-1 `CiFixRun`
-and does not implement project code or copy delegated Skill procedures.
+and does not implement project code or copy delegated Skill procedures. Every
+fix iteration carries `PullRequestFixPlan v1` with `source_kind: ci`.
 
 ## Scope and safety
 
@@ -21,7 +22,8 @@ Preserve the exact repository, pull-request number, current head SHA, head
 branch, and base branch in every handoff. Wait for required checks after a
 verified head, rerun only exactly authorized required check names, and
 confirm remaining failures as `fix`, `skip`, or `clarify` through the
-host-neutral `CiFixPlan` policy gate. A `clarify`, missing identity or
+host-neutral `PullRequestFixPlan` policy gate with `source_kind: ci`. A
+`clarify`, missing identity or
 capability, scope drift, failed validation, failed push, pending treated as
 pass, optional treated as required, or forbidden request blocks.
 
@@ -59,7 +61,9 @@ If required checks failed and exact rerun authorization exists for those
 names, delegate `rerun-required-checks`, then wait again on the same head.
 Unauthorized, optional, or identity-mismatched reruns fail closed.
 
-If required checks remain red, delegate `build-ci-fix-plan`.
+If required checks remain red, delegate `build-ci-fix-plan`, which emits the
+common plan and preserves required-check, wait, rerun, failure, and
+reassessment evidence in its tagged candidate variant.
 
 ## Fix and delivery loop
 
@@ -79,7 +83,8 @@ Run at most five iterations:
 6. Compose and create one exact-scope commit, then push non-force and verify
    the remote SHA equals the commit.
 7. Reload the PR at the new head, wait for required checks, and repeat.
-   Never carry check evidence across an unverified head.
+   Never carry plan, scope, authorization, or check evidence across an
+   unverified head; rebuild the common plan when the head changes.
 
 Return `partial` when five iterations are exhausted, wait times out with
 pending remaining, or a confirmed item remains unresolved. Return `blocked`

@@ -1545,6 +1545,16 @@ nodes:
     evidence:
       - "plugin/shared/schemas/PullRequestIssueLink.yaml"
       - "plugin/shared/schemas/README.md"
+  - id: "contract:PullRequestFixPlan"
+    type: "contract"
+    name: "PullRequestFixPlan"
+    version: 1
+    meta: false
+    source: "plugin/shared/schemas/PullRequestFixPlan.yaml"
+    evidence:
+      - "plugin/shared/schemas/PullRequestFixPlan.yaml"
+      - "plugin/shared/schemas/README.md"
+      - "plugin/docs/architecture/contracts.md"
   - id: "contract:PullRequestMerge"
     type: "contract"
     name: "PullRequestMerge"
@@ -5691,8 +5701,8 @@ edges:
   - id: "edge:handoff:feedback:05"
     type: "handoff"
     producer: "skill:build-feedback-resolution-plan"
-    consumer: "skill:resolve-feedback-capabilities"
-    contract: "contract:FeedbackResolutionPlan"
+    consumer: "skill:create-worktree"
+    contract: "contract:PullRequestFixPlan"
     contract_version: 1
     owning_workflow: "feedback"
     visibility: "internal"
@@ -5713,7 +5723,33 @@ edges:
     audited_gap: null
     evidence:
       - "plugin/skills/build-feedback-resolution-plan/SKILL.md"
-      - "plugin/skills/resolve-feedback-capabilities/SKILL.md"
+      - "plugin/skills/create-worktree/SKILL.md"
+  - id: "edge:handoff:review-fix:05"
+    type: "handoff"
+    producer: "skill:build-review-fix-plan"
+    consumer: "skill:create-worktree"
+    contract: "contract:PullRequestFixPlan"
+    contract_version: 1
+    owning_workflow: "feedback"
+    visibility: "internal"
+    optional: true
+    mode: "fix"
+    condition: "Only when the explicitly confirmed review-fix scope and current head are valid."
+    sequence: 5
+    identity_requirements:
+      - "repository identity"
+      - "pull request/base/head identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current PullRequestFixPlan state"
+      - "same issue/PR/head identity"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/build-review-fix-plan/SKILL.md"
+      - "plugin/skills/create-worktree/SKILL.md"
   - id: "edge:handoff:feedback:06"
     type: "handoff"
     producer: "skill:resolve-feedback-capabilities"
@@ -5925,8 +5961,8 @@ edges:
   - id: "edge:handoff:ci-fix:06"
     type: "handoff"
     producer: "skill:build-ci-fix-plan"
-    consumer: "skill:resolve-feedback-capabilities"
-    contract: "contract:CiFixPlan"
+    consumer: "skill:create-worktree"
+    contract: "contract:PullRequestFixPlan"
     contract_version: 1
     owning_workflow: "ci-fix"
     visibility: "internal"
@@ -5947,7 +5983,7 @@ edges:
     audited_gap: null
     evidence:
       - "plugin/skills/build-ci-fix-plan/SKILL.md"
-      - "plugin/skills/resolve-feedback-capabilities/SKILL.md"
+      - "plugin/skills/create-worktree/SKILL.md"
   - id: "edge:handoff:ci-fix:07"
     type: "handoff"
     producer: "skill:resolve-feedback-capabilities"
@@ -7905,7 +7941,7 @@ edges:
     type: "handoff"
     producer: "agent:feedback-agent"
     consumer: "capability:external-implementation"
-    contract: "contract:FeedbackResolutionPlan"
+    contract: "contract:PullRequestFixPlan"
     contract_version: 1
     owning_workflow: "feedback"
     visibility: "internal"
@@ -7931,7 +7967,7 @@ edges:
     type: "handoff"
     producer: "agent:ci-fix-agent"
     consumer: "capability:external-implementation"
-    contract: "contract:CiFixPlan"
+    contract: "contract:PullRequestFixPlan"
     contract_version: 1
     owning_workflow: "ci-fix"
     visibility: "internal"
@@ -7982,6 +8018,141 @@ edges:
     evidence:
       - "plugin/docs/architecture/external-capabilities.md"
       - "plugin/agents/delivery-agent.md"
+  - id: "edge:handoff:fix-plan:delivery:inspect-working-tree"
+    type: "handoff"
+    producer: "agent:delivery-agent"
+    consumer: "skill:inspect-working-tree"
+    contract: "contract:PullRequestFixPlan"
+    contract_version: 1
+    owning_workflow: "delivery"
+    visibility: "internal"
+    optional: true
+    mode: "review|feedback|ci"
+    condition: "When implementation delivery carries a common fix plan for the exact current head."
+    sequence: 1
+    identity_requirements:
+      - "repository identity"
+      - "pull request/base/head identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current PullRequestFixPlan state"
+      - "same issue/PR/head identity"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/agents/delivery-agent.md"
+      - "plugin/skills/inspect-working-tree/SKILL.md"
+      - "plugin/shared/schemas/PullRequestFixPlan.yaml"
+  - id: "edge:handoff:fix-plan:delivery:classify-changes"
+    type: "handoff"
+    producer: "agent:delivery-agent"
+    consumer: "skill:classify-changes"
+    contract: "contract:PullRequestFixPlan"
+    contract_version: 1
+    owning_workflow: "delivery"
+    visibility: "internal"
+    optional: true
+    mode: "review|feedback|ci"
+    condition: "When implementation delivery carries a common fix plan for the exact current head."
+    sequence: 2
+    identity_requirements:
+      - "repository identity"
+      - "pull request/base/head identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current PullRequestFixPlan state"
+      - "same issue/PR/head identity"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/agents/delivery-agent.md"
+      - "plugin/skills/classify-changes/SKILL.md"
+      - "plugin/shared/schemas/PullRequestFixPlan.yaml"
+  - id: "edge:handoff:fix-plan:delivery:detect-unrelated-changes"
+    type: "handoff"
+    producer: "agent:delivery-agent"
+    consumer: "skill:detect-unrelated-changes"
+    contract: "contract:PullRequestFixPlan"
+    contract_version: 1
+    owning_workflow: "delivery"
+    visibility: "internal"
+    optional: true
+    mode: "review|feedback|ci"
+    condition: "When implementation delivery carries a common fix plan for the exact current head."
+    sequence: 3
+    identity_requirements:
+      - "repository identity"
+      - "pull request/base/head identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current PullRequestFixPlan state"
+      - "same issue/PR/head identity"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/agents/delivery-agent.md"
+      - "plugin/skills/detect-unrelated-changes/SKILL.md"
+      - "plugin/shared/schemas/PullRequestFixPlan.yaml"
+  - id: "edge:handoff:fix-plan:delivery:validate-implementation-result"
+    type: "handoff"
+    producer: "agent:delivery-agent"
+    consumer: "skill:validate-implementation-result"
+    contract: "contract:PullRequestFixPlan"
+    contract_version: 1
+    owning_workflow: "delivery"
+    visibility: "internal"
+    optional: false
+    mode: "review|feedback|ci"
+    condition: "The common plan is required for review, feedback, and CI-fix implementation validation."
+    sequence: 4
+    identity_requirements:
+      - "repository identity"
+      - "pull request/base/head identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current PullRequestFixPlan state"
+      - "same issue/PR/head identity"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/agents/delivery-agent.md"
+      - "plugin/skills/validate-implementation-result/SKILL.md"
+      - "plugin/shared/schemas/PullRequestFixPlan.yaml"
+  - id: "edge:handoff:fix-plan:delivery:compose-commit-message"
+    type: "handoff"
+    producer: "agent:delivery-agent"
+    consumer: "skill:compose-commit-message"
+    contract: "contract:PullRequestFixPlan"
+    contract_version: 1
+    owning_workflow: "delivery"
+    visibility: "internal"
+    optional: false
+    mode: "review|feedback|ci"
+    condition: "The common plan is required to bind commit scope and authorization for fix-plan delivery."
+    sequence: 5
+    identity_requirements:
+      - "repository identity"
+      - "pull request/base/head identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current PullRequestFixPlan state"
+      - "same issue/PR/head identity"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/agents/delivery-agent.md"
+      - "plugin/skills/compose-commit-message/SKILL.md"
+      - "plugin/shared/schemas/PullRequestFixPlan.yaml"
   - id: "edge:capability:external-validation:graph-validator"
     type: "capability"
     producer: "capability:external-validation"
@@ -8557,17 +8728,15 @@ contract_classifications:
       - "plugin/agents/delivery-agent.md"
   - contract: "contract:CiFixPlan"
     contract_version: 1
-    classification: "consumed"
+    classification: "temporary_orphan"
     produced_by:
-      - "skill:build-ci-fix-plan"
-      - "agent:ci-fix-agent"
     consumed_by:
-      - "skill:resolve-feedback-capabilities"
-      - "capability:external-implementation"
-      - "agent:ci-fix-agent"
-    rationale: "The current source inventory declares this versioned handoff for a downstream Skill, Agent, or host boundary."
+    rationale: "Legacy transition contract retained while CI-fix producers and consumers use PullRequestFixPlan v1."
     terminal_rationale: null
-    audited_gap: null
+    audited_gap:
+      key: "S09"
+      owner: "github-plugin-maintainers"
+      rationale: "Issue #21 and audit finding AUD-018 authorize the lossless, fail-closed migration of the legacy CI-fix plan shape to PullRequestFixPlan v1."
     evidence:
       - "plugin/shared/schemas/CiFixPlan.yaml"
       - "plugin/shared/schemas/README.md"
@@ -8783,17 +8952,15 @@ contract_classifications:
       - "plugin/shared/schemas/README.md"
   - contract: "contract:FeedbackResolutionPlan"
     contract_version: 1
-    classification: "consumed"
+    classification: "temporary_orphan"
     produced_by:
-      - "skill:build-feedback-resolution-plan"
-      - "agent:feedback-agent"
     consumed_by:
-      - "skill:resolve-feedback-capabilities"
-      - "capability:external-implementation"
-      - "agent:feedback-agent"
-    rationale: "The current source inventory declares this versioned handoff for a downstream Skill, Agent, or host boundary."
+    rationale: "Legacy transition contract retained while feedback producers and consumers use PullRequestFixPlan v1."
     terminal_rationale: null
-    audited_gap: null
+    audited_gap:
+      key: "S09"
+      owner: "github-plugin-maintainers"
+      rationale: "Issue #21 and audit finding AUD-018 authorize the lossless, fail-closed migration of the legacy feedback plan shape to PullRequestFixPlan v1."
     evidence:
       - "plugin/shared/schemas/FeedbackResolutionPlan.yaml"
       - "plugin/shared/schemas/README.md"
@@ -9564,6 +9731,44 @@ contract_classifications:
       - "plugin/agents/delivery-agent.md"
       - "plugin/agents/integration-agent.md"
       - "plugin/agents/lifecycle-agent.md"
+  - contract: "contract:PullRequestFixPlan"
+    contract_version: 1
+    classification: "consumed"
+    produced_by:
+      - "skill:build-review-fix-plan"
+      - "skill:build-feedback-resolution-plan"
+      - "skill:build-ci-fix-plan"
+      - "agent:feedback-agent"
+      - "agent:ci-fix-agent"
+      - "agent:review-fix-agent"
+    consumed_by:
+      - "skill:create-worktree"
+      - "skill:verify-worktree"
+      - "skill:inspect-working-tree"
+      - "skill:classify-changes"
+      - "skill:detect-unrelated-changes"
+      - "skill:validate-implementation-result"
+      - "skill:compose-commit-message"
+      - "capability:external-implementation"
+      - "agent:delivery-agent"
+      - "agent:feedback-agent"
+      - "agent:ci-fix-agent"
+    rationale: "The common version-1 contract is the normative plan handoff for all review, feedback, and CI-fix builders and their downstream worktree, inspection, classification, validation, commit, and external-implementation consumers."
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/shared/schemas/PullRequestFixPlan.yaml"
+      - "plugin/shared/schemas/README.md"
+      - "plugin/skills/build-review-fix-plan/SKILL.md"
+      - "plugin/skills/build-feedback-resolution-plan/SKILL.md"
+      - "plugin/skills/build-ci-fix-plan/SKILL.md"
+      - "plugin/skills/create-worktree/SKILL.md"
+      - "plugin/skills/inspect-working-tree/SKILL.md"
+      - "plugin/skills/classify-changes/SKILL.md"
+      - "plugin/skills/detect-unrelated-changes/SKILL.md"
+      - "plugin/skills/validate-implementation-result/SKILL.md"
+      - "plugin/skills/compose-commit-message/SKILL.md"
+      - "plugin/docs/architecture/contracts.md"
   - contract: "contract:PullRequestMerge"
     contract_version: 2
     classification: "consumed"
@@ -9759,12 +9964,12 @@ contract_classifications:
     classification: "temporary_orphan"
     produced_by:
     consumed_by:
-    rationale: "The current schema is present under plugin/shared/schemas but no directly declared producer/consumer edge is available in the scoped source inventory; preserve it as an audited gap instead of inventing a runtime edge."
+    rationale: "Legacy transition contract retained while review producers and consumers use PullRequestFixPlan v1."
     terminal_rationale: null
     audited_gap:
-      key: "AUD-015"
+      key: "S09"
       owner: "github-plugin-maintainers"
-      rationale: "Existing audit finding AUD-015 authorizes visibility of the unresolved handoff gap; this graph does not treat the gap as a terminal result."
+      rationale: "Issue #21 and audit finding AUD-018 authorize the lossless, fail-closed migration of the legacy review plan shape to PullRequestFixPlan v1."
     evidence:
       - "plugin/shared/schemas/ReviewFixPlan.yaml"
       - "plugin/shared/schemas/README.md"

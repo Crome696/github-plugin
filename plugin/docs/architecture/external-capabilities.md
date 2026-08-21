@@ -129,13 +129,20 @@ IDs, availability evidence, and blocking or manual gaps.
 Feedback authorization does not authorize review publication, thread replies,
 thread resolution, rebase, merge, or cleanup.
 
+When implementation work is selected, the feedback flow emits a bounded
+`PullRequestFixPlan v1` with `source_kind: feedback`; capability resolution
+remains the separate `ExternalCapabilityResolution v1` handoff and does not
+grant implementation or Git authorization.
+
 ### Delivery and CI
 
 Delivery and CI workflows consume the canonical result only after their own
 scope and authorization gates. External implementation and validation remain
 host-session capabilities. The GitHub plugin validates returned evidence and
-owns GitHub collaboration effects; it does not repair source code or invent
-test or domain behavior.
+owns GitHub collaboration effects. Review, feedback, and CI-fix delivery
+carry `PullRequestFixPlan v1` with the matching `source_kind`; CI check
+evidence remains required-check-specific inside the tagged candidate. The
+plugin does not repair source code or invent test or domain behavior.
 
 ## Cross-host scenario matrix
 

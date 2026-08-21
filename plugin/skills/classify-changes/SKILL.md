@@ -1,6 +1,6 @@
 ---
 name: classify-changes
-description: Classifies one inspected worktree's changes by purpose, affected component, and relationship to an issue, ImplementationPlan, ReviewFixPlan, or CiFixPlan using diff and plan evidence. Use automatically for scope validation or commit planning; never modify files, the index, or Git state.
+description: Classifies one inspected worktree's changes by purpose, affected component, and relationship to an issue, ImplementationPlan, or PullRequestFixPlan using diff and plan evidence. Use automatically for scope validation or commit planning; never modify files, the index, or Git state.
 ---
 
 # Classify Changes
@@ -46,11 +46,13 @@ Accept one expected worktree from these inputs:
   [`WorkingTreeInspection`](../../shared/schemas/WorkingTreeInspection.yaml).
   Its `repository`, `branch_name`, `worktree_path`, `identity`, `entries`,
   `files`, and `diff` are the authoritative working-tree evidence.
-- Optional version-1 `ReviewFixPlan` or
+- Optional version-1
+  [`PullRequestFixPlan`](../../shared/schemas/PullRequestFixPlan.yaml) or
   [`ImplementationPlan`](../../shared/schemas/ImplementationPlan.yaml). For a
-  `ReviewFixPlan`, use its `scope.in_scope`, `scope.out_of_scope`,
-  `scope.exact_path_allowlist`, and `implementation_steps` as the bounded
-  review-fix scope. For an `ImplementationPlan`, use `affected_areas`,
+  `PullRequestFixPlan`, use its `source_kind`, `scope.in_scope`,
+  `scope.out_of_scope`, `scope.exact_path_allowlist`, `scope.head_sha`, and
+  `implementation_steps` as the bounded fix scope. Its common `head.sha` must
+  match the inspection head. For an `ImplementationPlan`, use `affected_areas`,
   `in_scope`, `out_of_scope`, and implementation-step `paths` as plan scope
   evidence.
 - Optional version-1 `LoadedIssue`, `IssueAnalysis`, and
@@ -85,7 +87,10 @@ references such as:
   untracked evidence.
 - `handoff:WorkingTreeInspection.diff.numstat[<path>]` or
   `git:diff:<path>` for changed content, mode, or diff-stat evidence.
-- `handoff:ImplementationPlan.affected_areas[<path>]`,
+- `handoff:PullRequestFixPlan.scope.in_scope[<path>]`,
+  `handoff:PullRequestFixPlan.scope.exact_path_allowlist[<path>]`,
+  `handoff:PullRequestFixPlan.implementation_steps[<id>]`, and
+  `handoff:ImplementationPlan.affected_areas[<path>]`,
   `handoff:ImplementationPlan.implementation_steps[<id>].paths`, and
   `handoff:ImplementationPlan.in_scope[<path>]` for planned scope.
 - `handoff:ImplementationPlan.out_of_scope[<path>]` for an explicit
@@ -97,7 +102,7 @@ references such as:
   location.
 - `input:<field>` for an explicit input or an unavailable optional source.
 
-When an `ImplementationPlan` or `ReviewFixPlan` or `CiFixPlan` is available, a planned or
+When an `ImplementationPlan` or `PullRequestFixPlan` is available, a planned or
 foreign conclusion must cite the relevant plan path or out-of-scope evidence
 and the changed-path or diff evidence. When no plan is available, say so
 explicitly and lower confidence when scope cannot be established. A path
@@ -199,17 +204,17 @@ explicitly state that the classification is unresolved.
 Set `plan_relation` independently from `purpose`:
 
 - `planned` when the path exactly matches or is contained by an
-  `ImplementationPlan.affected_areas` path, a `ReviewFixPlan.scope.in_scope`
+  `ImplementationPlan.affected_areas` path, a `PullRequestFixPlan.scope.in_scope`
   or `scope.exact_path_allowlist` entry, an in-scope path, or an
   implementation-step `paths` entry.
 - `supporting` when the path is not listed but the diff and plan evidence
   show that it supports a listed implementation step, such as a focused test
   or required documentation.
 - `unrelated` when the path matches an explicit `out_of_scope` or
-  `ReviewFixPlan.scope.out_of_scope` path, or the diff contradicts the plan's
+  `PullRequestFixPlan.scope.out_of_scope` path, or the diff contradicts the plan's
   boundaries.
 - `uncertain` when a plan exists but path or diff evidence is ambiguous.
-- `no_plan` when no validated `ImplementationPlan` or `ReviewFixPlan` or `CiFixPlan` was
+- `no_plan` when no validated `ImplementationPlan` or `PullRequestFixPlan` was
   supplied.
 
 Use exact path or documented prefix relationships only. Do not treat a common

@@ -1,12 +1,12 @@
 ---
 name: detect-unrelated-changes
-description: Detects working-tree changes that are not plausibly related to an issue, ImplementationPlan, ReviewFixPlan, CiFixPlan, or necessary follow-on edit, evaluates evidence and confidence, and separates scope violations from technical side effects before commit or pull-request preparation. Use automatically when a ChangeClassification shows drift, foreign paths, or uncertainty; never reset, restore, clean, or remove files.
+description: Detects working-tree changes that are not plausibly related to an issue, ImplementationPlan, PullRequestFixPlan, or necessary follow-on edit, evaluates evidence and confidence, and separates scope violations from technical side effects before commit or pull-request preparation. Use automatically when a ChangeClassification shows drift, foreign paths, or uncertainty; never reset, restore, clean, or remove files.
 ---
 
 # Detect Unrelated Changes
 
 Detect whether one already classified worktree contains changes that do not
-belong to the supplied issue, `ImplementationPlan`, `ReviewFixPlan`, or `CiFixPlan`.
+belong to the supplied issue, `ImplementationPlan`, or `PullRequestFixPlan`.
 Distinguish a genuine scope violation from a technically necessary follow-on
 edit, record evidence and confidence for every finding, and return exactly one version-1
 [`UnrelatedChangeDetection`](../../shared/schemas/UnrelatedChangeDetection.yaml)
@@ -52,12 +52,14 @@ Accept one expected worktree from:
   Its `repository`, `branch_name`, `worktree_path`, `source`, and `changes`
   are the authoritative path and identity evidence.
 - Optional version-1
-  [`ImplementationPlan`](../../shared/schemas/ImplementationPlan.yaml) or
-  `ReviewFixPlan`. Use an `ImplementationPlan`'s `affected_areas`, `in_scope`,
+  [`PullRequestFixPlan`](../../shared/schemas/PullRequestFixPlan.yaml) or
+  [`ImplementationPlan`](../../shared/schemas/ImplementationPlan.yaml). Use
+  an `ImplementationPlan`'s `affected_areas`, `in_scope`,
   `out_of_scope`, implementation-step `paths`, and task objective as scope
-  evidence. For a `ReviewFixPlan`, use `scope.in_scope`,
-  `scope.out_of_scope`, `scope.exact_path_allowlist`, and
-  `implementation_steps`.
+  evidence. For a `PullRequestFixPlan`, use `source_kind`, `scope.in_scope`,
+  `scope.out_of_scope`, `scope.exact_path_allowlist`, `scope.head_sha`, and
+  `implementation_steps`; require its head and scope SHA to match the
+  inspected worktree.
 - Optional version-1 `LoadedIssue`, `IssueAnalysis`, and
   [`AffectedAreas`](../../shared/schemas/AffectedAreas.yaml) handoffs, plus a
   bounded task or issue summary when explicitly supplied.
@@ -88,11 +90,14 @@ Every finding must include concise, reproducible evidence. Prefer:
 - `handoff:ImplementationPlan.affected_areas[<path>]`,
   `handoff:ImplementationPlan.implementation_steps[<id>].paths`, and
   `handoff:ImplementationPlan.in_scope[<path>]` for planned scope.
-- `handoff:ReviewFixPlan.scope.in_scope[<path>]` and
-  `handoff:ReviewFixPlan.scope.exact_path_allowlist[<path>]` for confirmed
-  review-fix scope.
+- `handoff:PullRequestFixPlan.scope.in_scope[<path>]` and
+  `handoff:PullRequestFixPlan.scope.exact_path_allowlist[<path>]` for the
+  confirmed common-plan scope, together with
+  `handoff:PullRequestFixPlan.source_kind` and
+  `handoff:PullRequestFixPlan.scope.head_sha`.
 - `handoff:ImplementationPlan.out_of_scope[<path>]` or
-  `handoff:ReviewFixPlan.scope.out_of_scope[<path>]` for explicit exclusions.
+  `handoff:PullRequestFixPlan.scope.out_of_scope[<path>]` for explicit
+  exclusions.
 - `handoff:LoadedIssue`, `handoff:IssueAnalysis`, or
   `handoff:AffectedAreas[<path>]` for issue scope and dependencies.
 - `git:diff:<path>` or
@@ -140,7 +145,7 @@ not enough. Record `side_effect_kind` and explain the dependency.
 Use `scope_violation` only when the evidence establishes an explicit
 out-of-scope or unrelated relationship and bounded path or diff evidence
 corroborates it. Typical evidence is an explicit
-`ImplementationPlan.out_of_scope` or `ReviewFixPlan.scope.out_of_scope` entry,
+`ImplementationPlan.out_of_scope` or `PullRequestFixPlan.scope.out_of_scope` entry,
 `plan_relation: unrelated`, or
 `issue_relation: out_of_scope` that conflicts with the observed diff. A
 `potentially_foreign` purpose or `scope_alignment: drift` is a candidate signal,

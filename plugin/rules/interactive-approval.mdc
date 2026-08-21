@@ -89,8 +89,10 @@ creates a second pull request, marks Ready-for-Review, rebases, merges,
 force-pushes, deletes, or writes the default branch. Pending or unavailable
 policy evidence is never a pass. Optional checks are never treated as
 required. Green required checks are not merge or Ready-for-Review
-authorization. New remaining failures require host-neutral `CiFixPlan`
-confirmation. The loop reloads the pull request after every verified push and
+authorization. New remaining failures require host-neutral
+`PullRequestFixPlan v1` confirmation with `source_kind: ci`; the legacy
+`CiFixPlan v1` identity is accepted only through its lossless, fail-closed
+adapter. The loop reloads the pull request after every verified push and
 stops after five iterations with `checks_green`, `partial`, or `blocked`.
 Check reruns are authorized only by this Command.
 

@@ -9,6 +9,7 @@ Keep this command as a thin entry point. It resolves one target, starts the
 owning Agent, and displays that Agent's result; feedback analysis,
 implementation coordination, and thread follow-up remain owned by
 `feedback-agent` and its Skills. The result is a `FeedbackLifecyclePlan v1` and
+`PullRequestFixPlan v1` with `source_kind: feedback`, and
 `FeedbackLifecycleRun v1`, with `ReviewThreadReply v3` and
 `ReviewThreadResolution v3` used only for their separate effects.
 
