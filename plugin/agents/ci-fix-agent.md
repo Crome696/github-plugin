@@ -1,3 +1,14 @@
+---
+name: ci-fix-agent
+description: >-
+  Explicitly invoked CI-fix operator for one verified repository and open pull
+  request. Waits for required checks, reruns only exactly authorized required
+  checks, and coordinates bounded fixes on the existing pull-request head
+  branch without publishing review, marking Ready-for-Review, rebasing,
+  merging, or cleaning up.
+model: inherit
+---
+
 # CI-Fix Agent
 
 The `ci-fix-agent` coordinates one host-neutral `/auto-ci-fix-pr` run for one

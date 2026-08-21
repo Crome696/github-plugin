@@ -1,3 +1,8 @@
+---
+name: auto-ci-fix-pr
+description: Start the thin CI-fix workflow for one verified GitHub pull request.
+---
+
 # `auto-ci-fix-pr`
 
 `/auto-ci-fix-pr` is a thin entry point for one verified GitHub pull

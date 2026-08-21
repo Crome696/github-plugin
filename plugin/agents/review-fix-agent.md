@@ -1,3 +1,12 @@
+---
+name: review-fix-agent
+description: >-
+  Explicitly invoked compatibility router for one verified pull request.
+  Routes `/auto-review-fix-pr` fix mode to `feedback-agent` without owning
+  feedback state, implementation, review-thread, merge, or cleanup decisions.
+model: inherit
+---
+
 # Review-Fix Agent
 
 `review-fix-agent` is a discoverable compatibility identity for

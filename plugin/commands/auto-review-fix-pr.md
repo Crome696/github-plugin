@@ -1,3 +1,8 @@
+---
+name: auto-review-fix-pr
+description: Start the thin review-fix compatibility workflow for one verified GitHub pull request.
+---
+
 # `auto-review-fix-pr`
 
 `/auto-review-fix-pr` is a thin entry point for one verified GitHub pull
