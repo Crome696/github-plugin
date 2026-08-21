@@ -1854,6 +1854,23 @@ nodes:
     evidence:
       - "plugin/agents/issue-close-agent.md"
       - "plugin/commands/close-issue.md"
+  - id: "skill:resolve-external-capabilities"
+    type: "skill"
+    name: "resolve-external-capabilities"
+    source: "plugin/skills/resolve-external-capabilities/SKILL.md"
+    evidence:
+      - "plugin/skills/resolve-external-capabilities/SKILL.md"
+      - "plugin/shared/schemas/ExternalCapabilityResolution.yaml"
+      - "plugin/docs/architecture/external-capabilities.md"
+  - id: "contract:ExternalCapabilityResolution"
+    type: "contract"
+    name: "ExternalCapabilityResolution"
+    version: 1
+    meta: false
+    source: "plugin/shared/schemas/ExternalCapabilityResolution.yaml"
+    evidence:
+      - "plugin/shared/schemas/ExternalCapabilityResolution.yaml"
+      - "plugin/shared/schemas/README.md"
 edges:
   - id: "edge:entry:address-pr-feedback"
     type: "entry"
@@ -5701,7 +5718,7 @@ edges:
     type: "handoff"
     producer: "skill:resolve-feedback-capabilities"
     consumer: "skill:validate-feedback-resolution"
-    contract: "contract:FeedbackResolutionCapabilities"
+    contract: "contract:ExternalCapabilityResolution"
     contract_version: 1
     owning_workflow: "feedback"
     visibility: "internal"
@@ -5935,7 +5952,7 @@ edges:
     type: "handoff"
     producer: "skill:resolve-feedback-capabilities"
     consumer: "skill:create-worktree"
-    contract: "contract:FeedbackResolutionCapabilities"
+    contract: "contract:ExternalCapabilityResolution"
     contract_version: 1
     owning_workflow: "ci-fix"
     visibility: "internal"
@@ -7234,8 +7251,8 @@ edges:
   - id: "edge:handoff:preparation:07"
     type: "handoff"
     producer: "skill:resolve-context-capabilities"
-    consumer: "skill:derive-branch-name"
-    contract: "contract:ContextCapabilities"
+    consumer: "skill:build-implementation-plan"
+    contract: "contract:ExternalCapabilityResolution"
     contract_version: 1
     owning_workflow: "preparation"
     visibility: "internal"
@@ -8355,6 +8372,58 @@ edges:
     evidence:
       - "plugin/agents/issue-reprioritize-agent.md"
       - "plugin/agents/issue-reprioritize-agent.md"
+  - id: "edge:capability:resolve-context-capabilities:core"
+    type: "capability"
+    producer: "skill:resolve-context-capabilities"
+    consumer: "skill:resolve-external-capabilities"
+    contract: null
+    contract_version: null
+    owning_workflow: "preparation"
+    visibility: "internal"
+    optional: false
+    mode: null
+    condition: null
+    sequence: 1
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue identity when applicable"
+    mutation_boundary: "read-only or composition-only"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/resolve-context-capabilities/SKILL.md"
+      - "plugin/skills/resolve-external-capabilities/SKILL.md"
+  - id: "edge:capability:resolve-feedback-capabilities:core"
+    type: "capability"
+    producer: "skill:resolve-feedback-capabilities"
+    consumer: "skill:resolve-external-capabilities"
+    contract: null
+    contract_version: null
+    owning_workflow: "feedback"
+    visibility: "internal"
+    optional: false
+    mode: "fix|full|follow_up"
+    condition: null
+    sequence: 1
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only or composition-only"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/resolve-feedback-capabilities/SKILL.md"
+      - "plugin/skills/resolve-external-capabilities/SKILL.md"
   - id: "edge:terminal:issue-close-agent:14"
     type: "terminal"
     producer: "agent:issue-close-agent"
@@ -8598,23 +8667,43 @@ contract_classifications:
       - "plugin/agents/lifecycle-agent.md"
   - contract: "contract:ContextCapabilities"
     contract_version: 1
-    classification: "consumed"
+    classification: "temporary_orphan"
     produced_by:
-      - "skill:resolve-context-capabilities"
     consumed_by:
-      - "skill:derive-branch-name"
-      - "agent:delivery-agent"
-      - "agent:lifecycle-agent"
-      - "agent:preparation-agent"
-    rationale: "The current source inventory declares this versioned handoff for a downstream Skill, Agent, or host boundary."
+    rationale: "Legacy transition projection retained while all planning and delivery consumers migrate to the canonical ExternalCapabilityResolution contract."
     terminal_rationale: null
-    audited_gap: null
+    audited_gap:
+      key: "S10"
+      owner: "github-plugin-maintainers"
+      rationale: "Issue #22 authorizes the lossless, fail-closed migration of this legacy shape behind the shared capability firewall."
     evidence:
       - "plugin/shared/schemas/ContextCapabilities.yaml"
       - "plugin/shared/schemas/README.md"
-      - "plugin/agents/delivery-agent.md"
-      - "plugin/agents/lifecycle-agent.md"
-      - "plugin/agents/preparation-agent.md"
+  - contract: "contract:ExternalCapabilityResolution"
+    contract_version: 1
+    classification: "consumed"
+    produced_by:
+      - "skill:resolve-external-capabilities"
+      - "skill:resolve-context-capabilities"
+      - "skill:resolve-feedback-capabilities"
+    consumed_by:
+      - "skill:build-implementation-plan"
+      - "skill:build-feedback-resolution-plan"
+      - "skill:validate-feedback-resolution"
+      - "skill:create-worktree"
+      - "agent:preparation-agent"
+      - "agent:delivery-agent"
+      - "agent:feedback-agent"
+      - "agent:ci-fix-agent"
+      - "agent:lifecycle-agent"
+    rationale: "The shared core is the canonical producer policy; context and feedback wrappers publish its result to migrated planning, validation, and lifecycle consumers."
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/shared/schemas/ExternalCapabilityResolution.yaml"
+      - "plugin/shared/schemas/README.md"
+      - "plugin/skills/resolve-external-capabilities/SKILL.md"
+      - "plugin/docs/architecture/external-capabilities.md"
   - contract: "contract:DeduplicatedReviewFindings"
     contract_version: 1
     classification: "consumed"
@@ -8680,15 +8769,15 @@ contract_classifications:
       - "plugin/agents/review-fix-agent.md"
   - contract: "contract:FeedbackResolutionCapabilities"
     contract_version: 1
-    classification: "consumed"
+    classification: "temporary_orphan"
     produced_by:
-      - "skill:resolve-feedback-capabilities"
     consumed_by:
-      - "skill:validate-feedback-resolution"
-      - "skill:create-worktree"
-    rationale: "The current source inventory declares this versioned handoff for a downstream Skill, Agent, or host boundary."
+    rationale: "Legacy transition projection retained while all feedback and CI consumers migrate to the canonical ExternalCapabilityResolution contract."
     terminal_rationale: null
-    audited_gap: null
+    audited_gap:
+      key: "S10"
+      owner: "github-plugin-maintainers"
+      rationale: "Issue #22 authorizes the lossless, fail-closed migration of this legacy shape behind the shared capability firewall."
     evidence:
       - "plugin/shared/schemas/FeedbackResolutionCapabilities.yaml"
       - "plugin/shared/schemas/README.md"

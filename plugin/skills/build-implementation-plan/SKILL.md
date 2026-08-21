@@ -72,8 +72,10 @@ Use these handoffs when supplied:
   for the selected approach, conditions, dependencies, risks, blockers,
   compatibility, and testing implications.
 - A version-1
-  [`ContextCapabilities`](../../shared/schemas/ContextCapabilities.yaml) for
-  required skills, applicable rules, and missing capability gaps.
+  [`ExternalCapabilityResolution`](../../shared/schemas/ExternalCapabilityResolution.yaml)
+  for canonical required capabilities, session provenance, and missing or
+  ambiguous capability gaps. ContextCapabilities v1 may be supplied only as a
+  validated lossless transition adapter.
 - A version-1
   [`RepositoryConventions`](../../shared/schemas/RepositoryConventions.yaml)
   for mandatory and observed practices.
@@ -85,7 +87,7 @@ Use these handoffs when supplied:
   previous workflow handoff, completed Plan Build, or applicable repository
   policy. It must identify the same repository and issue/task.
 
-`AffectedAreas`, `ImplementationEvaluation`, and `ContextCapabilities` are
+`AffectedAreas`, `ImplementationEvaluation`, and ExternalCapabilityResolution are
 required for a complete `draft` plan. If one is unavailable but a bounded plan
 can still be described, return `partial`, preserve the unavailable input in
 `source.unavailable_inputs`, and recommend the relevant predecessor Skill. If a
@@ -181,14 +183,16 @@ approach into an implementation step.
 
 ### 5. Resolve capabilities and rules
 
-Read `ContextCapabilities` and include only capabilities that have an evidenced
-role in the plan:
+Read ExternalCapabilityResolution and include only capabilities whose
+canonical resolution has an evidenced role in the plan:
 
 1. Map available, required repository-local Skill capabilities to
    `plugin/`-relative paths in `capabilities.required_skills`.
 2. Map applicable repository-local rules to `plugin/`-relative paths in
    `capabilities.applicable_rules`.
-3. Map exposed external Skill or Rule capabilities to their exact
+3. Map exposed external Skill or Rule capabilities only when the shared
+   resolution status is available and session_provenance is current. Preserve
+   the exact
    `session:skill:<name>` or `session:rule:<name>` identity. Preserve the
    capability's external scope boundary and availability evidence; do not
    substitute a checkout path or copy its content.
@@ -197,7 +201,10 @@ role in the plan:
 5. Record missing or unavailable required capabilities as blockers when they
    prevent reliable execution, or as risks/prerequisites when they weaken the
    plan.
-6. Never invoke, install, authenticate, or broaden a resolved external
+6. Treat unavailable, missing, ambiguous, stale-session, unsupported-version,
+   and identity-conflict results as explicit blockers or risks according to
+   their required or optional relevance. Never downgrade them.
+7. Never invoke, install, authenticate, or broaden a resolved external
    capability from this planning Skill.
 
 ### 6. Order actionable implementation steps
@@ -282,7 +289,8 @@ source:
   issue_assessment_version: null
   affected_areas_version: 1
   implementation_evaluation_version: 1
-  context_capabilities_version: 1
+  external_capability_resolution_version: 1
+  context_capabilities_version: null
   repository_context_version: 1
   repository_conventions_version: 1
   branch_workspace_version: null

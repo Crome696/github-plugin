@@ -96,7 +96,8 @@ success, the next action MUST NOT recommend merge or Ready-for-Review.
 - `plugin/skills/wait-required-checks/SKILL.md`
 - `plugin/skills/rerun-required-checks/SKILL.md`
 - `plugin/skills/build-ci-fix-plan/SKILL.md`
-- `plugin/skills/resolve-feedback-capabilities/SKILL.md`
+- `plugin/skills/resolve-feedback-capabilities/SKILL.md` and
+  `plugin/skills/resolve-external-capabilities/SKILL.md`
 - `plugin/skills/create-worktree/SKILL.md`
 - `plugin/skills/verify-worktree/SKILL.md`
 - `plugin/skills/inspect-working-tree/SKILL.md`

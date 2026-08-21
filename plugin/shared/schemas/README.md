@@ -21,7 +21,8 @@ version changes.
 | `LoadedPullRequestDiscussions` | Version 2 read-only pull-request discussion snapshot grouped by review thread and affected location, preserving reviews, replies, comments, authors, timestamps, resolution state, and the exact pull-request, head, and base identity with retrieval provenance. |
 | `CollectedReviewFeedback` | Version 1 read-only grouped follow-up handoff for open, resolved, outdated, or addressed review feedback, request-changes findings, relevant comments, and failed or missing required checks. |
 | `ClassifiedReviewFeedback` | Version 1 read-only classification of collected feedback by cause, severity, affected component, and required follow-up action. |
-| `FeedbackResolutionCapabilities` | Version 1 read-only resolution of external skills and rules needed by explicitly confirmed open feedback, including technology, architecture, testing, security, documentation, availability, and blocking or manual gaps. |
+| `ExternalCapabilityResolution` | Version 1 canonical pure resolution of normalized context or feedback requirements against current host-session evidence, preserving available, unavailable, missing, ambiguous, provenance, and fail-closed gaps. |
+| `FeedbackResolutionCapabilities` | Legacy version 1 lossless, fail-closed transition projection of ExternalCapabilityResolution for explicitly confirmed open feedback. |
 | `FeedbackResolutionPlan` | Version 1 read-only, scope-bounded plan for explicitly confirmed open feedback, with ordered corrections and external implementation handoffs. |
 | `ResolvedReviewFeedback` | Version 1 read-only comparison of collected feedback with the latest pull-request state, later commits, current diff, and explicit test evidence, preserving only clearly supported resolved candidates. |
 | `FeedbackResolutionValidation` | Version 1 read-only validation of every confirmed feedback item after external follow-up, with current-state evidence, remaining problems, and advisory thread-resolution eligibility. |
@@ -49,7 +50,7 @@ version changes.
 | `IssueRevisionComparison` | Version 1 evidence-based semantic diff between an original issue and one rewritten revision, including scope drift and contradiction flags. |
 | `IssueAssessment` | Clarification state, locked requirements, non-goals, assumptions, and readiness. |
 | `ImplementationEvaluation` | Version 1 evidence-based evaluation of implementation feasibility, architectural fit, dependencies, risks, compatibility, testing implications, and meaningful alternatives. |
-| `ContextCapabilities` | Version 1 evidence-based resolution of relevant skills, rules, agents, tools, and domain capabilities, including required or optional use, availability, and implementation gaps. |
+| `ContextCapabilities` | Legacy version 1 lossless, fail-closed transition projection of ExternalCapabilityResolution for implementation planning. |
 | `ImplementationPlan` | Version 1 task-authorized implementation objective with affected areas, ordered steps and dependencies, validation, capabilities, workspace, risks, prerequisites, blockers, assumptions, unresolved questions, and delivery authorization evidence. |
 | `RepositoryPolicy` | Version 1 repository-owned configuration for PR description, rebase posture, and secret-scan preferences with compatibility-default and fail-closed invariants. |
 | `RepositoryContext` | Version 1 verified repository identity, Git state, remotes, instructions, relevant paths, technologies, commands, and evidence-based findings. |
@@ -228,12 +229,17 @@ The former full handoff Mermaid block is intentionally not maintained as an inde
   distinguishes open, resolved, outdated, and explicitly addressed feedback
   without publishing, changing discussions, rerunning checks, or authorizing
   implementation.
-- `FeedbackResolutionCapabilities` is a read-only, pull-request-head-bound
-  capability handoff. It accepts only explicitly confirmed open feedback,
-  selects current-session external skills and rules without executing them, and
-  keeps technology, architecture, testing, security, and documentation gaps
-  explicit as blocking or manual requirements. It does not duplicate domain or
-  implementation knowledge.
+- `ExternalCapabilityResolution` is the canonical version-1 pure capability
+  firewall. The context and feedback wrappers derive requirements and map
+  source references; the core alone applies exact identity, narrowest
+  selection, current-session provenance, available/unavailable/missing/
+  ambiguous semantics, stale-session handling, and required versus optional
+  gap impact. It never installs, authenticates, configures, executes, or
+  mutates external capabilities.
+- `ContextCapabilities` and `FeedbackResolutionCapabilities` are legacy
+  transition projections. They may be produced only from a canonical result
+  through lossless fail-closed adapters; ambiguous, stale, unsupported, or
+  identity-conflicting results cannot be represented as available.
 - `FeedbackResolutionSummary` is a read-only, current-head-bound summary of
   one validated follow-up. It preserves each selected feedback item exactly
   once, groups it as resolved, open, disputed, or blocked, links solutions and

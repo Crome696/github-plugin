@@ -76,7 +76,7 @@ The applicable Rules are:
 The stable handoff contract is
 `plugin/shared/schemas/LifecycleRun.yaml`. Carry the child-Agent
 handoffs without rewriting them: `IssueDraft`, `ImplementationPlan`,
-`BranchWorkspace`, `ContextCapabilities`, `ValidationResult`,
+`BranchWorkspace`, `ExternalCapabilityResolution`, `ValidationResult`,
 `CommitProposal`, `BranchPush`, `PullRequestIssueLink`, and
 `PullRequestDraft`.
 
@@ -130,8 +130,8 @@ Do not implement during this phase.
 
 ### 4. Hand off external implementation
 
-Implementation is outside this plugin. After preparation, resolve the
-recorded `ContextCapabilities` identities and hand the exact issue,
+Implementation is outside this plugin. After preparation, resolve the recorded
+`ExternalCapabilityResolution` identities and hand the exact issue,
 `ImplementationPlan`, conventions, affected areas, workspace path, and
 branch to the current host session as `session:skill:…`, `session:rule:…`,
 or another verified session identity.

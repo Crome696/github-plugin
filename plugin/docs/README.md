@@ -99,7 +99,7 @@ The following files are the sources of truth for the corresponding concerns:
 | Canonical typed workflow graph | [`../shared/schemas/HandoffGraph.yaml`](../shared/schemas/HandoffGraph.yaml), [`../shared/graphs/handoff-graph.yaml`](../shared/graphs/handoff-graph.yaml), and its [`handoff-graph.mmd`](../shared/graphs/handoff-graph.mmd) projection |
 | Repository-owned configurable hook preferences | [`repository-policy.md`](repository-policy.md) |
 | Explicit evidence migration for `0.3.112` | [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md) |
-| Canonical head-bound feedback lifecycle contracts, independent effect authorization, immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, and transactional ownership-safe project-hook generation for `0.3.118` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
+| Canonical head-bound feedback lifecycle contracts, the shared external-capability firewall, independent effect authorization, immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, and transactional ownership-safe project-hook generation for `0.3.119` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/external-capabilities.md`](architecture/external-capabilities.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
 | Contract inventory and workflow ownership | [`../shared/schemas/README.md`](../shared/schemas/README.md) and the owning Agent, Command, and Skill sources listed below |
 | Host compatibility assumptions and limitations | [`../../README.md`](../../README.md) and the host manifests |
 
@@ -247,8 +247,9 @@ their explicit invocation boundary.
 | rank-open-issues | Rank one open-issue inventory into unique consecutive P1-through-Pn proposed titles without writing GitHub. |
 | rebase-branch | Perform one separately authorized bounded local rebase and preserve conflicts stopped. |
 | reply-to-review-thread | Reply to one exact review thread without resolving it. |
-| resolve-context-capabilities | Resolve named session capabilities for implementation planning without execution. |
-| resolve-feedback-capabilities | Resolve named session capabilities for selected feedback without execution. |
+| resolve-external-capabilities | Apply the shared pure firewall policy to normalized requirements and a current host-session inventory without execution. |
+| resolve-context-capabilities | Derive implementation-planning requirements and map issue/repository evidence into the shared capability firewall. |
+| resolve-feedback-capabilities | Derive selected open-feedback requirements and map PR/head evidence into the shared capability firewall. |
 | resolve-review-thread | Resolve one eligible current thread after validated follow-up. |
 | rewrite-github-issue | Draft one implementation-ready issue revision from a complete ProductInterview v2; missing input returns a typed prerequisite. |
 | rewrite-issue | Restructure issue text without interview or GitHub publication. |

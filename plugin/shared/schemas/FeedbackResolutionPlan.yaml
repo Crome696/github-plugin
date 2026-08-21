@@ -35,12 +35,14 @@ fields:
         type: string
   source:
     type: object
-    required: [collected_review_feedback_version, classified_review_feedback_version, feedback_resolution_capabilities_version, references, unavailable_inputs]
+    required: [collected_review_feedback_version, classified_review_feedback_version, external_capability_resolution_version, feedback_resolution_capabilities_version, references, unavailable_inputs]
     fields:
       collected_review_feedback_version:
         type: integer | null
       classified_review_feedback_version:
         type: integer
+      external_capability_resolution_version:
+        type: integer | null
       feedback_resolution_capabilities_version:
         type: integer | null
       implementation_context:
@@ -251,7 +253,9 @@ invariants:
   - Paths, dependencies, validations, and risks are evidence-backed; missing evidence remains explicit.
   - The plan cannot authorize or execute implementation, GitHub mutation, Git operations, check reruns, or external capabilities.
   - The plan cannot expand the supplied implementation scope.
-  - When a FeedbackResolutionCapabilities handoff is supplied, its version,
-    capability boundaries, availability, blockers, manual requirements, and
-    feedback-item references remain traceable in the plan.
+  - When an ExternalCapabilityResolution handoff is supplied, its version,
+    capability boundaries, availability, provenance, blockers, manual
+    requirements, and feedback-item references remain traceable in the plan.
+    FeedbackResolutionCapabilities v1 is accepted only as a lossless
+    fail-closed transition adapter.
   - A non-null failure is required for blocked plans; failure is null for planned and partial plans unless a failure is being reported.

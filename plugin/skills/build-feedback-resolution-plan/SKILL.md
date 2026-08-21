@@ -43,12 +43,16 @@ Accept:
 - supplied prose `ImplementationContext`.
 
 Accept an optional version-1
-[`FeedbackResolutionCapabilities`](../../shared/schemas/FeedbackResolutionCapabilities.yaml)
+[`ExternalCapabilityResolution`](../../shared/schemas/ExternalCapabilityResolution.yaml)
 handoff. When supplied, it must identify the same pull request, head SHA, and
 confirmed feedback item IDs. Preserve its capability assignments, boundaries,
 availability, blockers, and manual requirements in the resulting plan. Do not
 resolve capabilities again or treat a capability's availability as execution
 authorization.
+
+FeedbackResolutionCapabilities v1 is accepted only as a validated, lossless
+transition adapter. An ambiguous, stale-session, unsupported-version, or
+identity-conflict state must remain blocked rather than being downgraded.
 
 `ImplementationContext` is not a schema in this repository. Treat it as
 evidence only where it explicitly identifies the same pull request and head
@@ -64,8 +68,8 @@ dependencies, or validations are materially unavailable. Uncertain items,
 `needs_discussion: true`, `unclassified` severity, conflicts, external
 dependencies, and possibly unsubstantiated feedback must not become ordinary
 implementation steps; retain them as blockers, unresolved questions, or
-external handoffs. A supplied
-`FeedbackResolutionCapabilities` handoff with a blocking gap must remain a
+external handoffs. A supplied ExternalCapabilityResolution handoff with a
+blocking gap must remain a
 blocker; a manual requirement must remain explicit in the plan.
 
 ## Scope and evidence model

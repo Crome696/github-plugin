@@ -35,7 +35,7 @@ Graph schema changes follow the same producer/consumer review discipline as othe
 
 ## Contract families
 
-The plugin currently defines 88 versioned YAML schemas: 87 runtime handoff
+The plugin currently defines 90 versioned YAML schemas: 89 runtime handoff
 contracts plus the `HandoffGraph v1` architecture meta-schema.
 
 ### Issue and linkage contracts
@@ -74,7 +74,8 @@ contracts plus the `HandoffGraph v1` architecture meta-schema.
 | `RepositoryConventions` | Evidence-backed mandatory and observed repository practices with authority, confidence, and conflicts. |
 | `AffectedAreas` | Direct, indirect, and uncertain repository impact mapped from a task or issue. |
 | `ImplementationEvaluation` | Feasibility, architectural fit, complexity, compatibility, dependencies, risks, testing implications, and alternatives. |
-| `ContextCapabilities` | Relevant available or missing Skills, Rules, Agents, Tools, and domain capabilities for planning. |
+| `ExternalCapabilityResolution` | Canonical pure resolution of normalized context or feedback requirements against current host-session evidence, including availability, ambiguity, provenance, stale-session, and fail-closed gap semantics. |
+| `ContextCapabilities` | Legacy lossless, fail-closed transition projection of ExternalCapabilityResolution for planning. |
 | `ImplementationPlan` | Task-authorized objective, ordered steps, dependencies, validation, workspace, risks, blockers, assumptions, and delivery authorization. |
 | `BranchNameProposal` | Evidence-backed branch name candidate, convention, rationale, and alternatives. |
 
@@ -124,7 +125,7 @@ contracts plus the `HandoffGraph v1` architecture meta-schema.
 | --- | --- |
 | `CollectedReviewFeedback` | Grouped open, resolved, outdated, or addressed feedback from threads, findings, comments, and checks. |
 | `ClassifiedReviewFeedback` | Cause, severity, affected component, and required action for selected open feedback. |
-| `FeedbackResolutionCapabilities` | External capabilities available or missing for explicitly confirmed feedback IDs at one PR head. |
+| `FeedbackResolutionCapabilities` | Legacy lossless, fail-closed transition projection of ExternalCapabilityResolution for explicitly confirmed feedback IDs at one PR head. |
 | `FeedbackResolutionPlan` | Bounded corrections, dependencies, validations, risks, and external implementation handoffs. |
 | `ResolvedReviewFeedback` | Advisory candidates supported by later commits, diff, tests, and current discussion evidence. |
 | `FeedbackResolutionValidation` | Per-item addressed, partial, not-addressed, or unverifiable result with current evidence. |

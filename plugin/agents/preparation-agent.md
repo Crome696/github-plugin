@@ -44,9 +44,10 @@ Use these Skills in the workflow:
 - `plugin/skills/evaluate-implementation/SKILL.md` for feasibility,
   architectural fit, complexity, compatibility, testing implications,
   dependencies, risks, blockers, and meaningful alternatives.
-- `plugin/skills/resolve-context-capabilities/SKILL.md` for relevant
-  Skills, Rules, Agents, Tools, and domain capabilities without executing
-  them.
+- `plugin/skills/resolve-context-capabilities/SKILL.md` and its shared
+  `plugin/skills/resolve-external-capabilities/SKILL.md` core for deriving
+  and resolving relevant Skills, Rules, Agents, Tools, and domain capabilities
+  without executing them.
 - `plugin/skills/derive-branch-name/SKILL.md` for an evidence-based
   branch-name proposal without changing Git state.
 - `plugin/skills/fetch-target-branch/SKILL.md` for the explicitly
@@ -74,7 +75,7 @@ The stable handoff contracts are:
 - `plugin/shared/schemas/RepositoryConventions.yaml`
 - `plugin/shared/schemas/AffectedAreas.yaml`
 - `plugin/shared/schemas/ImplementationEvaluation.yaml`
-- `plugin/shared/schemas/ContextCapabilities.yaml`
+- `plugin/shared/schemas/ExternalCapabilityResolution.yaml`
 - `plugin/shared/schemas/BranchNameProposal.yaml`
 - `plugin/shared/schemas/TargetBranchFetch.yaml`
 - `plugin/shared/schemas/ImplementationPlan.yaml`
@@ -89,7 +90,8 @@ Do not invent a value to complete a contract.
 - The Agent consumes one version-1 `LoadedIssue` or a verified issue identity.
 - The planning stages consume version-1 `IssueAnalysis`, `RepositoryContext`,
   `RepositoryConventions`, `AffectedAreas`, `ImplementationEvaluation`,
-  `ContextCapabilities`, `BranchNameProposal`, and `TargetBranchFetch`
+  `ExternalCapabilityResolution`, `BranchNameProposal`, and
+  `TargetBranchFetch`
   handoffs as available.
 - A successful run produces version-1 `ImplementationPlan` and
   `BranchWorkspace` handoffs.
@@ -246,11 +248,12 @@ user-locked approach.
 
 ### 6. Resolve context capabilities
 
-Use `resolve-context-capabilities` after the approach is locked. Resolve the
-Skills, Rules, Agents, Tools, and domain capabilities that are relevant to
-the evaluated implementation and later execution. Distinguish required from
-optional capabilities, record availability and missing-capability impact, and
-do not execute any resolved capability.
+Use `resolve-context-capabilities` after the approach is locked. It derives
+the context requirements and delegates availability, narrowest selection,
+provenance, ambiguity, and gap semantics to
+`resolve-external-capabilities`. Distinguish required from optional
+capabilities, preserve current-session evidence, and do not execute any
+resolved capability.
 
 A required unavailable capability that prevents reliable planning is a
 blocker. Do not invent a capability or silently substitute an unrelated
@@ -293,7 +296,7 @@ Use `build-implementation-plan` with the complete validated evidence:
 - `RepositoryConventions`;
 - `AffectedAreas`;
 - `ImplementationEvaluation` with the locked approach;
-- `ContextCapabilities`; and
+- `ExternalCapabilityResolution`; and
 - the `BranchNameProposal` and workspace proposal.
 
 Require a complete version-1 `ImplementationPlan` with:

@@ -44,3 +44,25 @@ host-session identity, such as `session:skill:typescript-implementation` or
 `session:rule:project-testing`, together with its availability and scope
 evidence. It must not copy, repackage, execute, or claim ownership of that
 capability's implementation knowledge.
+
+## Shared capability firewall
+
+The context and feedback resolver wrappers are source-specific adapters. They
+derive requirements and map exact task, issue, pull-request, feedback, and
+repository references. They do not implement availability or selection policy.
+
+The shared resolve-external-capabilities core is the only policy owner for:
+
+- exact session identity and current host-session evidence;
+- narrowest-applicable selection and priority;
+- distinct available, unavailable, missing, and ambiguous states;
+- stale-session, unsupported-version, and identity-conflict handling;
+- blocking required gaps and explicit optional warnings; and
+- the no-install, no-authentication, no-configuration, no-network, and
+  no-execution boundary.
+
+An available result requires current session provenance. Missing or unavailable
+evidence must never become available during compatibility projection. The old
+ContextCapabilities and FeedbackResolutionCapabilities shapes are lossless,
+fail-closed transition adapters only; ambiguous or otherwise unrepresentable
+canonical states remain blocked.

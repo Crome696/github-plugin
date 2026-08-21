@@ -1,207 +1,174 @@
 # External capability resolution
 
-The GitHub plugin coordinates collaboration; it does not contain the
-technology, architecture, testing, security, documentation, or domain
+The GitHub plugin coordinates collaboration and delivery. It does not contain
+the technology, architecture, testing, security, documentation, or domain
 knowledge needed to implement an application change. External capabilities
-are therefore resolved by identity and handed a bounded task. They are not
-copied into the plugin and are never silently invented.
+remain host-session identities: their implementation knowledge is not copied
+into this plugin and they are never silently invented.
 
 This boundary is normative in
-[`github-scope-contract.mdc`](../../rules/github-scope-contract.mdc) and
+[github-scope-contract.mdc](../../rules/github-scope-contract.mdc) and
 [AGENTS.md](../../../AGENTS.md).
 
-## Capability firewall
+## One capability firewall
 
-```mermaid
+~~~mermaid
 flowchart LR
-  repository[VerifiedRepositoryContext]
-  task[IssueAndImplementationEvidence]
-  resolver[CapabilityResolver]
-  handoff[BoundedExternalHandoff]
-  implementation[ExternalImplementation]
-  github[GitHubDeliverySkills]
+  repository[Verified repository and task evidence]
+  context[Context wrapper]
+  feedback[Feedback wrapper]
+  core[ExternalCapabilityResolution v1 pure core]
+  result[Canonical resolution]
+  implementation[External implementation capability]
+  delivery[GitHub delivery skills]
 
-  repository --> resolver
-  task --> resolver
-  resolver --> handoff
-  handoff --> implementation
-  implementation --> github
-  github -.->|"validate only"| implementation
-```
+  repository --> context
+  repository --> feedback
+  context --> core
+  feedback --> core
+  core --> result
+  result --> implementation
+  implementation --> delivery
+  delivery -.->|validate evidence only| implementation
+~~~
 
-The resolver may identify a capability and describe its intended use. It may
-not execute that capability, install it, authenticate it, configure it, or
-copy its content into this plugin. The external capability returns evidence
-about completed work; the GitHub plugin validates that evidence against the
-current task and pull-request state.
+There is one policy implementation. The core receives normalized requirements
+and a current host-session capability inventory and returns
+ExternalCapabilityResolution v1. The two public resolver skills are thin
+wrappers:
 
-## Two resolution points
+- resolve-context-capabilities derives requirements from one issue or
+  implementation context and maps repository, issue, evaluation, affected-area,
+  and convention references;
+- resolve-feedback-capabilities validates one explicit selection of open
+  feedback and maps pull-request, head, feedback-item, and implementation
+  context references.
 
-### Planning resolution
+Wrappers do not decide availability, narrowest selection, priority, provenance,
+ambiguity, stale-session behavior, or missing-gap impact. The shared core owns
+those semantics so equivalent requirements and inventories yield equivalent
+results across both entry points.
 
-[`resolve-context-capabilities`](../../skills/resolve-context-capabilities/SKILL.md)
-runs after repository inspection, convention detection, affected-area
-mapping, and implementation evaluation. It produces the version-1
-[`ContextCapabilities`](../../shared/schemas/ContextCapabilities.yaml)
-handoff.
+## Canonical contract
 
-It records:
+The source of truth is
+[ExternalCapabilityResolution.yaml](../../shared/schemas/ExternalCapabilityResolution.yaml).
+It is a version-1 read-only contract with:
 
-- the task or loaded issue and verified repository context;
-- technologies, architecture signals, risks, planned work, and paths of
-  interest;
-- each relevant Skill, Rule, Agent, Tool, or domain capability;
-- whether the capability is required or optional;
-- priority, relevance, rationale, and intended usage;
-- availability in the current host session;
-- missing capabilities, including whether they are blocking or require
-  manual work;
-- the recommended next planning Skill.
+- one verified context or feedback target;
+- normalized, ordered requirements with type, relevance, priority, intended
+  outcome, scope boundary, evidence, and source references;
+- one resolution for every requirement;
+- distinct available, unavailable, missing, and ambiguous statuses;
+- exact session identity, current observation, and provenance for available
+  results;
+- explicit stale-session, unsupported-version, and identity-conflict evidence;
+- blocking required gaps, warning optional gaps, and manual requirements;
+- unresolved questions and structured failure evidence; and
+- a policy record proving that resolution is pure and cannot execute or mutate.
 
-It normally feeds
-[`build-implementation-plan`](../../skills/build-implementation-plan/SKILL.md).
-It does not implement the issue or create the worktree by itself.
+The core preserves the order supplied by the wrapper. It matches candidates by
+exact type and evidenced scope, chooses only one strict narrowest candidate,
+and returns ambiguous when equally narrow candidates or conflicting identities
+remain. A repository path, technology label, package name, generic capability
+description, or prior task inventory is not host-session evidence.
 
-### Feedback resolution
+An available result requires all of the following:
 
-[`resolve-feedback-capabilities`](../../skills/resolve-feedback-capabilities/SKILL.md)
-runs only for explicitly confirmed open feedback items. It produces the
-version-1
-[`FeedbackResolutionCapabilities`](../../shared/schemas/FeedbackResolutionCapabilities.yaml)
-handoff tied to the exact pull-request head and selected feedback IDs.
+1. one exact session identity;
+2. a candidate type and scope matching the requirement;
+3. current, non-expired host-session inventory evidence; and
+4. non-null session provenance preserved in the result.
 
-It selects the narrowest current-session capabilities needed for a bounded
-correction across areas such as:
+Missing evidence is never promoted to available. A known but unusable
+candidate is unavailable. No identified candidate is missing. Equal narrowest
+candidates or conflicting identities are ambiguous. Required non-available
+requirements block the result; optional non-available requirements remain
+visible as warnings or manual requirements.
 
-- project technology and architecture;
-- test or verification strategy;
-- security review;
-- documentation;
-- external dependencies.
+## Compatibility migration
 
-It normally feeds
-[`build-feedback-resolution-plan`](../../skills/build-feedback-resolution-plan/SKILL.md).
-The canonical `feedback-agent` lifecycle selects `full` when the feedback
-requires implementation and hands the bounded plan to the external
-implementation capability. After the capability returns,
-[`validate-feedback-resolution`](../../skills/validate-feedback-resolution/SKILL.md)
-checks the current diff, commits, tests, checks, and discussion context before
-the lifecycle reloads and validates the current pull-request head.
+ContextCapabilities v1 and FeedbackResolutionCapabilities v1 remain in the
+repository only as transition projections for consumers that have not yet
+migrated. They are not competing policy contracts.
 
-### Review-fix implementation
+An adapter may project a canonical result only when the mapping is lossless.
+It must preserve source identity, feedback or issue scope, relevance, priority,
+availability evidence, provenance, and gap impact. Canonical ambiguous,
+stale-session, unsupported-version, identity-conflict, or otherwise
+unrepresentable states return a blocked adapter result. Missing, unavailable,
+or provenance-free evidence never becomes available during projection.
 
-The `/auto-review-fix-pr` workflow enters the canonical
-`FeedbackLifecyclePlan v1` with mode `fix`. The handoff contains the bounded
-candidate-linked scope, implementation steps, validation requirements,
-existing head-branch worktree, and `pr:<number>` authorization. The external
-capability may edit project files in that worktree; the GitHub plugin remains
-responsible for inspecting scope, validating evidence, creating one exact
-commit, and pushing non-force. After the push, `feedback-agent` reloads and
-validates the pull request head before any separate reply or resolution effect;
-it never carries findings across the new head.
+New producers and consumers must use ExternalCapabilityResolution v1. Legacy
+consumers must declare their adapter boundary and must be removed only after
+the downstream consumer has migrated and equivalent semantics are verified.
+Rollback restores the wrapper, core, and consumer contract together; it never
+restores only one resolver's policy.
 
-Missing capability evidence blocks the iteration. The workflow never asks an
-external capability to publish a review, mutate a thread, create a second PR,
-rebase, merge, or clean up a workspace.
+## Workflow boundaries
 
-### CI-fix implementation
+### Planning
 
-The `/auto-ci-fix-pr` workflow resolves capabilities only after a host-neutral
-`CiFixPlan` confirms remaining failed required checks for the exact current
-pull-request head. The GitHub plugin inspects scope, validates evidence,
-creates one exact commit, pushes non-force, and waits for required checks
-again. Missing capability evidence blocks the iteration. The workflow never
-asks an external capability to publish a review, merge, or treat pending
-checks as pass.
+The preparation flow verifies the issue, repository, affected areas,
+conventions, and implementation evaluation. The context wrapper then derives
+requirements and delegates to the core. build-implementation-plan consumes the
+canonical result and treats unavailable, missing, ambiguous, stale, and
+identity-conflicting requirements as explicit blockers or risks.
 
-## Session identity
+The core does not create a worktree, write a plan, authorize implementation, or
+invoke the resolved external capability.
 
-Availability must be evidenced by the current host-session capability
-inventory. A repository path, technology name, package directory, README
-mention, or generic framework pattern is not proof that a capability is
-available.
+### Feedback
 
-Use stable, exact identities such as:
+The feedback flow loads one pull request and classifies its feedback. The
+caller explicitly selects open item IDs. The feedback wrapper derives only
+requirements for those IDs and delegates to the same core. The feedback
+planning and lifecycle skills preserve the exact pull-request head, selected
+IDs, availability evidence, and blocking or manual gaps.
 
-```text
-session:skill:typescript-implementation
-session:skill:project-testing
-session:rule:project-security
-session:agent:domain-review
-```
+Feedback authorization does not authorize review publication, thread replies,
+thread resolution, rebase, merge, or cleanup.
 
-These values identify an exposed session capability; they do not copy its
-instructions or grant it authority over the GitHub workflow. The identity
-must remain attributable to the current session and task. Descriptions should
-state the capability's boundary and intended use, not reproduce its
-implementation knowledge.
+### Delivery and CI
 
-Repository-local capability paths, if the plugin must reference one, remain
-under `plugin/`. A GitHub workflow must not point to a Skill, Rule,
-Agent, Hook, or asset under another plugin as if it owned that artifact.
+Delivery and CI workflows consume the canonical result only after their own
+scope and authorization gates. External implementation and validation remain
+host-session capabilities. The GitHub plugin validates returned evidence and
+owns GitHub collaboration effects; it does not repair source code or invent
+test or domain behavior.
 
-## Required resolution behavior
+## Cross-host scenario matrix
 
-1. Verify the repository and task or pull-request identity.
-2. Collect the bounded repository, issue, affected-area, convention, and
-   implementation evidence required by the resolver.
-3. Select only the narrowest applicable capabilities.
-4. Record required and optional usage separately.
-5. Preserve unavailable inputs, conflicts, assumptions, and capability gaps.
-6. Return `partial` or `blocked` when a capability cannot be verified.
-7. Hand the exact bounded scope to the external capability.
-8. Validate the returned implementation evidence before delivery or thread
-   actions.
+External contract and fixture validation must run the same matrix against
+equivalent Cursor, Codex, and Claude inventories:
 
-The resolver does not use model confidence, a likely framework match, or a
-previous task's capability inventory as authority. Reusing an identity for a
-different repository, task, pull-request head, or scope is not valid.
+| Scenario | Required evidence and result |
+| --- | --- |
+| Equivalent requirements and inventories | Equivalent ordered canonical resolutions |
+| One exact current candidate | available with exact session identity and provenance |
+| Known but unusable candidate | unavailable, never available |
+| No identified candidate | missing |
+| Two equally narrow candidates | ambiguous with candidates preserved |
+| Expired or stale session | unavailable with stale-session evidence |
+| Unsupported requirement or inventory version | blocked with unsupported-version failure |
+| Conflicting identity, type, or repository binding | ambiguous or blocked with identity-conflict evidence |
+| Required missing or unavailable capability | blocked with a blocking gap |
+| Optional missing or unavailable capability | partial with an explicit warning |
+| Attempted install, authentication, configuration, network access, or execution | forbidden; no side effect |
 
-## Handoff boundaries
+The standalone repository intentionally has no local package metadata, test
+runner, or fixture workspace. External validation must report the exact
+contract version, host inventory, scenario inputs, outputs, and side-effect
+observations. Missing external evidence is not a passing result.
 
-### Implementation delivery
+## Required invariants
 
-The normal implementation flow is:
-
-1. `prepare-issue` produces a verified `ImplementationPlan` and
-   `BranchWorkspace`.
-2. An external implementation capability applies the plan in that workspace.
-3. `publish-draft-pr` inspects and classifies the resulting changes.
-4. The delivery workflow validates scope, completion, and required checks.
-5. The delivery Skills commit, push, link the issue, and publish one Draft PR.
-
-The GitHub plugin can report that implementation evidence is incomplete or
-out of scope. It cannot repair source code or decide a project-specific
-technical solution.
-
-### Feedback resolution
-
-The feedback flow is:
-
-1. `address-pr-feedback` loads the exact PR head and collects feedback.
-2. The user or applicable repository policy selects specific open items.
-3. The resolver identifies external capabilities for those item IDs.
-4. The feedback Agent builds a bounded `FeedbackResolutionPlan`.
-5. An external capability performs the correction.
-6. The plugin validates each selected item against current evidence.
-7. Only eligible, authorized replies or thread resolutions are handed to
-   their owning Skills.
-
-Feedback authorization does not authorize a rebase, merge, review
-publication, unrelated thread action, or cleanup.
-
-## Missing capability behavior
-
-Missing or unverified capability evidence is explicit:
-
-- `resolved` means the required capability is available and its identity and
-  intended usage are recorded.
-- `partial` means some relevant evidence is available but a required input,
-  capability, or boundary remains unresolved.
-- `blocked` means the workflow cannot safely continue without the missing
-  capability or a manual decision.
-
-The plugin must not substitute a generic implementation, claim that a test
-passed, or convert a manual requirement into a successful handoff. The next
-step must identify the missing capability or ask for the specific information
-needed to continue.
+1. Exactly one shared core owns capability-firewall semantics.
+2. Wrappers only derive requirements and map source references.
+3. Current host-session evidence is required for availability.
+4. Available, unavailable, missing, and ambiguous remain distinct.
+5. Required gaps block and optional gaps remain explicit.
+6. No install, load, authentication, configuration, network, execution, file,
+   Git, or GitHub mutation occurs during resolution.
+7. Repository-local references remain under plugin; external capability
+   identities remain attributable to the host session.

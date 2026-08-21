@@ -1,0 +1,240 @@
+schema: ExternalCapabilityResolution
+version: 1
+description: Canonical, read-only resolution of host-session capabilities for context and feedback workflows.
+required:
+  - status
+  - target
+  - source
+  - requirements
+  - resolutions
+  - gaps
+  - unresolved_questions
+  - policy
+  - recommended_next_skill
+  - failure
+fields:
+  status:
+    type: enum
+    values: [resolved, partial, blocked]
+  target:
+    type: object
+    required: [kind, repository, issue, pull_request]
+    fields:
+      kind:
+        type: enum
+        values: [context, feedback]
+      repository:
+        type: string
+        format: owner/repository
+      issue:
+        type: object | null
+        required: [number, title, url]
+        fields:
+          number:
+            type: integer | null
+            minimum: 1
+          title:
+            type: string | null
+          url:
+            type: string | null
+            format: uri
+      pull_request:
+        type: object | null
+        required: [number, url, head_sha]
+        fields:
+          number:
+            type: integer | null
+            minimum: 1
+          url:
+            type: string | null
+            format: uri
+          head_sha:
+            type: string | null
+  source:
+    type: object
+    required: [wrapper, input_versions, references, unavailable_inputs]
+    fields:
+      wrapper:
+        type: enum
+        values: [resolve-context-capabilities, resolve-feedback-capabilities]
+      input_versions:
+        type: object
+        required: [requirement_contract, capability_inventory, source_handoffs]
+        fields:
+          requirement_contract:
+            type: integer
+          capability_inventory:
+            type: integer
+          source_handoffs:
+            type: list
+            items:
+              type: string
+      references:
+        type: list
+        items:
+          type: string
+      unavailable_inputs:
+        type: list
+        items:
+          type: string
+  requirements:
+    type: list
+    items:
+      type: object
+      required: [id, type, relevance, priority, required_outcome, intended_usage, scope_boundary, evidence, source_references, confidence]
+      fields:
+        id:
+          type: string
+        type:
+          type: enum
+          values: [skill, rule, agent, tool, domain]
+        relevance:
+          type: enum
+          values: [required, optional]
+        priority:
+          type: enum
+          values: [high, medium, low]
+        required_outcome:
+          type: string
+        intended_usage:
+          type: string
+        scope_boundary:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: string
+        source_references:
+          type: list
+          items:
+            type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  resolutions:
+    type: list
+    items:
+      type: object
+      required: [requirement_id, status, capability, candidate_identities, rationale, evidence, session_provenance, confidence]
+      fields:
+        requirement_id:
+          type: string
+        status:
+          type: enum
+          values: [available, unavailable, missing, ambiguous]
+        capability:
+          type: string | null
+        candidate_identities:
+          type: list
+          items:
+            type: string
+        rationale:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: string
+        session_provenance:
+          type: object | null
+          required: [identity, observed_at, expires_at, source]
+          fields:
+            identity:
+              type: string
+            observed_at:
+              type: string
+              format: date-time
+            expires_at:
+              type: string | null
+              format: date-time
+            source:
+              type: string
+        confidence:
+          type: enum
+          values: [high, medium, low]
+  gaps:
+    type: list
+    items:
+      type: object
+      required: [requirement_id, status, impact, description, evidence]
+      fields:
+        requirement_id:
+          type: string
+        status:
+          type: enum
+          values: [unavailable, missing, ambiguous]
+        impact:
+          type: enum
+          values: [blocking, warning, manual_required]
+        description:
+          type: string
+        evidence:
+          type: list
+          items:
+            type: string
+  unresolved_questions:
+    type: list
+    items:
+      type: object
+      required: [question, impact, blocking, evidence]
+      fields:
+        question:
+          type: string
+        impact:
+          type: string
+        blocking:
+          type: boolean
+        evidence:
+          type: list
+          items:
+            type: string
+  policy:
+    type: object
+    required: [resolution_pure, execution_allowed, installation_allowed, authentication_allowed, configuration_allowed, network_access_allowed]
+    fields:
+      resolution_pure:
+        type: boolean
+      execution_allowed:
+        type: boolean
+      installation_allowed:
+        type: boolean
+      authentication_allowed:
+        type: boolean
+      configuration_allowed:
+        type: boolean
+      network_access_allowed:
+        type: boolean
+  recommended_next_skill:
+    type: enum
+    values: [build-implementation-plan, build-feedback-resolution-plan, none]
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values:
+          - missing_input
+          - invalid_input
+          - unsupported_version
+          - stale_session
+          - identity_conflict
+          - insufficient_context
+          - resolution_failure
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The result represents exactly one verified repository and one context or feedback target.
+  - Requirements are derived by a wrapper; availability, ambiguity, provenance, priority, and gap semantics are decided only by the shared core.
+  - available requires one exact session identity, current host-session evidence, a non-null session_provenance object, and evidence containing that identity.
+  - unavailable identifies a known candidate that is not usable in the current session; missing means no specific candidate was identified; ambiguous means more than one equally applicable candidate or a conflicting identity remains.
+  - Stale, expired, unsupported, or identity-conflicting session evidence never becomes available and is preserved as a gap or failure.
+  - A required requirement with a non-available resolution produces a blocking gap and prevents a resolved result.
+  - Optional non-available requirements remain explicit warnings or manual requirements and are never silently omitted.
+  - The core performs no installation, loading, authentication, configuration, network access, execution, file mutation, Git mutation, or GitHub mutation.
+  - Source wrapper references preserve exact task, issue, pull-request, feedback, and repository evidence without copying external capability knowledge into the plugin.
+  - recommended_next_skill is advisory and never authorizes or invokes a follow-up.
+  - failure is null only when the result is resolved; partial and blocked results retain structured failure evidence.
