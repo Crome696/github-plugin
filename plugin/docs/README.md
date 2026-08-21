@@ -131,7 +131,7 @@ the sources of truth.
 | [review-fix-agent](../agents/review-fix-agent.md) | Explicit | Review one verified pull request, confirm mandatory fixes, coordinate external implementation on its existing head branch, commit and non-force push, and repeat until complete or blocked. |
 | [ci-fix-agent](../agents/ci-fix-agent.md) | Explicit | Wait for required checks on one verified pull request, rerun only exactly authorized required names, confirm remaining CI failures, coordinate external implementation on its existing head branch, commit and non-force push, and reassess checks until complete or blocked. |
 | [pr-ready-agent](../agents/pr-ready-agent.md) | Explicit | Verify one Draft pull request, unique linked issue, and optional reviewer set, then mark it Ready-for-Review after exact authorization. |
-| [product-planner-agent](../agents/product-planner-agent.md) | Explicit | Turn one verified parent issue into a prioritized graph of nearly atomic product sub-issues, then hand the approved create set to create-product-sub-issues only after exact user approval. |
+| [product-planner-agent](../agents/product-planner-agent.md) | Explicit | Turn one verified parent issue into a prioritized graph, consume the canonical ProductSubIssueDrafts v2 set, bind approval to its digest, and hand that unchanged set to create-product-sub-issues. |
 | [issue-reprioritize-agent](../agents/issue-reprioritize-agent.md) | Explicit | Inventory currently open issues in one repository, rank them into unique consecutive P1-through-Pn titles with the user, and apply those titles only after exact ranked-set authorization. |
 | [issue-close-agent](../agents/issue-close-agent.md) | Explicit | Load one verified issue, require an exact close reason and duplicate target when needed, then close it without a merged pull request after exact authorization. |
 
@@ -160,7 +160,7 @@ preparation-agent, and delivery-agent sequentially.
 | [auto-review-fix-pr](../commands/auto-review-fix-pr.md) | review-fix-agent | Resolve one pull request, start the review-fix Agent, and display the ReviewFixRun without publishing a review or merging. |
 | [auto-ci-fix-pr](../commands/auto-ci-fix-pr.md) | ci-fix-agent | Resolve one pull request, start the CI-fix Agent, and display the CiFixRun without publishing a review, merging, or treating green checks as Ready-for-Review. |
 | [ready-pr](../commands/ready-pr.md) | pr-ready-agent | Resolve one pull request, start Ready-for-Review, and display the PullRequestReady result. |
-| [plan-product](../commands/plan-product.md) | product-planner-agent | Resolve one repository and parent issue, start product planning, and display the ProductPlannerRun through overall-plan review and approved sub-issue publication. |
+| [plan-product](../commands/plan-product.md) | product-planner-agent | Resolve one repository and parent issue, compose and display the canonical ProductSubIssueDrafts v2 set with ProductPlannerRun v2, then publish only after digest-bound approval. |
 | [reprioritize-issues](../commands/reprioritize-issues.md) | issue-reprioritize-agent | Resolve one repository, start open-issue reprioritization, and display the IssueReprioritization result after exact ranked-set title application. |
 | [close-issue](../commands/close-issue.md) | issue-close-agent | Resolve one issue, start triage close, and display the IssueClosure result after exact close-reason authorization. |
 
@@ -207,12 +207,12 @@ their explicit invocation boundary.
 | compose-commit-message | Compose one exact English CommitProposal from validated evidence. |
 | compose-pr-description | Compose one evidence-backed Draft PR description, optionally using a validated link. |
 | compose-review | Compose one exact non-publishing ReviewDecision from confirmed findings. |
-| compose-product-sub-issues | Compose standalone sub-issue drafts from confirmed atomic units without creating or publishing issues. |
+| compose-product-sub-issues | Compose the canonical ProductSubIssueDrafts v2 set, exact labels, and digest from confirmed atomic units without creating or publishing issues. |
 | conduct-product-interview | Interview from a ProductAssessment into confirmed product-decomposition decisions without creating sub-issues. |
 | create-commit | Stage the exact approved scope, create one commit, and verify it. |
 | create-draft-pr | Create or verify one exact GitHub Draft PR after all delivery gates pass. |
 | create-github-issue | Publish and verify one exact new issue or approved issue rewrite. |
-| create-product-sub-issues | Publish a fully approved product plan as GitHub sub-issues from confirmed drafts only. |
+| create-product-sub-issues | Publish one digest-approved ProductSubIssueDrafts v2 set through lossless IssueDraft v2 adapters, with verified mappings, relationships, retries, and partial failures. |
 | create-worktree | Create or explicitly reuse one authorized worktree, including attaching an existing PR head branch. |
 | decompose-product-capabilities | Decompose confirmed Product Capabilities into smallest value-oriented units with independent acceptance. |
 | define-acceptance-criteria | Define independent observable acceptance criteria from scoped requirements. |

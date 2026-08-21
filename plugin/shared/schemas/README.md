@@ -40,7 +40,7 @@ version changes.
 | `OpenIssueInventory` | Version 1 read-only inventory of every currently open GitHub issue in one repository, excluding pull requests, with current titles and parsed P-prefix evidence. |
 | `OpenIssueRanking` | Version 1 unique consecutive P1-through-Pn ranking of one open-issue inventory with recommended versus confirmed ranks, exact proposed titles, and exact-set authorization without writing GitHub. |
 | `IssueReprioritization` | Version 1 exact-set title-application result for one confirmed open-issue ranking, recording per-issue updates, no-ops, failed operations, live-identity preflight, and verification. |
-| `ProductSubIssueDrafts` | Version 1 read-only complete English sub-issue drafts from confirmed atomic units, preserving parent, capability, requirement, dependency, priority, and constraint traceability without creating or publishing sub-issues. |
+| `ProductSubIssueDrafts` | Version 2 read-only canonical complete English sub-issue drafts from confirmed atomic units, preserving exact title, body, label operations, parent, dependency, priority, and traceability fields with a deterministic SHA-256 identity without authorizing publication. |
 | `AffectedAreas` | Version 1 evidence-based mapping from an issue or task to affected repository areas, relevant paths, dependencies, and direct, indirect, or uncertain impact. |
 | `IssueDraft` | Version 2 task-authorized create-or-edit issue title, body, label operations, and publication evidence. `issue-agent` `create` maps to `create`; `refine` maps to `edit`. |
 | `IssueUpdate` | Version 1 task-authorized partial issue-field update patch with live baseline, preview, applied effects, warnings, and verification evidence. |
@@ -81,8 +81,8 @@ version changes.
 | `ReviewDecision` | Version 1 composition-only or authorization-gated review event payload, confirmation evidence, publication result, and verification. |
 | `ReviewFixPlan` | Version 1 host-neutral, interactively confirmed plan of mandatory fixes for one existing pull-request head branch. |
 | `ReviewFixRun` | Version 1 lifecycle record for one internal pull-request review-and-fix loop, preserving head continuity, delivery evidence, remaining items, blockers, and stop conditions. |
-| `ProductPlannerRun` | Version 1 lifecycle record for one interactive parent-issue product-planning run through analysis, interview, capability mapping, iterative decomposition, atomicity, dependency graphing, prioritization, sub-issue drafting, and publication handoff only after exact user approval of the draft set. |
-| `ProductSubIssuePublication` | Version 1 exact-set publication result that maps approved product-plan unit IDs to GitHub issue numbers and URLs, records parent and hard-dependency relationship outcomes, and preserves failed operations after creating every confirmed sub-issue before finalizing relationships. |
+| `ProductPlannerRun` | Version 2 lifecycle record for one interactive parent-issue product-planning run that consumes one canonical ProductSubIssueDrafts v2 identity and binds exact-set approval to its digest without carrying an independent publishable title/body set. |
+| `ProductSubIssuePublication` | Version 2 exact-set publication result that records the canonical identity, exact approved unit set, lossless IssueDraft v2 adapter verification, GitHub mappings, parent and hard-dependency outcomes, and failed operations after attempting every confirmed sub-issue before finalizing relationships. |
 | `ReviewThreadReply` | Version 2 exact, evidence-backed reply to one pull-request review-thread comment with direct user or repository-policy authorization or exact feedback-mode authorization and post-publication verification, without resolving the thread. |
 | `ReviewThreadResolution` | Version 2 scoped or authorization-gated resolution of exactly one open pull-request review thread after current validation proves the feedback was addressed. |
 | `MergeReadiness` | Version 3 deterministic read-only transformation of exactly one complete version-1 `PullRequestReadinessEvidence` snapshot into mergeability, draft and review state, open-thread, approval, required-check, issue-coverage, blocker, and remaining-condition diagnostics. |
@@ -139,16 +139,19 @@ flowchart LR
   productCapabilityDecomposition --> productDependencyGraph[ProductDependencyGraph]
   issueAtomicityAssessment --> productDependencyGraph
   productDependencyGraph --> productIssuePrioritization[ProductIssuePrioritization]
-  productCapabilityDecomposition --> productSubIssueDrafts[ProductSubIssueDrafts]
-  productIssuePrioritization --> productSubIssueDrafts
-  productDependencyGraph -.-> productSubIssueDrafts
-  productInterview -.-> productSubIssueDrafts
-  loadedIssue -.-> productSubIssueDrafts
-  loadedIssue --> productPlannerRun[ProductPlannerRun]
-  productIssuePrioritization --> productPlannerRun
-  productPlannerRun --> issueDraft[IssueDraft]
-  productPlannerRun --> productSubIssuePublication[ProductSubIssuePublication]
-  issueDraft --> productSubIssuePublication
+  productCapabilityDecomposition --> composeProductSubIssues[compose-product-sub-issues]
+  productIssuePrioritization --> composeProductSubIssues
+  productDependencyGraph -.-> composeProductSubIssues
+  productInterview -.-> composeProductSubIssues
+  loadedIssue -.-> composeProductSubIssues
+  composeProductSubIssues --> productSubIssueDrafts[ProductSubIssueDrafts v2]
+  loadedIssue --> productPlannerRun[ProductPlannerRun v2]
+  productSubIssueDrafts --> productPlannerRun
+  productPlannerRun --> createProductSubIssues[create-product-sub-issues]
+  productSubIssueDrafts --> createProductSubIssues
+  createProductSubIssues --> issueDraftAdapter[lossless IssueDraft v2 adapter]
+  issueDraftAdapter --> createGithubIssue[create-github-issue]
+  createGithubIssue --> productSubIssuePublication[ProductSubIssuePublication v2]
   productInterview --> issueAssessment
   productInterview --> issueDraft
   productCapabilityMap --> issueDraft
@@ -564,14 +567,23 @@ flowchart LR
   separately authorized exact merge-reference comment, verifies every external
   effect, returns `no-op` for an already closed issue, and never mutates
   unrelated issue metadata or pull-request state.
-- `ProductSubIssuePublication` is the version-1 exact-set publication result
-  for one approved product plan. It maps each confirmed unit ID to a verified
-  GitHub issue number and URL, records parent sub-issue links and hard
+- `ProductSubIssueDrafts` v2 is the canonical, draft-only approved-publication
+  candidate. Its exact title, body, add/remove/preserve label operations,
+  parent relationship, hard dependencies, priority, and traceability are
+  hashed into one deterministic SHA-256 identity. The digest is not itself
+  authorization and the handoff never writes GitHub.
+- `ProductPlannerRun` v2 records only lifecycle/progress data plus the
+  canonical-set identity. `drafts_ready` keeps exact_payload, exact_set, and
+  publication_authorized false; publication handoff requires all three true
+  and a matching approval digest.
+- `ProductSubIssuePublication` v2 is the exact-set publication result for one
+  approved canonical payload. It records adapter equivalence, maps each unit
+  to a verified GitHub issue, records parent sub-issue links and hard
   `blocks`/`requires` dependencies, preserves omitted units and failed
-  operations, and never overwrites the parent or silently rewrites titles,
-  bodies, or labels. Relationship writes begin only after every approved
-  create has been attempted. `published` requires a complete verified mapping
-  and relationship set with `failure` null.
+  operations, and never overwrites the parent or silently rewrites title,
+  body, or labels. Relationship writes begin only after every approved create
+  has been attempted. `published` requires a complete verified mapping,
+  verified adapter set, and relationship set with `failure` null.
 - `OpenIssueInventory` is the version-1 read-only inventory of currently open
   GitHub issues in one repository. It excludes pull requests, preserves exact
   titles and parsed P-prefix evidence, and fails closed when the retrieved

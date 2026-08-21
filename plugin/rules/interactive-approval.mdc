@@ -107,9 +107,13 @@ review, dependency analysis, prioritization, sub-issue drafting, and overall
 review. It does not authorize creating, overwriting, or closing GitHub issues.
 Publication of the composed sub-issue set requires one explicit user approval
 of the overall plan, including the complete issue structure, order, parallel
-groups, priorities, open decisions, and exact draft payloads. After that
-approval, the Agent hands the approved `IssueDraft` set with `mode: create`
-to `create-product-sub-issues`. It never overwrites the parent issue.
+groups, priorities, open decisions, exact draft payloads, and the canonical
+SHA-256 digest and unit set. The approval binds to that digest; any mutation
+requires recomputation and invalidates the approval. After that approval, the
+Agent hands the unchanged `ProductSubIssueDrafts v2` payload and
+`ProductPlannerRun v2` to `create-product-sub-issues`, which creates only
+lossless internal `IssueDraft v2` adapters for delegation. It never overwrites
+the parent issue.
 
 The explicitly invoked `/reprioritize-issues` command starts
 `issue-reprioritize-agent` and establishes orchestration authorization for

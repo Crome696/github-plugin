@@ -24,6 +24,9 @@ const expectedVersionTwo = new Set([
   "ReviewThreadReply",
   "ReviewThreadResolution",
   "ValidationResult",
+  "ProductSubIssueDrafts",
+  "ProductPlannerRun",
+  "ProductSubIssuePublication",
 ]);
 const expectedVersionThree = new Set([
   "MergeReadiness",

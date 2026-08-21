@@ -122,6 +122,12 @@ const parseFacts = (value: unknown, path: string): ScenarioDefinition["facts"] =
     "wait_timeout",
     "pending_as_pass",
     "optional_check_as_required",
+    "ambiguous_live_match",
+    "legacy_input",
+    "mutation_after_approval",
+    "parent_overwrite",
+    "retry_matching_digest",
+    "retry_digest_changed",
   ] as const) {
     const entry = value[key];
     if (entry !== undefined && typeof entry !== "boolean") {

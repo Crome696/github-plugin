@@ -13,7 +13,7 @@ reconstructing requirements from the parent issue or sibling drafts.
 Consume one version-1 `ProductCapabilityDecomposition` and one version-1
 `ProductIssuePrioritization`. Optionally consume matching
 `ProductDependencyGraph`, `ProductInterview`, and `LoadedIssue` handoffs.
-Return one version-1 `ProductSubIssueDrafts` handoff. Never create, edit, or
+Return one version-2 `ProductSubIssueDrafts` handoff. Never create, edit, or
 publish GitHub issues.
 
 This Skill drafts every eligible unit with a confirmed product class. It does
@@ -47,8 +47,10 @@ possible publication choice for the separate one-issue workflow.
 - Keep `enables` and `related` relations contextual. Only `blocks` and
   `requires`, or explicitly recorded `hard_predecessors` and
   `hard_successors`, are hard dependencies.
-- Do not produce an `IssueDraft`, publication authorization, label mutation,
-  or any other write payload. The result is a composition-only draft set.
+- Do not produce an `IssueDraft` adapter, publication authorization, or any
+  other write payload. Record exact `labels.add`, `labels.remove`, and
+  `labels.preserve` operations as canonical draft content; recording them does
+  not authorize a label write.
 
 ## Input contract
 
@@ -230,7 +232,29 @@ If the unit lacks material acceptance evidence, recommend
 `define-acceptance-criteria` and return `partial`; do not manufacture criteria.
 If the unit's atomicity or product priority is unconfirmed, do not draft it.
 
-### 4. Select status and one advisory follow-up
+### 4. Compute the canonical set identity
+
+After every eligible draft is complete, compute the `ProductSubIssueDrafts v2`
+canonical identity before displaying the set for review. Use canonicalization
+version 1 exactly as follows:
+
+- retain only the verified source repository, parent issue number, and parent
+  issue URL from `source`;
+- retain every eligible draft's `unit_id`, exact title, exact body, exact
+  `labels.add`, `labels.remove`, and `labels.preserve` lists, parent reference
+  including relationship, hard predecessor and successor records, confirmed
+  priority, and traceability;
+- sort draft records by `unit_id` ascending, recursively sort object keys,
+  preserve authored array order, serialize as compact UTF-8 JSON, and hash
+  that representation with SHA-256 as lowercase hexadecimal;
+- exclude status, failure details, timestamps, publication mappings, approval
+  flags, and diagnostic-only source metadata.
+
+Set `canonical_identity.unit_ids` to the same sorted eligible unit IDs. If any
+publishable field changes after composition, recompute the digest and replace
+the identity; never retain an old approval identity.
+
+### 5. Select status and one advisory follow-up
 
 Set the result status as follows:
 
@@ -262,12 +286,12 @@ implementation workflow from this handoff.
 ## Output contract
 
 First give a concise summary in the conversation language. Then return one
-English version-1 `ProductSubIssueDrafts` handoff using the fields from
+English version-2 `ProductSubIssueDrafts` handoff using the fields from
 [`ProductSubIssueDrafts`](../../shared/schemas/ProductSubIssueDrafts.yaml):
 
 ```yaml
 schema: ProductSubIssueDrafts
-version: 1
+version: 2
 status: composed
 source:
   repository: octo-org/widgets
@@ -284,6 +308,13 @@ source:
   product_interview_version: 1
   product_interview_status: complete
   unavailable_fields: []
+canonical_identity:
+  schema: ProductSubIssueDrafts
+  version: 2
+  canonicalization_version: 1
+  algorithm: sha256
+  digest: <64 lowercase hexadecimal characters>
+  unit_ids: [unit-invoice-csv-export]
 drafts:
   - unit_id: unit-invoice-csv-export
     title: Export current-month invoices as CSV
@@ -317,6 +348,10 @@ drafts:
       ## Traceability
       Parent capability: cap-billing-self-service.
       Requirements: req-csv-export.
+    labels:
+      add: []
+      remove: []
+      preserve: []
     sections:
       parent_reference:
         repository: octo-org/widgets
@@ -378,7 +413,7 @@ constraint is unavailable.
 | --- | --- | --- |
 | `missing_input` | A required decomposition or prioritization handoff is absent. | Ask for the missing handoff or return `blocked`; compose no guessed drafts. |
 | `invalid_input` | Required fields, source identities, or types are malformed. | `blocked`; preserve the validation problem. |
-| `unsupported_version` | A required or supplied handoff is not version 1. | `blocked`; request a compatible handoff. |
+| `unsupported_version` | A required source is unsupported, or a supplied draft set is not ProductSubIssueDrafts version 2. | `blocked`; request a compatible handoff. |
 | `blocked_source` | A required source is blocked or cannot establish parent identity. | `blocked`; preserve known identity and emit no fabricated drafts. |
 | `incomplete_source` | A partial source lacks evidence that could change a draft. | `partial`; preserve unavailable paths and affected units. |
 | `identity_mismatch` | Supplied sources identify different repositories, issues, or URLs. | `blocked`; do not merge unrelated product evidence. |

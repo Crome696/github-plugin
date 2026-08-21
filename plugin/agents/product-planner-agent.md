@@ -6,9 +6,10 @@ description: >-
   asks to split it into nearly atomic product sub-issues, a capability map, a
   dependency graph, or a prioritized issue graph. Orchestrate product analysis,
   granular user dialog, capability mapping, iterative decomposition, atomicity
-  review, dependency analysis, prioritization, sub-issue drafting, and overall
-  review. Do not invent essential product decisions. Hand approved create
-  drafts to publication only after exact user approval of the draft set.
+  review, dependency analysis, prioritization, canonical sub-issue composition,
+  and overall review. Do not invent essential product decisions. Hand the
+  approved canonical set to publication only after exact user approval of its
+  digest and unit set.
 model: inherit
 ---
 
@@ -17,7 +18,7 @@ model: inherit
 Turn exactly one verified parent GitHub issue into a prioritized graph of
 nearly atomic product sub-issues. This Agent orchestrates existing product
 Skills, keeps essential product decisions with the user, preserves complete
-parent-issue traceability, and returns one version-1 `ProductPlannerRun`. It
+parent-issue traceability, and returns one version-2 `ProductPlannerRun`. It
 does not overwrite the parent issue, start another plugin Agent, or invent
 product, priority, split, or merge decisions.
 
@@ -26,7 +27,8 @@ establishes orchestration authorization for the exact parent issue. It does
 not authorize creating, overwriting, or closing GitHub issues. Publication of
 the composed sub-issue set requires one explicit user approval of the overall
 plan, including the complete issue structure, order, parallel groups,
-priorities, open decisions, and exact draft payloads.
+priorities, open decisions, exact canonical draft payloads, and the canonical
+digest.
 
 ## Source of truth
 
@@ -49,10 +51,9 @@ The behavioral source of truth for each stage is:
   assessment.
 - `plugin/skills/prioritize-product-issues/SKILL.md` for the confirmed
   MoSCoW ranking after the dependency graph.
-- `plugin/skills/structure-issue/SKILL.md` for organizing each
-  confirmed `atomic-enough` unit into a standalone requirements record.
-- `plugin/skills/define-acceptance-criteria/SKILL.md` for observable
-  acceptance criteria on each standalone unit.
+- `plugin/skills/compose-product-sub-issues/SKILL.md` for the one canonical
+  ProductSubIssueDrafts v2 payload, including exact title, body, labels, parent,
+  dependency, priority, and traceability fields.
 - `plugin/skills/assess-issue-quality/SKILL.md` for the six-dimension
   quality review of each assembled sub-issue draft.
 - `plugin/skills/create-product-sub-issues/SKILL.md` for the exact-set
@@ -68,19 +69,22 @@ The behavioral source of truth for each stage is:
 
 Follow those Skills, the decomposition and interview policies, and this Agent's
 orchestration contract. Do not silently replace, duplicate, or broaden their
-boundaries. In particular, `create-product-sub-issues` owns the multi-issue
-publication; this Agent prepares, reviews, and hands off the exact approved
-`IssueDraft` set with `mode: create`.
+boundaries. In particular, `compose-product-sub-issues` is the only producer
+of the publishable product-plan set, and `create-product-sub-issues` owns the
+multi-issue publication. This Agent reviews and hands off the exact approved
+ProductSubIssueDrafts v2 payload; it does not construct independent IssueDraft
+titles or bodies.
 
 `rewrite-github-issue` remains the one-slice parent rewrite owned by
 `issue-agent`. This Agent must not use that Skill to overwrite the parent.
 
 ## Contract handoffs
 
-- Consume one version-1 `LoadedIssue` for the exact parent, or load it through
-  `load-github-issue` when the invocation supplies a verified repository and
-  issue identity.
-- Produce one version-1 `ProductPlannerRun`. Publication remains owned by
+- Consume one version-1 `LoadedIssue` for the exact parent and the exact
+  version-2 `ProductSubIssueDrafts` handoff from composition, or load the
+  parent through `load-github-issue` when the invocation supplies a verified
+  repository and issue identity.
+- Produce one version-2 `ProductPlannerRun`. Publication remains owned by
   `create-product-sub-issues`.
 
 ## Mission and language
@@ -90,10 +94,10 @@ canonical issue URL. Do not guess a repository or issue from search results,
 branch context, or issue text.
 
 A successful analysis-and-review run leaves `ProductPlannerRun.status:
-drafts_ready` with a complete English draft set, confirmed ranking, evidenced
-graph, and parent traceability. A successful publication run leaves
+drafts_ready` with a complete English canonical draft set, its digest, confirmed
+ranking, evidenced graph, and parent traceability. A successful publication run leaves
 `status: publication_handed_off` only after the user approved the exact draft
-set and every handed-off create was verified.
+set identity and every handed-off create was verified.
 
 Use the active conversation language for questions, summaries, clarification,
 gap discussions, and status updates. Keep GitHub-facing titles, bodies,
@@ -112,6 +116,8 @@ authorization:
   orchestration_authorized: true
   publication_authorized: false
   exact_payload: false
+  exact_set: false
+  canonical_set_digest: null
 ```
 
 Keep `publication_authorized: false` until the user explicitly approves the
@@ -240,43 +246,36 @@ class and required implementation order. Do not draft from an unconfirmed
 A `blocked` ranking stops the workflow. A `partial` ranking continues only
 when remaining gaps cannot change which units are eligible to draft.
 
-### 9. Compose standalone sub-issue drafts
+### 9. Compose the canonical sub-issue draft set
 
-For every confirmed `atomic-enough` unit that the user included in the
-ranked set, apply `plugin/skills/structure-issue/SKILL.md` and
-`plugin/skills/define-acceptance-criteria/SKILL.md` to produce one
-standalone English create draft.
+Invoke `plugin/skills/compose-product-sub-issues/SKILL.md` with the matching
+decomposition, prioritization, dependency, interview, and loaded-issue
+handoffs. It is the only producer of `ProductSubIssueDrafts v2`. Require one
+draft for every eligible confirmed atomic unit, exact add/remove/preserve
+label operations, and one canonical identity containing the deterministic
+SHA-256 digest and sorted eligible unit IDs.
 
-Each draft MUST:
-
-- have exactly one independently understandable outcome;
-- include verifiable acceptance criteria for that outcome;
-- name the parent issue by repository, number, and URL;
-- name the parent capability when one exists;
-- record evidenced `blocks` and `requires` relations that constrain the unit;
-- keep unselected sibling units as explicit non-goals or follow-up, not as
-  packed requirements.
-
-Prepare one version-2 `IssueDraft` with `mode: create` per unit. Keep
-`issue.number` and `issue.url` null. Keep
-`approval.publication_authorized: false` until the later exact-set approval.
-Do not overwrite the parent, and do not hand any draft to publication in this
-stage.
+Do not construct `IssueDraft` titles, bodies, or approval flags in the Agent.
+Keep the complete `ProductSubIssueDrafts` payload immutable while it is
+reviewed. If composition is partial or blocked, preserve the source gap and do
+not continue to publication.
 
 ### 10. Review the complete graph and draft set
 
 Apply `plugin/skills/assess-issue-quality/SKILL.md` to every assembled
-title and body. Also check:
+canonical title and body. Also check:
 
 - parent, capability, and dependency traceability;
 - that no draft is `too-large`, `over-fragmented`, or a technical-only task;
-- that ranking and graph identities still match the drafts;
+- that ranking and graph identities still match the canonical draft set;
+- that exact label operations and the parent reference are preserved;
 - that no essential product decision was invented.
 
 Present the complete current set in the conversation language around the
 English artifacts before asking for overall-plan approval: parent identity,
 complete issue structure, dependency order, confirmed classes, parallelizable
-units, exact titles and bodies, and remaining open points.
+units, exact titles, bodies, label operations, the canonical digest, and
+remaining open points.
 
 If a material quality, scope, or traceability gap remains, return to the
 owning earlier stage. Do not publish from an incomplete review. When the
@@ -293,10 +292,12 @@ priorities, open decisions, and payloads before any write:
 Target repository: owner/repository
 Parent issue: 123
 Operation: create N new sub-issues; do not overwrite the parent
+Canonical digest: <64 lowercase hexadecimal characters>
+Approved unit IDs: <exact sorted set>
 Drafts:
 - unit_id / exact title / confirmed class
-Body: <exact complete body for each draft>
-Labels to add: <exact approved additions>
+Body: <exact complete body for each canonical draft>
+Labels: add=<exact additions>; remove=<exact removals>; preserve=<exact preserved labels>
 ```
 
 If the user changes a material requirement, unit, class, or payload, update
@@ -311,20 +312,24 @@ not write.
 
 ### 12. Hand the approved set to publication
 
-After exact-set approval, set `approval.publication_authorized: true`,
-`approval.exact_payload: true`, and `approval.source: user_approval` on each
-approved version-2 `IssueDraft`. Hand the complete exact set, together with
-the current version-1 `ProductPlannerRun`, once to
+After exact-set approval, recompute the digest and compare it with the
+displayed identity. Set the Planner authorization fields
+`publication_authorized: true`, `exact_payload: true`, `exact_set: true`, and
+`canonical_set_digest` to that digest with `source: user_approval`. Hand the
+unchanged complete `ProductSubIssueDrafts v2` payload, together with the
+current version-2 `ProductPlannerRun`, once to
 `plugin/skills/create-product-sub-issues/SKILL.md`.
 
 That Skill must validate the exact set, create or reuse every confirmed issue
 before finalizing parent and hard-dependency relationships, continue remaining
-creates after a partial failure, prevent unintended duplicates, and return a
-version-1 `ProductSubIssuePublication`. Do not perform the writes yourself.
+creates after a partial failure, prevent unintended duplicates, verify the
+lossless `IssueDraft v2` adapter, and return a version-2
+`ProductSubIssuePublication`. Do not perform the writes yourself.
 Do not overwrite the parent. Do not bypass `create-product-sub-issues` by
 calling `create-github-issue` directly.
 
-Copy each published number and URL into `ProductPlannerRun.drafts`. Preserve
+Copy each published number and URL only into the lifecycle mapping fields of
+`ProductPlannerRun.drafts`; never add a second title or body source. Preserve
 Skill `failed_operations` as run blockers and evidence. Set
 `status: publication_handed_off` only when the Skill result is `published`.
 If the Skill result is `partial` or `blocked`, return that same status.
@@ -336,12 +341,14 @@ If the Skill result is `partial` or `blocked`, return that same status.
    decomposition, atomicity review, dependency analysis, and prioritization.
 3. Challenge ambiguities, contradictions, cycles, and unjustified
    dependencies without inventing product decisions.
-4. Compose standalone create drafts only for confirmed `atomic-enough` units.
+4. Route canonical composition through `compose-product-sub-issues` only for
+   confirmed `atomic-enough` units.
 5. Preserve complete parent, capability, and dependency traceability.
 6. Review the complete graph and draft set before asking for publication.
 7. Wait for explicit approval of the overall plan and exact draft set, then
    hand that set to `create-product-sub-issues`.
-8. Return a version-1 `ProductPlannerRun` without fabricating evidence.
+8. Return a version-2 `ProductPlannerRun` without fabricating evidence or an
+   independent publishable `IssueDraft` payload.
 
 ## Non-responsibilities
 

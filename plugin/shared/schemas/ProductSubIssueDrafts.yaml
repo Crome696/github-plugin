@@ -1,12 +1,15 @@
 schema: ProductSubIssueDrafts
-version: 1
+version: 2
 description: >-
-  Read-only composition of complete English GitHub sub-issue drafts from
-  confirmed atomic product units, preserving parent-issue, capability, and
-  requirement traceability without creating or publishing sub-issues.
+  Read-only composition of the canonical, complete English GitHub sub-issue
+  draft set from confirmed atomic product units. The set carries one
+  deterministic SHA-256 identity so the exact approved payload can be reused
+  unchanged through planning, retry validation, and publication without
+  authorizing a GitHub write.
 required:
   - status
   - source
+  - canonical_identity
   - drafts
   - omitted_units
   - recommended_next_skill
@@ -70,6 +73,34 @@ fields:
       unavailable_fields:
         type: list
         items: string
+  canonical_identity:
+    type: object | null
+    required:
+      - schema
+      - version
+      - canonicalization_version
+      - algorithm
+      - digest
+      - unit_ids
+    fields:
+      schema:
+        type: string
+        const: ProductSubIssueDrafts
+      version:
+        type: integer
+        const: 2
+      canonicalization_version:
+        type: integer
+        const: 1
+      algorithm:
+        type: enum
+        values: [sha256]
+      digest:
+        type: string
+        format: sha256-lowercase-hex
+      unit_ids:
+        type: list
+        items: string
   drafts:
     type: list
     items:
@@ -78,6 +109,7 @@ fields:
         - unit_id
         - title
         - body
+        - labels
         - sections
         - evidence
       fields:
@@ -93,6 +125,19 @@ fields:
           constraints:
             - English and complete without requiring the parent issue for interpretation.
             - Contains all required issue sections represented by sections.
+        labels:
+          type: object
+          required: [add, remove, preserve]
+          fields:
+            add:
+              type: list
+              items: string
+            remove:
+              type: list
+              items: string
+            preserve:
+              type: list
+              items: string
         sections:
           type: object
           required:
@@ -333,7 +378,7 @@ fields:
         type: boolean
 invariants:
   - source preserves the parent issue identity and the supplied decomposition, prioritization, dependency graph, interview, and optional loaded-issue versions, statuses, and unavailable fields without inventing replacements.
-  - composed status requires valid version-1 decomposition and prioritization handoffs, one draft for every eligible atomic-enough unit with a confirmed class, complete required issue sections, and failure null.
+  - composed status requires valid version-1 decomposition and prioritization handoffs, one draft for every eligible atomic-enough unit with a confirmed class, complete required issue sections, exact add/remove/preserve label operations, a non-null canonical identity, a unique unit-id set, and failure null.
   - partial status means confirmed drafts can be composed but one or more units, source fields, dependencies, constraints, or acceptance conditions remain incomplete; failure identifies the remaining gap.
   - blocked status means a required handoff is missing, invalid, unsupported, blocked, unconfirmed, or identity-mismatched; drafts contain no fabricated product decisions.
   - A draft is emitted only for an atomic-enough unit whose ProductIssuePrioritization candidate has a confirmed_class. recommended_class alone never creates a draft.
@@ -342,6 +387,17 @@ invariants:
   - No draft invents APIs, files, layers, technical components, implementation-plan steps, test suites, or other implementation details absent from the supplied evidence.
   - Hard dependencies come only from evidenced blocks or requires relations and contextual enables or related relations never become hard ordering constraints.
   - Constraints and acceptance criteria come only from supplied evidence or confirmed decisions; ProductInterview assumptions and open_questions are not requirements.
-  - This handoff is a draft-only result and never creates, proposes as a write, or publishes GitHub sub-issues, IssueDraft payloads, or GitHub metadata.
+  - >-
+    canonical_identity.digest is exactly 64 lowercase hexadecimal characters
+    produced by SHA-256 over canonicalization version 1: repository and parent
+    issue identity plus every eligible draft's unit_id, title, body, exact
+    label operations, parent relationship, hard predecessor and successor
+    lists, confirmed priority, and traceability; draft records are sorted by
+    unit_id, object keys are recursively sorted, authored array order is
+    preserved, UTF-8 JSON has no insignificant whitespace, and status, failure,
+    timestamps, mappings, approval flags, and diagnostic-only source metadata
+    are excluded.
+  - Any change to a unit identity, title, body, label operation, parent relationship, hard dependency, priority, or traceability changes canonical_identity.digest; canonical_identity.unit_ids is the sorted eligible set and matches the draft unit IDs exactly.
+  - This handoff is a draft-only result and never creates, proposes as a write, or publishes GitHub sub-issues, IssueDraft adapter payloads, or GitHub metadata.
   - recommended_next_skill is advisory, names at most one listed follow-up, and never authorizes or invokes it.
   - failure is null for composed results and non-null for partial or blocked results.

@@ -371,6 +371,7 @@ export const workflowGraphs: Record<string, WorkflowGraph> = {
       read("assess-issue-atomicity", "IssueAtomicityAssessment"),
       read("build-product-dependency-graph", "ProductDependencyGraph"),
       read("prioritize-product-issues", "ProductIssuePrioritization"),
+      read("compose-product-sub-issues", "ProductSubIssueDrafts"),
       read("product-planner-agent", "ProductPlannerRun"),
       write("create-product-sub-issues", "ProductSubIssuePublication"),
     ],

@@ -1,3 +1,7 @@
+import {
+  canonicalUnitIds,
+  productSubIssueDigest,
+} from "../../lib/product-sub-issue-digest.js";
 import { ScenarioAction, ScenarioDefinition } from "./scenario-types.js";
 
 export interface GateContext {
@@ -55,6 +59,17 @@ const numberAt = (value: unknown, ...keys: string[]): number | null => {
 const arrayAt = (value: unknown, ...keys: string[]): unknown[] => {
   const result = valueAt(value, ...keys);
   return Array.isArray(result) ? result : [];
+};
+
+const sortedStringList = (value: unknown): string[] =>
+  (Array.isArray(value) ? value : [])
+    .filter((entry): entry is string => typeof entry === "string")
+    .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+
+const exactStringSet = (left: unknown, right: unknown): boolean => {
+  const a = sortedStringList(left);
+  const b = sortedStringList(right);
+  return a.length === b.length && a.every((value, index) => value === b[index]);
 };
 
 const decision = (code: string, reason: string): GateDecision => ({
@@ -1513,45 +1528,150 @@ export const evaluateWriteGate = (
             "ProductPlannerRun.parent_issue does not match the verified parent issue.",
           ));
     if (runIdentity) return runIdentity;
-    if (run.status !== "drafts_ready") {
+    if (run.status !== "publication_handed_off") {
       return decision(
         "product_plan_not_ready",
-        "Only a drafts_ready ProductPlannerRun may be handed to publication.",
+        "Only a publication_handed_off ProductPlannerRun may be handed to publication.",
       );
     }
-    const draft = handoff(context, "IssueDraft");
-    if (!draft) return requireHandoff(context, "IssueDraft")!;
-    const draftIdentity = requireRepositoryAndIssue(context, draft, true);
-    if (draftIdentity) return draftIdentity;
-    if (stringAt(draft, "mode") !== "create") {
+    if (context.handoffs.has("IssueDraft")) {
       return decision(
-        "issue_mode_mismatch",
-        "plan-product requires create-mode IssueDraft records.",
+        "independent_issue_draft_forbidden",
+        "Product Planner publication must not accept a separately authored IssueDraft set.",
       );
     }
+    const drafts = handoff(context, "ProductSubIssueDrafts");
+    if (!drafts) return requireHandoff(context, "ProductSubIssueDrafts")!;
+    const draftIdentity = repositoryMatches(context, drafts);
+    if (draftIdentity) return draftIdentity;
+    if (drafts.schema !== "ProductSubIssueDrafts" || drafts.version !== 2) {
+      return decision(
+        "legacy_input",
+        "Product publication accepts only ProductSubIssueDrafts version 2; legacy draft sets are rejected.",
+      );
+    }
+    if (context.scenario.facts.legacy_input === true) {
+      return decision(
+        "legacy_input",
+        "Product publication rejects a legacy v1 draft-set input before any write.",
+      );
+    }
+    const source = recordAt(drafts, "source");
+    const canonicalIdentity = recordAt(drafts, "canonical_identity");
+    const canonicalSet = recordAt(run, "canonical_set");
+    const targetIssue = context.scenario.target.issue_number;
     if (
-      numberAt(draft, "issue", "number") ===
-      context.scenario.target.issue_number
+      !canonicalIdentity ||
+      !canonicalSet ||
+      canonicalIdentity.schema !== "ProductSubIssueDrafts" ||
+      canonicalIdentity.version !== 2 ||
+      canonicalIdentity.canonicalization_version !== 1 ||
+      canonicalIdentity.algorithm !== "sha256" ||
+      typeof canonicalIdentity.digest !== "string" ||
+      !/^[0-9a-f]{64}$/.test(canonicalIdentity.digest)
     ) {
       return decision(
-        "parent_overwrite_forbidden",
-        "Product sub-issue publication must not overwrite the parent issue.",
-      );
-    }
-    if (draft.status !== "approved") {
-      return decision(
-        "issue_draft_not_approved",
-        "Only an approved IssueDraft may be published as a product sub-issue.",
+        "canonical_identity_invalid",
+        "Publication requires a complete ProductSubIssueDrafts v2 canonical identity.",
       );
     }
     if (
-      booleanAt(draft, "approval", "exact_payload") !== true ||
-      booleanAt(draft, "approval", "publication_authorized") !== true
+      canonicalSet.schema !== "ProductSubIssueDrafts" ||
+      canonicalSet.version !== 2 ||
+      canonicalSet.canonicalization_version !== 1 ||
+      canonicalSet.algorithm !== "sha256" ||
+      canonicalSet.digest !== canonicalIdentity.digest ||
+      !exactStringSet(canonicalSet.unit_ids, canonicalIdentity.unit_ids) ||
+      !exactStringSet(canonicalIdentity.unit_ids, canonicalUnitIds(drafts))
+    ) {
+      return decision(
+        "canonical_set_mismatch",
+        "Planner approval must identify the exact supplied canonical ProductSubIssueDrafts set.",
+      );
+    }
+    let recomputedDigest = "";
+    try {
+      recomputedDigest = productSubIssueDigest(drafts);
+    } catch {
+      return decision(
+        "canonical_digest_invalid",
+        "The canonical ProductSubIssueDrafts digest could not be recomputed.",
+      );
+    }
+    if (recomputedDigest !== canonicalIdentity.digest) {
+      return decision(
+        "digest_mismatch",
+        "Publication is blocked because the supplied canonical payload changed after approval.",
+      );
+    }
+    if (context.scenario.facts.mutation_after_approval === true) {
+      return decision(
+        "digest_mismatch",
+        "Publication is blocked because the canonical payload was mutated after exact-set approval.",
+      );
+    }
+    if (
+      stringAt(source, "repository") !== context.scenario.target.repository ||
+      numberAt(source, "number") !== targetIssue ||
+      stringAt(source, "url") !== stringAt(run, "parent_issue", "url") ||
+      numberAt(run, "parent_issue", "number") !== targetIssue
+    ) {
+      return decision(
+        "identity_mismatch",
+        "The canonical draft source, Planner parent, and verified target issue must match exactly.",
+      );
+    }
+    const authorizationRecord = recordAt(run, "authorization");
+    if (
+      authorizationRecord?.exact_payload !== true ||
+      authorizationRecord.exact_set !== true ||
+      authorizationRecord.publication_authorized !== true ||
+      authorizationRecord.canonical_set_digest !== canonicalIdentity.digest
     ) {
       return decision(
         "issue_publication_approval_required",
-        "Overall-plan approval of the exact draft set is required before publication.",
+        "Exact payload, exact set, matching digest, and publication authorization are required before publication.",
       );
+    }
+    if (context.scenario.facts.ambiguous_live_match === true) {
+      return decision(
+        "duplicate_ambiguous",
+        "Publication is blocked because more than one live exact-title candidate matches the canonical unit.",
+      );
+    }
+    if (context.scenario.facts.retry_digest_changed === true) {
+      return decision(
+        "digest_mismatch",
+        "A retry mapping is not reusable because the canonical-set digest changed.",
+      );
+    }
+    if (context.scenario.facts.parent_overwrite === true) {
+      return decision(
+        "parent_overwrite_forbidden",
+        "Publication is blocked because a canonical unit would target the parent issue.",
+      );
+    }
+    for (const [index, draftValue] of arrayAt(drafts, "drafts").entries()) {
+      const draft = isRecord(draftValue) ? draftValue : {};
+      const target = recordAt(draft, "issue") ?? recordAt(draft, "publication_target");
+      if (
+        targetIssue &&
+        target &&
+        (numberAt(target, "number") === targetIssue ||
+          stringAt(target, "url") === stringAt(run, "parent_issue", "url"))
+      ) {
+        return decision(
+          "parent_overwrite_forbidden",
+          `Canonical draft ${String(draft.unit_id ?? index)} targets the parent issue.`,
+        );
+      }
+      const parentReference = recordAt(draft, "sections", "parent_reference");
+      if (parentReference && parentReference.relationship !== "sub_issue_of") {
+        return decision(
+          "parent_relationship_mismatch",
+          `Canonical draft ${String(draft.unit_id ?? index)} does not preserve the sub_issue_of parent relationship.`,
+        );
+      }
     }
     return allowed();
   }
