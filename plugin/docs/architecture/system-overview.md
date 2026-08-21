@@ -10,6 +10,15 @@ The plugin is not a general-purpose implementation agent. Its responsibility
 ends at the boundary where a project-specific capability must write source
 code, tests, documentation, or domain behavior.
 
+Agents are state owners, not procedure owners. Every Agent exposes the same
+eight state-machine sections and binds each transition to an existing Skill,
+Rule, Hook, Shared Contract, or bounded user decision. The state machine keeps
+identity, freshness, authorization, partial results, blocked results, and a
+safe resume point visible. The actual validation, payload, mutation, and
+security algorithms remain in the owning Skills and Rules. The durable
+scenario matrix is documented in
+[`../workflows/agent-state-machine-scenarios.md`](../workflows/agent-state-machine-scenarios.md).
+
 ## Responsibilities
 
 The plugin owns the following collaboration concerns:
@@ -149,7 +158,7 @@ do not implement project code.
 | [`review-agent`](../../agents/review-agent.md) | Analyze one PR, deduplicate and classify findings, collect decisions, and hand publication to the review Skill. |
 | [`feedback-agent`](../../agents/feedback-agent.md) | Own the canonical feedback lifecycle, including `fix`, `full`, and `follow_up` state, current-head validation, delivery evidence, and separately authorized thread actions. |
 | [`integration-agent`](../../agents/integration-agent.md) | Coordinate readiness, target refresh, rebase, post-rebase validation, merge, closure verification, and separate cleanup. |
-| [`lifecycle-agent`](../../agents/lifecycle-agent.md) | Sequence create or existing-issue refine, then preparation, external implementation, and Draft PR delivery by starting the existing delivery Agents. |
+| [`lifecycle-agent`](../../agents/lifecycle-agent.md) | Sequence only issue-agent, preparation-agent, external implementation, and delivery-agent through typed LifecycleRun handoffs, then stop at the Draft PR. |
 | [`review-fix-agent`](../../agents/review-fix-agent.md) | Preserve the discoverable compatibility identity for `/auto-review-fix-pr`; route `fix` mode to `feedback-agent` without owning state or decisions. |
 | [`ci-fix-agent`](../../agents/ci-fix-agent.md) | Wait for required checks, rerun only authorized required names, confirm remaining CI failures, and repeat verified commit/push iterations on the existing head. |
 | [`pr-ready-agent`](../../agents/pr-ready-agent.md) | Verify one Draft PR, unique linked issue, and optional reviewer set, then mark it Ready-for-Review after exact authorization. |

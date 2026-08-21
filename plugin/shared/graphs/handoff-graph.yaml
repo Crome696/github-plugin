@@ -4,7 +4,7 @@ graph_id: "standalone-github-plugin"
 title: "Canonical typed workflow graph"
 repository: "Crome696/github-plugin"
 base_branch: "master"
-base_commit: "162643fee5b71a00731d1f7f8f556e6351f6b154"
+base_commit: "3849fd61ae41f8d7c4be5133292ee23806fb3a02"
 source_of_truth: "plugin/shared/graphs/handoff-graph.yaml"
 projection: "plugin/shared/graphs/handoff-graph.mmd"
 meta_schema: "plugin/shared/schemas/HandoffGraph.yaml"
@@ -21,6 +21,24 @@ source_policy:
     - "plugin/docs/workflows/issue-to-merge.md"
   text_mentions_are_not_edges: true
   meta_schema_excluded_from_orphan_classification: true
+  agent_state_machine_policy:
+    required_sections:
+      - "Activation boundary"
+      - "Accepted inputs and produced outputs"
+      - "States and typed transitions"
+      - "Ordered Skill transitions"
+      - "Authorization checkpoints"
+      - "Recovery and resume behavior"
+      - "Forbidden operations"
+      - "Terminal outputs"
+    mutation_owner: "Owning Skill"
+    cross_agent_owner: "agent:lifecycle-agent"
+    allowed_cross_agent_sequence:
+      - "agent:issue-agent"
+      - "agent:preparation-agent"
+      - "agent:delivery-agent"
+    compatibility_router: "agent:review-fix-agent"
+    contract_versions_unchanged: true
 workflows:
   - id: "product-planning"
     required_for_issue_18: true
@@ -1933,14 +1951,14 @@ edges:
   - id: "edge:entry:auto-review-fix-pr"
     type: "entry"
     producer: "command:auto-review-fix-pr"
-    consumer: "agent:feedback-agent"
+    consumer: "agent:review-fix-agent"
     contract: null
     contract_version: null
     owning_workflow: "feedback"
     visibility: "public"
     optional: false
     mode: "fix"
-    condition: "Compatibility entry; feedback-agent owns the lifecycle."
+    condition: "Compatibility entry; review-fix-agent forwards mode fix to feedback-agent, which owns the lifecycle."
     sequence: 0
     identity_requirements:
       - "repository identity"
@@ -1953,6 +1971,32 @@ edges:
     audited_gap: null
     evidence:
       - "plugin/commands/auto-review-fix-pr.md"
+      - "plugin/agents/review-fix-agent.md"
+  - id: "edge:handoff:review-fix-agent:feedback"
+    type: "handoff"
+    producer: "agent:review-fix-agent"
+    consumer: "agent:feedback-agent"
+    contract: "contract:ReviewFixRun"
+    contract_version: 2
+    owning_workflow: "feedback"
+    visibility: "internal"
+    optional: false
+    mode: "fix"
+    condition: "The compatibility router forwards the exact verified pull-request identity with mode fix; feedback-agent remains the canonical lifecycle owner."
+    sequence: 1
+    identity_requirements:
+      - "repository identity"
+      - "pull request/base/head identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current invocation"
+      - "same issue/PR/head identity"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/agents/review-fix-agent.md"
       - "plugin/agents/feedback-agent.md"
   - id: "edge:entry:close-issue"
     type: "entry"

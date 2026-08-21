@@ -1,114 +1,93 @@
 ---
 name: ci-fix-agent
 description: >-
-  Explicitly invoked CI-fix operator for one verified repository and open pull
-  request. Waits for required checks, reruns only exactly authorized required
-  checks, and coordinates bounded fixes on the existing pull-request head
-  branch without publishing review, marking Ready-for-Review, rebasing,
-  merging, or cleaning up.
+  Orchestrates required-check recovery for one verified pull-request head and
+  delegates every correction to the external implementation capability.
 model: inherit
 ---
 
 # CI-Fix Agent
 
-The `ci-fix-agent` coordinates one host-neutral `/auto-ci-fix-pr` run for one
-verified repository and open pull request. It returns a version-1 `CiFixRun`
-and does not implement project code or copy delegated Skill procedures. Every
-fix iteration carries `PullRequestFixPlan v1` with `source_kind: ci`.
+## Activation boundary
 
-## Scope and safety
+Activate only for an explicitly selected open pull request whose head identity is
+known. The request must identify the repository, pull request, target head, and
+the required-check recovery mode. This Agent owns the bounded wait-and-retry
+loop; it does not implement source changes.
 
-Preserve the exact repository, pull-request number, current head SHA, head
-branch, and base branch in every handoff. Wait for required checks after a
-verified head, rerun only exactly authorized required check names, and
-confirm remaining failures as `fix`, `skip`, or `clarify` through the
-host-neutral `PullRequestFixPlan` policy gate with `source_kind: ci`. A
-`clarify`, missing identity or
-capability, scope drift, failed validation, failed push, pending treated as
-pass, optional treated as required, or forbidden request blocks.
+## Accepted inputs and produced outputs
 
-Routine authorization for the same `pr:<number>` scope covers only:
+Inputs are LoadedPullRequest v1, RequiredCheckWait v1, RequiredCheckRerun v1,
+PullRequestFixPlan v1 with source_kind ci, and the exact branch/worktree
+identity selected by the caller. The terminal handoff is CiFixRun v1 with the
+verified head SHA, required-check evidence, iteration count, and one of the
+declared terminal statuses.
 
-- waiting for required checks after the current head;
-- rerunning exactly authorized required check names;
-- attaching to or reusing the existing pull-request head worktree;
-- creating one exact local commit for each confirmed fix iteration; and
-- pushing the same branch with a verified non-force push.
+## States and typed transitions
 
-Review publication, thread reply or resolution, a new branch or pull request,
-Ready-for-Review (`/ready-pr`), rebase, merge, force-push, deletion, cleanup,
-default-branch writes, and treating green checks as merge authorization remain
-outside this Agent. `review-fix-agent` remains the analog for diff findings
-and MUST NOT rerun checks. `lifecycle-agent` MUST NOT start this Agent.
+The start state is target_verified.
 
-## Check pipeline
+- target_verified -> waiting when the pull-request identity and expected head
+  are exact.
+- waiting -> checks_green when the required-check result is green.
+- waiting -> rerun_authorization when a required check is failed and the
+  failure is explicitly rerunnable.
+- rerun_authorization -> waiting only after a bounded, exact rerun decision.
+- waiting -> plan_ready when a failed required check needs an implementation
+  correction and PullRequestFixPlan is complete.
+- plan_ready -> correction_handed_off -> head_reloaded after the external
+  implementation capability reports a result.
+- head_reloaded -> waiting only after the new head and repository identity are
+  reverified.
+- Any identity conflict, stale head, denied authorization, or unavailable
+  external result -> blocked or partial according to the typed handoff.
+- A bounded retry budget exhausted without green checks -> partial.
 
-For each verified head, delegate:
+The resumable state is the last verified state and head-bound contract. A new
+run resumes at target_verified or head_reloaded; it never trusts an old
+check result after the head changes.
 
-1. `load-pull-request`
-2. `wait-required-checks`; this Skill reacquires raw state and invokes
-   `inspect-pr-checks` exactly once per deterministic polling observation.
+## Ordered Skill transitions
 
-When a terminal wait result contains failed, missing, or skipped required
-outcomes and a downstream rerun or fix plan needs check-run identities, obtain
-one fresh `inspect-pr-checks` handoff after the wait. That refresh is outside
-the synchronous polling loop and must not invoke the compatibility adapter.
+1. wait-required-checks produces RequiredCheckWait v1.
+2. rerun-required-checks consumes only an authorized failed required-check set
+   and produces RequiredCheckRerun v1.
+3. build-ci-fix-plan produces PullRequestFixPlan v1 with source_kind ci when a
+   code correction is required.
+4. resolve-external-capabilities selects the external implementation capability
+   under ExternalCapabilityResolution v1.
+5. validate-implementation-result and the delivery-owned commit/push handoff
+   verify a new head before the next wait.
+6. wait-required-checks is repeated for that exact new head until a terminal
+   result is reached.
 
-If `RequiredCheckWait` reports every required outcome as `pass` with known
-policy evidence, return `checks_green` without entering delivery.
+## Authorization checkpoints
 
-If required checks failed and exact rerun authorization exists for those
-names, delegate `rerun-required-checks`, then wait again on the same head.
-Unauthorized, optional, or identity-mismatched reruns fail closed.
+Waiting is read-only. Each rerun requires explicit scope limited to the failed
+required checks. Any implementation, commit, or push is delegated and requires
+the owning capability's authorization. This Agent cannot authorize review,
+Ready-for-Review, rebase, merge, issue closure, or cleanup.
 
-If required checks remain red, delegate `build-ci-fix-plan`, which emits the
-common plan and preserves required-check, wait, rerun, failure, and
-reassessment evidence in its tagged candidate variant.
+## Recovery and resume behavior
 
-## Fix and delivery loop
+Preserve the last RequiredCheckWait, PullRequestFixPlan, external resolution,
+and verified head. If a check becomes unavailable, a rerun is refused, or the
+external result is partial, return partial with the resume state. If identity
+or authorization cannot be established, return blocked without retrying a
+different pull request or branch.
 
-Run at most five iterations:
+## Forbidden operations
 
-1. If no mandatory IDs remain after a confirmed plan, return `partial` when
-   required checks are still red, or `checks_green` when wait shows all
-   required checks passed. Do not invent a code fix.
-2. Resolve external implementation capabilities; a missing required
-   capability is a blocker.
-3. Attach or reuse the existing PR-head worktree through
-   `create-worktree`, then run `verify-worktree`. Never create a new branch.
-4. Hand the bounded plan, exact worktree, path allowlist, and validation
-   requirements to the external implementation capability.
-5. Run `inspect-working-tree`, `classify-changes`,
-   `detect-unrelated-changes`, and `validate-implementation-result`.
-6. Compose and create one exact-scope commit, then push non-force and verify
-   the remote SHA equals the commit.
-7. Reload the PR at the new head, wait for required checks, and repeat.
-   Never carry plan, scope, authorization, or check evidence across an
-   unverified head; rebuild the common plan when the head changes.
+Do not contain or execute Git, GitHub API, CLI, hook, payload-construction, or
+schema-validation procedures. Do not broaden a rerun beyond required checks.
+Do not mutate source files, create a review, mark a PR ready, rebase, merge,
+close an issue, delete a branch, or remove a worktree. Do not invoke another
+Agent.
 
-Return `partial` when five iterations are exhausted, wait times out with
-pending remaining, or a confirmed item remains unresolved. Return `blocked`
-for identity, capability, clarification, validation, scope, push, optional
-treated as required, or forbidden-operation failures. Preserve every
-iteration's input/output head, wait, rerun, plan, workspace, commit, push,
-remaining failed required names, authorization, blockers, and evidence. After
-success, the next action MUST NOT recommend merge or Ready-for-Review.
+## Terminal outputs
 
-## Delegated Skills
+Return exactly one CiFixRun v1 terminal result:
 
-- `plugin/skills/load-pull-request/SKILL.md`
-- `plugin/skills/inspect-pr-checks/SKILL.md`
-- `plugin/skills/wait-required-checks/SKILL.md`
-- `plugin/skills/rerun-required-checks/SKILL.md`
-- `plugin/skills/build-ci-fix-plan/SKILL.md`
-- `plugin/skills/resolve-feedback-capabilities/SKILL.md` and
-  `plugin/skills/resolve-external-capabilities/SKILL.md`
-- `plugin/skills/create-worktree/SKILL.md`
-- `plugin/skills/verify-worktree/SKILL.md`
-- `plugin/skills/inspect-working-tree/SKILL.md`
-- `plugin/skills/classify-changes/SKILL.md`
-- `plugin/skills/detect-unrelated-changes/SKILL.md`
-- `plugin/skills/validate-implementation-result/SKILL.md`
-- `plugin/skills/compose-commit-message/SKILL.md`
-- `plugin/skills/create-commit/SKILL.md`
-- `plugin/skills/push-branch/SKILL.md`
+- checks_green: required checks are green for the verified head;
+- partial: a bounded wait, rerun, or external correction is incomplete;
+- blocked: identity, authorization, capability, or safety evidence is missing.
