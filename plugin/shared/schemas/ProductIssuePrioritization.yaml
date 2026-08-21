@@ -48,6 +48,7 @@ fields:
         values: [decomposed, partial, blocked]
       product_interview_version:
         type: integer | null
+        minimum: 2
       product_interview_status:
         type: enum | null
         values: [complete, needs_clarification, blocked]
@@ -258,6 +259,7 @@ fields:
         type: boolean
 invariants:
   - source preserves the ProductDependencyGraph identity, contract version, status, optional ProductCapabilityDecomposition and ProductInterview identities, and unavailable fields without inventing replacements.
+  - When ProductInterview is supplied, its source version is 2; an older or unsupported interview blocks prioritization rather than being adapted implicitly.
   - prioritized status requires a valid ProductDependencyGraph version 1 that is graphed or partial, one candidate per supplied graph node, a confirmed_class on every eligible candidate, remaining uncertainty that is documented rather than invented, and no silently resolved sequence divergence.
   - partial status means prioritization is possible but one or more confirmed classes, identities, source fields, or sequence-divergence decisions remain incomplete; failure identifies the remaining gap.
   - blocked status means a required handoff is missing, invalid, unsupported, blocked, unconfirmed, or identity-mismatched; candidates contain no fabricated product decisions.

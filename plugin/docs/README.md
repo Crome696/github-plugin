@@ -210,14 +210,14 @@ their explicit invocation boundary.
 | compose-pr-description | Compose one evidence-backed Draft PR description, optionally using a validated link. |
 | compose-review | Compose one exact non-publishing ReviewDecision from confirmed findings. |
 | compose-product-sub-issues | Compose the canonical ProductSubIssueDrafts v2 set, exact labels, and digest from confirmed atomic units without creating or publishing issues. |
-| conduct-product-interview | Interview from a ProductAssessment into confirmed product-decomposition decisions without creating sub-issues. |
+| conduct-product-interview | Own the sole canonical adaptive interview for normalized new requests and loaded issues, returning ProductInterview v2 without creating sub-issues. |
 | create-commit | Stage the exact approved scope, create one commit, and verify it. |
 | create-draft-pr | Create or verify one exact GitHub Draft PR after all delivery gates pass. |
 | create-github-issue | Publish and verify one exact new issue or approved issue rewrite. |
 | create-product-sub-issues | Publish one digest-approved ProductSubIssueDrafts v2 set through lossless IssueDraft v2 adapters, with verified mappings, relationships, retries, and partial failures. |
 | create-worktree | Create or explicitly reuse one authorized worktree, including attaching an existing PR head branch. |
 | decompose-product-capabilities | Decompose confirmed Product Capabilities into smallest value-oriented units with independent acceptance. |
-| define-acceptance-criteria | Define independent observable acceptance criteria from scoped requirements. |
+| define-acceptance-criteria | Deterministically derive independent observable acceptance criteria from confirmed ProductInterview v2 decisions. |
 | deduplicate-review-findings | Merge only content-equivalent findings and preserve auditable suppressions. |
 | delete-merged-branch | Delete one authorized, fully integrated local or remote branch safely. |
 | derive-branch-name | Derive a concise branch name from verified task and convention evidence. |
@@ -250,9 +250,9 @@ their explicit invocation boundary.
 | resolve-context-capabilities | Resolve named session capabilities for implementation planning without execution. |
 | resolve-feedback-capabilities | Resolve named session capabilities for selected feedback without execution. |
 | resolve-review-thread | Resolve one eligible current thread after validated follow-up. |
-| rewrite-github-issue | Draft one implementation-ready issue revision from a ProductInterview or adaptive interview. |
+| rewrite-github-issue | Draft one implementation-ready issue revision from a complete ProductInterview v2; missing input returns a typed prerequisite. |
 | rewrite-issue | Restructure issue text without interview or GitHub publication. |
-| structure-issue | Structure one issue request into a normalized assessment. |
+| structure-issue | Deterministically structure one issue request from a complete ProductInterview v2. |
 | submit-pr-review | Publish one explicitly approved exact review payload. |
 | summarize-feedback-resolution | Summarize validated feedback as resolved, open, disputed, or blocked. |
 | update-github-issue | Apply one validated partial issue-field patch and verify it. |

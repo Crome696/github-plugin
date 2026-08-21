@@ -13,6 +13,26 @@ fields:
   status:
     type: enum
     values: [draft, needs_clarification, ready, blocked]
+  prerequisite:
+    type: object | null
+    required: [required_contract, required_version, consumer, status, reason, next_step]
+    fields:
+      required_contract:
+        type: enum
+        values: [ProductInterview]
+      required_version:
+        type: integer
+        minimum: 2
+      consumer:
+        type: enum
+        values: [structure-issue]
+      status:
+        type: enum
+        values: [missing, incomplete, unsupported_version, identity_mismatch]
+      reason:
+        type: string
+      next_step:
+        type: string
   issue:
     type: object
     required: [repository, number, url]
@@ -21,11 +41,15 @@ fields:
         type: string
         format: owner/repository
       number:
-        type: integer
+        type: integer | null
         minimum: 1
+        constraints:
+          - Required and minimum 1 for a loaded issue; null for a new request before publication.
       url:
-        type: string
+        type: string | null
         format: uri
+        constraints:
+          - Required for a loaded issue; null for a new request before publication.
       current_title:
         type: string
       current_body:
@@ -96,8 +120,10 @@ fields:
       evidence:
         type: string | null
 invariants:
-  - The live issue is read before material clarification questions are asked.
+  - A live issue is read before deterministic interpretation when one is supplied.
   - Locked requirements are user-confirmed or directly evidenced by the issue and repository.
   - Future context and explicit non-goals are not implementation requirements.
   - implementation_ready is false when open_questions contains a material product or scope decision.
+  - New-request assessments preserve the verified repository identity and keep issue.number and issue.url null until publication; loaded-issue assessments preserve the exact issue identity.
+  - prerequisite is null only when a matching ProductInterview version 2 was consumed; otherwise status is blocked and prerequisite identifies the missing or unusable interview.
   - A ready assessment does not authorize publication; publication_authorization is separate.

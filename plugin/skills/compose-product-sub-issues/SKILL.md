@@ -12,7 +12,8 @@ reconstructing requirements from the parent issue or sibling drafts.
 
 Consume one version-1 `ProductCapabilityDecomposition` and one version-1
 `ProductIssuePrioritization`. Optionally consume matching
-`ProductDependencyGraph`, `ProductInterview`, and `LoadedIssue` handoffs.
+`ProductDependencyGraph`, `ProductInterview` version 2, and `LoadedIssue`
+handoffs.
 Return one version-2 `ProductSubIssueDrafts` handoff. Never create, edit, or
 publish GitHub issues.
 
@@ -38,8 +39,9 @@ possible publication choice for the separate one-issue workflow.
   `ImplementationPlan` steps into issue scope or acceptance criteria.
 - Do not invent actors, outcomes, behaviors, business rules, variants,
   edge-case handling, priorities, dependencies, constraints, or non-goals.
-- Do not treat `ProductInterview.assumptions` or `open_questions` as
-  requirements. Use only confirmed decisions and source evidence.
+- Do not treat `ProductInterview.assumptions`, `accepted_uncertainties`, or
+  `open_questions` as requirements. Use only confirmed decisions and source
+  evidence.
 - Do not treat a recommended priority as a confirmed priority. A draft
   requires `confirmed_class`.
 - Draft one issue per eligible unit. Do not combine sibling units, even when
@@ -76,7 +78,7 @@ product_dependency_graph:
   status: graphed | partial
 product_interview:
   schema: ProductInterview
-  version: 1
+  version: 2
   status: complete | needs_clarification | blocked
 loaded_issue:
   schema: LoadedIssue
@@ -305,7 +307,7 @@ source:
   product_issue_prioritization_status: prioritized
   product_dependency_graph_version: 1
   product_dependency_graph_status: graphed
-  product_interview_version: 1
+  product_interview_version: 2
   product_interview_status: complete
   unavailable_fields: []
 canonical_identity:

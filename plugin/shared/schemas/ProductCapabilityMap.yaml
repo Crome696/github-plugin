@@ -1,6 +1,6 @@
 schema: ProductCapabilityMap
 version: 1
-description: Hierarchical product Capability Map from one parent LoadedIssue and one confirmed ProductInterview, grouping requirements by independently understandable Product Value and behavior areas without creating sub-issues.
+description: Hierarchical product Capability Map from one parent LoadedIssue and one confirmed ProductInterview v2, grouping requirements by independently understandable Product Value and behavior areas without creating sub-issues.
 required:
   - status
   - source
@@ -42,6 +42,7 @@ fields:
         values: [loaded, partial, blocked]
       product_interview_version:
         type: integer
+        minimum: 2
       product_interview_status:
         type: enum
         values: [complete, needs_clarification, blocked]
@@ -176,7 +177,7 @@ fields:
         type: boolean
 invariants:
   - source preserves the LoadedIssue and ProductInterview identities, contract versions, statuses, and unavailable fields without inventing replacements.
-  - mapped status requires a valid LoadedIssue version 1, a confirmed ProductInterview version 1, unique requirement assignment, and remaining gaps that are documented rather than invented.
+  - mapped status requires a valid LoadedIssue version 1, a confirmed ProductInterview version 2, unique requirement assignment, and remaining gaps that are documented rather than invented.
   - partial status means mapping is possible but one or more requirements, identities, or source fields remain incomplete; failure identifies the remaining gap.
   - blocked status means a required handoff is missing, invalid, unsupported, blocked, unconfirmed, or identity-mismatched; capabilities and inventories contain no fabricated product decisions.
   - Capabilities group independently understandable Product Value and behavior areas; technical components, layers, or ImplementationPlan steps are not capabilities.

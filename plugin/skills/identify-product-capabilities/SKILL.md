@@ -13,7 +13,7 @@ Identify overlapping or missing areas. Do not create final sub-issues. The
 output is a hierarchical Capability Map as an intermediate stage for atomic
 decomposition.
 
-Consume one version-1 `LoadedIssue` and one confirmed version-1
+Consume one version-1 `LoadedIssue` and one confirmed version-2
 `ProductInterview`. Return the version-1 `ProductCapabilityMap` handoff. Do
 not rewrite the issue, interview the user, or create GitHub issues.
 
@@ -45,8 +45,9 @@ independently valuable slice without inventing a split.
   as a recognition raster for independently understandable Product Value.
 - Do not invent essential product decisions or treat interview `assumptions`
   as confirmed requirements. Do not map non-goals as capabilities.
-- Do not turn mapping into a requirements interview. Ask at most one concise
-  question only when a required handoff or matching identity is missing.
+- Do not turn mapping into a requirements interview. When a required handoff
+  or matching identity is missing, return a blocked result with the typed
+  prerequisite instead of asking a product-decision question.
 - Do not draft replacement issue text, publish anything, or start a follow-up
   Skill. Recommend at most one next Skill.
 - Use `analyze-product-issue` for parent-issue product-topic extraction. Use
@@ -63,7 +64,7 @@ independently valuable slice without inventing a split.
 ## Input contract
 
 The required inputs are one `LoadedIssue` version 1 handoff and one confirmed
-`ProductInterview` version 1 handoff:
+`ProductInterview` version 2 handoff:
 
 ```yaml
 loaded_issue:
@@ -72,7 +73,7 @@ loaded_issue:
   status: loaded | partial | blocked
 product_interview:
   schema: ProductInterview
-  version: 1
+  version: 2
   status: complete
 ```
 
@@ -85,10 +86,11 @@ Treat `ProductInterview.status: complete` as confirmed. Explicitly accepted
 residual open points already recorded in that complete interview remain
 documented gaps; they do not reopen the interview here.
 
-If either required handoff is absent, ask the user to provide the loaded
-parent issue and the confirmed product interview. Do not claim that the
-Capability Map ran without both. If a supplied object is malformed or has an
-unsupported version, return a `blocked`
+If either required handoff is absent, return a `blocked`
+`ProductCapabilityMap` result that identifies the missing handoff; do not ask a
+product-decision question. Do not claim that the Capability Map ran without
+both. If a supplied object is malformed or has an unsupported version, return
+a `blocked`
 [`ProductCapabilityMap`](../../shared/schemas/ProductCapabilityMap.yaml)
 result.
 
@@ -238,7 +240,7 @@ source:
   url: https://github.com/octo-org/widgets/issues/42
   loaded_issue_version: 1
   loaded_issue_status: loaded
-  product_interview_version: 1
+  product_interview_version: 2
   product_interview_status: complete
   unavailable_fields: []
 requirements:
@@ -278,9 +280,9 @@ Use `failure: null` only for `mapped` results.
 
 | Code | Use when | Result |
 | --- | --- | --- |
-| `missing_input` | No `LoadedIssue` or no `ProductInterview` handoff is available. | Ask one concise handoff question or return `blocked` if it cannot be supplied. |
+| `missing_input` | No `LoadedIssue` or no `ProductInterview` handoff is available. | Return a blocked map identifying the missing handoff; do not ask a product-decision question. |
 | `invalid_input` | Required fields are missing or have invalid types. | `blocked`; do not map guessed values. |
-| `unsupported_version` | A required handoff is not version 1. | `blocked`; request a compatible handoff. |
+| `unsupported_version` | A required handoff is not its supported version, including ProductInterview version 2. | `blocked`; request a compatible handoff. |
 | `blocked_source` | A source handoff has `status: blocked`. | `blocked`; preserve known identity and return no fabricated capabilities. |
 | `incomplete_source` | A partial snapshot lacks material evidence. | `partial`; identify unavailable fields and uncertainty. |
 | `identity_mismatch` | The loaded issue and interview identify different issues. | `blocked`; do not merge unrelated sources. |

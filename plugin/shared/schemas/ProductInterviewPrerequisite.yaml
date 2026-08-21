@@ -1,0 +1,53 @@
+schema: ProductInterviewPrerequisite
+version: 1
+description: Typed prerequisite emitted by deterministic product-requirements consumers when a complete ProductInterview v2 is missing, unusable, or does not match the source.
+required:
+  - required_contract
+  - required_version
+  - consumer
+  - status
+  - reason
+  - next_step
+fields:
+  required_contract:
+    type: enum
+    values: [ProductInterview]
+  required_version:
+    type: integer
+    minimum: 2
+  consumer:
+    type: enum
+    values:
+      - structure-issue
+      - define-acceptance-criteria
+      - rewrite-github-issue
+  status:
+    type: enum
+    values: [missing, incomplete, unsupported_version, identity_mismatch]
+  reason:
+    type: string
+  next_step:
+    type: string
+  source:
+    type: object | null
+    fields:
+      repository:
+        type: string | null
+        format: owner/repository
+      number:
+        type: integer | null
+        minimum: 1
+      url:
+        type: string | null
+        format: uri
+      supplied_schema:
+        type: string | null
+      supplied_version:
+        type: integer | null
+invariants:
+  - required_contract is always ProductInterview and required_version is always 2.
+  - missing means no interview handoff was supplied.
+  - incomplete means the supplied interview is not complete or retains an unaccepted material gap.
+  - unsupported_version means the supplied interview is not ProductInterview version 2.
+  - identity_mismatch means the interview source does not match the requested repository or issue.
+  - A prerequisite never contains inferred product decisions and never authorizes an interactive interview inside its consumer.

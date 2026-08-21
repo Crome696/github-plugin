@@ -15,7 +15,9 @@ loading, analysis, interview, comparison, validation, or publication behavior.
 2. Start `issue-agent` with `mode: refine`, the verified repository and issue
    identity, and `$ARGUMENTS` or the current request. Stop when the target is
    missing, ambiguous, malformed, or conflicting.
-3. Display the Agent's exact current result, including the target, final
+3. The Agent owns the loaded-issue `conduct-product-interview` version-2
+   prerequisite; downstream structuring and rewriting remain deterministic.
+   Display the Agent's exact current result, including the target, final
    payload, comparison, blockers, authorization, and any publication or
    verification result. Preserve the Agent's structured `IssueDraft` handoff
    and do not perform a second overwrite.

@@ -38,8 +38,8 @@ The behavioral source of truth for each stage is:
   parent snapshot.
 - `plugin/skills/analyze-product-issue/SKILL.md` for the read-only
   parent-issue product assessment used as interview-prep.
-- `plugin/skills/conduct-product-interview/SKILL.md` for the adaptive
-  product interview after the product assessment.
+- `plugin/skills/conduct-product-interview/SKILL.md` for the sole canonical
+  v2 product interview after the product assessment.
 - `plugin/skills/identify-product-capabilities/SKILL.md` for the
   hierarchical Capability Map after the confirmed interview.
 - `plugin/skills/decompose-product-capabilities/SKILL.md` for the
@@ -162,19 +162,14 @@ Do not invent missing acceptance criteria or resolve a contradiction silently.
 A `blocked` assessment stops the workflow. A `partial` assessment continues
 only when unavailable fields cannot change the interview focus.
 
-### 3. Conduct the adaptive product interview
+### 3. Conduct the canonical loaded-issue interview
 
 Apply `plugin/skills/conduct-product-interview/SKILL.md` to the
-version-1 `ProductAssessment`. Use the resulting version-1 `ProductInterview`
+version-1 `LoadedIssue` and matching version-1 `ProductAssessment` using
+`input.mode: loaded_issue`. Use the resulting version-2 `ProductInterview`
 as the locked interview record. The interview does not rewrite the parent or
-create sub-issues.
-
-Ask no more than one or two critical questions per round. Apply
-`plugin/rules/product-interview-policy.mdc`. Unsuccessful
-clarification converts remaining material topics into documented open points;
-without explicit user acceptance of those points, stop with `blocked` rather
-than inventing a decision. Challenge the same ambiguity once, then treat it
-as an unresolved open point.
+create sub-issues. No later Product-Planning Skill may ask a product-decision
+question.
 
 A `blocked` interview stops the workflow. A `needs_clarification` interview
 continues only after the user accepts the residual open points or supplies
@@ -183,7 +178,7 @@ the missing decisions.
 ### 4. Identify product capabilities
 
 Apply `plugin/skills/identify-product-capabilities/SKILL.md` to the
-loaded parent issue and the confirmed version-1 `ProductInterview`. Use the
+loaded parent issue and the confirmed version-2 `ProductInterview`. Use the
 resulting version-1 `ProductCapabilityMap` as the grouping record. The map
 does not rewrite the parent or create sub-issues.
 

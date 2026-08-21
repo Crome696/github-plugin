@@ -33,7 +33,7 @@ publish them.
   re-fetch an issue, infer identity from the workspace, or invoke
   `load-github-issue` or `build-product-dependency-graph` automatically.
 - A supplied version-1 `ProductCapabilityDecomposition` is optional outcome
-  and acceptance evidence. A supplied version-1 `ProductInterview` is
+  and acceptance evidence. A supplied version-2 `ProductInterview` is
   optional confirmed-priority evidence. Do not treat interview `assumptions`
   or `open_questions` as confirmed classes. Do not invent missing optional
   handoffs.
@@ -90,7 +90,7 @@ product_capability_decomposition:
   status: decomposed | partial
 product_interview:
   schema: ProductInterview
-  version: 1
+  version: 2
   status: complete
 ```
 
@@ -298,7 +298,7 @@ source:
   product_dependency_graph_status: graphed
   product_capability_decomposition_version: 1
   product_capability_decomposition_status: decomposed
-  product_interview_version: 1
+  product_interview_version: 2
   product_interview_status: complete
   unavailable_fields: []
 candidates:

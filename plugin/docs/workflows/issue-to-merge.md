@@ -96,9 +96,9 @@ Typical sequence:
 ```text
 verify repository
   -> issue-agent:create
-  -> conduct an adaptive product interview
-  -> structure requirements
-  -> define acceptance criteria
+  -> conduct-product-interview v2 (new_request)
+  -> structure requirements from the canonical interview
+  -> derive acceptance criteria from confirmed decisions
   -> assess quality and resolve material gaps
   -> create-github-issue
   -> verify the created issue
@@ -109,9 +109,9 @@ title and body. Apply
 [`product-interview-policy.mdc`](../../rules/product-interview-policy.mdc)
 and
 [`product-decomposition-policy.mdc`](../../rules/product-decomposition-policy.mdc)
-before publication: gather missing product decisions through the adaptive
-user dialog, split a too-large product request into proposed nearly
-atomic sub-issues, and still publish exactly one selected issue.
+before publication: gather missing product decisions only through
+`conduct-product-interview`, split a too-large product request into proposed
+nearly atomic sub-issues, and still publish exactly one selected issue.
 The publication Skill owns the GitHub write. This flow does not create a
 branch, worktree, commit, pull request, review, or merge.
 
@@ -124,13 +124,13 @@ verify repository
   -> load one exact issue
   -> issue-agent:refine
   -> assess the parent issue from a product perspective
-  -> conduct-product-interview
+  -> conduct-product-interview v2 (loaded_issue)
   -> identify-product-capabilities
   -> decompose-product-capabilities
   -> assess-issue-atomicity
   -> build-product-dependency-graph
   -> prioritize-product-issues
-  -> draft the refinement
+  -> draft the refinement deterministically from ProductInterview v2
   -> compare original and proposed revision
   -> create-github-issue in edit mode
   -> verify the updated issue
@@ -138,6 +138,27 @@ verify repository
 
 `issue-agent` mode `refine` maps to `IssueDraft.mode: edit`; the stable
 publication contract must not be renamed to `refine`.
+
+`structure-issue`, `define-acceptance-criteria`, and
+`rewrite-github-issue` never ask product-decision questions in these flows. A
+missing or incomplete interview returns a typed prerequisite and stops the
+consumer.
+
+### Canonical interview scenario matrix
+
+The same matrix applies to the shared Cursor, Codex, and Claude workflow
+projections:
+
+| Scenario | Expected owner/result |
+| --- | --- |
+| Complete `new_request` input | `conduct-product-interview` returns `ProductInterview` v2; structure and criteria consumers proceed without questions. |
+| Complete `loaded_issue` input | Matching `LoadedIssue` v1 and `ProductAssessment` v1 produce one `ProductInterview` v2; rewrite and planning consume it. |
+| Partial interview | Deterministic consumers return `ProductInterviewPrerequisite` or a non-ready result; no embedded interview starts. |
+| Explicitly accepted uncertainty | It is recorded separately from `confirmed_decisions` and never becomes an acceptance requirement. |
+| Contradictory evidence | The canonical interview preserves the contradiction or resolves it explicitly; consumers do not flatten it. |
+| Identical v2 input repeated | Consumer outputs are semantically deterministic and do not ask a second question. |
+| Missing or v1 interview | Consumers return `missing` or `unsupported_version` prerequisite status. |
+| New and loaded flows together | There is no circular prerequisite between conduct, structure, criteria, and rewrite. |
 
 For a complete product-split draft set, invoke
 `compose-product-sub-issues` after the confirmed decomposition and
