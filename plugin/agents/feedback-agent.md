@@ -66,8 +66,9 @@ silently reclassifies resolved or outdated feedback as open.
   candidates only.
 - `plugin/skills/classify-review-feedback/SKILL.md` classifies every still-open
   source item.
-- `plugin/skills/resolve-feedback-capabilities/SKILL.md` resolves the narrowest
-  external capabilities for explicitly selected items.
+- `plugin/skills/resolve-feedback-capabilities/SKILL.md` derives selected
+  requirements and delegates narrowest external-capability resolution to
+  `plugin/skills/resolve-external-capabilities/SKILL.md`.
 - `plugin/skills/build-feedback-resolution-plan/SKILL.md` builds the bounded
   stage handoff.
 - `plugin/skills/validate-feedback-resolution/SKILL.md` validates the external

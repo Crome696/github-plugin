@@ -1,6 +1,6 @@
 {
   "name": "github",
-  "version": "0.3.118",
+  "version": "0.3.119",
   "description": "Evidence-backed GitHub collaboration workflows for issue planning and publication, verified target branches, branches and worktrees, task-scoped autonomous commits and non-force pushes, controlled issue-linked draft pull requests, internal pull-request review-fix loops on existing head branches, CI wait, authorized required-check rerun, and bounded CI-fix loops, validated pull-request feedback integration, approved target refreshes and rebases with post-rebase validation, explicitly approved pull-request merges, verified post-merge and authorized triage issue closure, and separately authorized branch and worktree cleanup with current readiness, freshness, and strategy verification.",
   "author": {
     "name": "CromeSDK"
@@ -43,8 +43,8 @@
       "Derive a concise, evidence-based Git branch name from this task and repository conventions without creating or modifying branches.",
       "Identify the applications, libraries, modules, files, APIs, tests, configuration, documentation, data models, and dependencies affected by this task from repository evidence without designing the solution.",
       "Evaluate how this task could be implemented against repository architecture, conventions, and affected areas, compare meaningful approaches, and identify feasibility, risks, dependencies, and unresolved questions without changing it.",
-      "Resolve the relevant skills, rules, agents, tools, and domain capabilities for this issue and evaluated implementation, distinguish required from optional usage, report availability and gaps, and do not execute them.",
-      "Resolve the external skills and rules needed for these explicitly confirmed open pull-request feedback items across technology, architecture, testing, security, and documentation; report unavailable or missing capabilities without executing them or duplicating implementation knowledge.",
+      "Derive the relevant capability requirements for this issue and evaluated implementation, resolve them through the shared pure external-capability firewall, distinguish required from optional usage, preserve current-session provenance and gaps, and do not execute them.",
+      "Derive requirements for these explicitly confirmed open pull-request feedback items and resolve them through the shared pure external-capability firewall across technology, architecture, testing, security, and documentation; preserve unavailable, missing, ambiguous, and stale-session states without executing or duplicating implementation knowledge.",
       "Summarize this completed pull-request feedback follow-up as resolved, open, disputed, or blocked, link every solution to current evidence, list next steps, and report diagnostic merge impact without changing GitHub or Git.",
       "Build a task-authorized implementation-ready plan from this issue, repository context, affected areas, implementation evaluation, resolved capabilities, and repository conventions without writing code or executing delivery.",
       "Prepare this qualified GitHub issue by discussing material implementation alternatives and risks, carrying task-scoped routine authorization, creating and verifying its derived branch and worktree without implementing changes.",

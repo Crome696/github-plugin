@@ -198,6 +198,7 @@ fields:
       - issue_assessment_version
       - affected_areas_version
       - implementation_evaluation_version
+      - external_capability_resolution_version
       - context_capabilities_version
       - repository_context_version
       - repository_conventions_version
@@ -231,6 +232,8 @@ fields:
       affected_areas_version:
         type: integer | null
       implementation_evaluation_version:
+        type: integer | null
+      external_capability_resolution_version:
         type: integer | null
       context_capabilities_version:
         type: integer | null
@@ -316,6 +319,8 @@ invariants:
   - Every implementation step is ordered, has explicit dependencies, and records relevant paths and an expected outcome when evidence supports them.
   - Validation commands and acceptance criteria are explicit before implementation begins.
   - Required skills and applicable rules are resolved from evidence and remain within plugin/.
+  - external_capability_resolution_version identifies the canonical capability firewall contract; context_capabilities_version is null for migrated plans or identifies only a lossless fail-closed adapter.
+  - The plan never treats unavailable, missing, ambiguous, stale-session, unsupported-version, or identity-conflicting capability evidence as available.
   - Workspace values describe a proposed or supplied implementation workspace; the plan does not create it.
   - failure is null for draft, approved, in_progress, completed, or partial plans only when no failure is being reported, and non-null for blocked plans.
   - Routine task_intent, plan_build, repository_policy, or session_continuity authorization may cover implementation, non-force push, and draft pull-request delivery for the same task scope; force-push, merge, rebase, deletion, and destructive operations remain separate hard gates.

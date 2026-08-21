@@ -1,6 +1,15 @@
 schema: FeedbackResolutionCapabilities
 version: 1
-description: Read-only, evidence-based resolution of external skills and rules needed to address explicitly confirmed open pull-request feedback.
+description: Legacy compatibility projection of the canonical ExternalCapabilityResolution v1 for explicitly confirmed open pull-request feedback.
+compatibility:
+  canonical_contract: ExternalCapabilityResolution
+  canonical_version: 1
+  role: lossless_fail_closed_transition_adapter
+  rules:
+    - Emit available only when the canonical resolution has current session provenance.
+    - Preserve unavailable and missing as distinct legacy availability values.
+    - Return a blocked adapter result for ambiguous, stale-session, unsupported-version, or identity-conflict states that this shape cannot represent.
+    - Never convert missing evidence, unavailable evidence, or absent provenance into available.
 required:
   - status
   - pull_request

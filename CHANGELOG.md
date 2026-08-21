@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.119
+
+- Unify context and feedback capability resolution behind the canonical
+  ExternalCapabilityResolution v1 contract and pure shared firewall core.
+- Keep ContextCapabilities and FeedbackResolutionCapabilities as lossless,
+  fail-closed transition adapters while consumers migrate.
+- Document cross-host capability scenarios, current-session provenance, and
+  explicit unavailable, missing, ambiguous, and stale-session semantics.
+
 ## 0.3.118
 
 - Added canonical YAML frontmatter to every host-facing Agent and Command,

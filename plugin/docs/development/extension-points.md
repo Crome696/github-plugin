@@ -228,7 +228,9 @@ file. Use
 [`resolve-context-capabilities`](../../skills/resolve-context-capabilities/SKILL.md)
 or
 [`resolve-feedback-capabilities`](../../skills/resolve-feedback-capabilities/SKILL.md)
-to reference an exposed current-session identity. Record intended usage,
+to derive wrapper-specific requirements for
+[`resolve-external-capabilities`](../../skills/resolve-external-capabilities/SKILL.md),
+which is the sole shared policy core. Record intended usage,
 availability, required/optional priority, and missing-capability behavior.
 
 Do not:

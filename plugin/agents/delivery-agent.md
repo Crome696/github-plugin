@@ -51,8 +51,9 @@ Use these Skills in the workflow:
   issue.
 - `plugin/skills/create-draft-pr/SKILL.md` for duplicate detection,
   Draft pull-request publication, and post-publication verification.
-- `plugin/skills/resolve-context-capabilities/SKILL.md` for resolving
-  an available external implementation, testing, documentation, or domain
+- `plugin/skills/resolve-context-capabilities/SKILL.md` and
+  `plugin/skills/resolve-external-capabilities/SKILL.md` for resolving an
+  available external implementation, testing, documentation, or domain
   capability when delivery evidence identifies a defect that this Agent must
   not repair.
 
@@ -75,7 +76,7 @@ The stable handoff contracts are:
 
 - `plugin/shared/schemas/LoadedIssue.yaml`
 - `plugin/shared/schemas/ImplementationPlan.yaml`
-- `plugin/shared/schemas/ContextCapabilities.yaml`
+- `plugin/shared/schemas/ExternalCapabilityResolution.yaml`
 - `plugin/shared/schemas/BranchWorkspace.yaml`
 - `plugin/shared/schemas/WorkingTreeInspection.yaml`
 - `plugin/shared/schemas/ChangeClassification.yaml`
