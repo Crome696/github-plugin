@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.118
+
+- Added canonical YAML frontmatter to every host-facing Agent and Command,
+  including type-specific identity and discovery metadata validation.
+- Corrected repository-local `host-hooks-agent` Skill links and added
+  repository-wide relative Markdown-link integrity coverage.
+- Added bounded Cursor, Claude, and Codex manifest discovery smoke tests while
+  preserving existing public component identities and routing.
+
 ## 0.3.117
 
 - Consolidate pull-request feedback fixing and discussion follow-up under the

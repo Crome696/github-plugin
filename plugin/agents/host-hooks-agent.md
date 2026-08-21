@@ -14,7 +14,7 @@ Codex, the same `generate-project-hooks` Skill is invoked directly.
 ## Source of truth
 
 The procedure and write boundary are owned by
-[`plugin/skills/generate-project-hooks/SKILL.md`](plugin/skills/generate-project-hooks/SKILL.md).
+[`plugin/skills/generate-project-hooks/SKILL.md`](../skills/generate-project-hooks/SKILL.md).
 This Agent must not duplicate its generator steps, select a host implicitly,
 or create any file itself.
 
@@ -23,7 +23,7 @@ or create any file itself.
 1. Verify that exactly one target repository was resolved and preserve its
    repository root.
 2. Invoke only
-   [`plugin/skills/generate-project-hooks/SKILL.md`](plugin/skills/generate-project-hooks/SKILL.md).
+   [`plugin/skills/generate-project-hooks/SKILL.md`](../skills/generate-project-hooks/SKILL.md).
    The Skill asks the user interactively to select Cursor, Codex, or both.
 3. Return the Skill's complete result without rewriting its status, manifest
    path, written/unchanged/removed/recovered paths, blocked conditions,
