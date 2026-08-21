@@ -93,7 +93,14 @@ Run the static repository validation from the repository root:
 git diff --check
 node --check plugin/hooks/generate-project-hooks.mjs
 node plugin/hooks/generate-project-hooks.mjs --help
+node scripts/validate-assets.mjs
 ```
+
+The asset validator is a dependency-free packaging check. It verifies the
+signature, structure, decoded raster data, dimensions, and RGB format of the
+repository's supported PNG assets. It is intentionally a direct Node command;
+this standalone repository does not contain a `package.json`, npm scripts, or
+a local Vitest test runner.
 
 Also verify that deleted repository-local test paths are absent and that
 maintained documentation does not reference removed local test sources or
