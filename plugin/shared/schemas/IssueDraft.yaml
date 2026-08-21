@@ -19,6 +19,26 @@ fields:
   mode:
     type: enum
     values: [create, edit]
+  prerequisite:
+    type: object | null
+    required: [required_contract, required_version, consumer, status, reason, next_step]
+    fields:
+      required_contract:
+        type: enum
+        values: [ProductInterview]
+      required_version:
+        type: integer
+        minimum: 2
+      consumer:
+        type: enum
+        values: [rewrite-github-issue]
+      status:
+        type: enum
+        values: [missing, incomplete, unsupported_version, identity_mismatch]
+      reason:
+        type: string
+      next_step:
+        type: string
   issue:
     type: object
     required: [repository, number, url]
@@ -136,3 +156,4 @@ invariants:
   - Routine create and edit publication may use task_intent, plan_build, repository_policy, or session_continuity authorization; a repository policy may re-enable one interactive publish or overwrite gate.
   - Create mode uses created or created_with_labels; edit mode uses title_body_and_labels.
   - A failed post-publication verification changes status to partial.
+  - prerequisite is null only when a matching ProductInterview version 2 was consumed; otherwise publication remains blocked and the prerequisite identifies the missing or unusable interview.

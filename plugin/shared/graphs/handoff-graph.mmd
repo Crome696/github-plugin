@@ -219,6 +219,7 @@ flowchart LR
   n216["terminal: Ready-for-Review result"]
   n217["terminal: Issue reprioritization result"]
   n218["terminal: Triage issue-closure result"]
+  n219["contract: ProductInterviewPrerequisite"]
 %% edge {"id":"edge:entry:address-pr-feedback","type":"entry","producer":"command:address-pr-feedback","consumer":"agent:feedback-agent","contract":null,"contract_version":null}
   n1 -->|entry| n19
 %% edge {"id":"edge:entry:auto-ci-fix-pr","type":"entry","producer":"command:auto-ci-fix-pr","consumer":"agent:ci-fix-agent","contract":null,"contract_version":null}
@@ -491,8 +492,8 @@ flowchart LR
   n86 -->|LoadedIssue v1| n33
 %% edge {"id":"edge:handoff:product-planning:02","type":"handoff","producer":"skill:analyze-product-issue","consumer":"skill:conduct-product-interview","contract":"contract:ProductAssessment","contract_version":1}
   n33 -->|ProductAssessment v1| n60
-%% edge {"id":"edge:handoff:product-planning:03","type":"handoff","producer":"skill:conduct-product-interview","consumer":"skill:identify-product-capabilities","contract":"contract:ProductInterview","contract_version":1}
-  n60 -->|ProductInterview v1| n79
+%% edge {"id":"edge:handoff:product-planning:03","type":"handoff","producer":"skill:conduct-product-interview","consumer":"skill:identify-product-capabilities","contract":"contract:ProductInterview","contract_version":2}
+  n60 -->|ProductInterview v2| n79
 %% edge {"id":"edge:handoff:product-planning:04","type":"handoff","producer":"skill:identify-product-capabilities","consumer":"skill:decompose-product-capabilities","contract":"contract:ProductCapabilityMap","contract_version":1}
   n79 -->|ProductCapabilityMap v1| n66
 %% edge {"id":"edge:handoff:product-planning:05","type":"handoff","producer":"skill:decompose-product-capabilities","consumer":"skill:assess-issue-atomicity","contract":"contract:ProductCapabilityDecomposition","contract_version":1}
@@ -653,6 +654,18 @@ flowchart LR
   n86 -->|LoadedIssue v1| n102
 %% edge {"id":"edge:handoff:issue-publication:02","type":"handoff","producer":"skill:rewrite-github-issue","consumer":"skill:compare-issue-revision","contract":"contract:IssueDraft","contract_version":2}
   n102 -->|IssueDraft v2| n55
+%% edge {"id":"edge:handoff:issue-publication:03","type":"handoff","producer":"skill:conduct-product-interview","consumer":"skill:structure-issue","contract":"contract:ProductInterview","contract_version":2}
+  n60 -->|ProductInterview v2| n104
+%% edge {"id":"edge:handoff:issue-publication:04","type":"handoff","producer":"skill:conduct-product-interview","consumer":"skill:define-acceptance-criteria","contract":"contract:ProductInterview","contract_version":2}
+  n60 -->|ProductInterview v2| n68
+%% edge {"id":"edge:handoff:issue-publication:05","type":"handoff","producer":"skill:conduct-product-interview","consumer":"skill:rewrite-github-issue","contract":"contract:ProductInterview","contract_version":2}
+  n60 -->|ProductInterview v2| n102
+%% edge {"id":"edge:handoff:issue-publication:06","type":"handoff","producer":"skill:structure-issue","consumer":"agent:issue-agent","contract":"contract:ProductInterviewPrerequisite","contract_version":1}
+  n104 -->|ProductInterviewPrerequisite v1| n22
+%% edge {"id":"edge:handoff:issue-publication:07","type":"handoff","producer":"skill:define-acceptance-criteria","consumer":"agent:issue-agent","contract":"contract:ProductInterviewPrerequisite","contract_version":1}
+  n68 -->|ProductInterviewPrerequisite v1| n22
+%% edge {"id":"edge:handoff:issue-publication:08","type":"handoff","producer":"skill:rewrite-github-issue","consumer":"agent:issue-agent","contract":"contract:ProductInterviewPrerequisite","contract_version":1}
+  n102 -->|ProductInterviewPrerequisite v1| n22
 %% edge {"id":"edge:handoff:issue-reprioritization:01","type":"handoff","producer":"skill:list-open-issues","consumer":"skill:rank-open-issues","contract":"contract:OpenIssueInventory","contract_version":1}
   n85 -->|OpenIssueInventory v1| n95
 %% edge {"id":"edge:handoff:issue-reprioritization:02","type":"handoff","producer":"skill:rank-open-issues","consumer":"skill:apply-issue-priority-titles","contract":"contract:OpenIssueRanking","contract_version":1}

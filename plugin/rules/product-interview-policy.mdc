@@ -18,9 +18,17 @@ elicits the user's decisions.
 
 ## Apply when
 
-Use this rule while creating, structuring, interviewing, rewriting, or
-refining a GitHub product issue, and before locking a decomposition slice
-or publishing a selected issue.
+Use this rule through `conduct-product-interview`, the sole interactive
+product-decision owner, while creating, interviewing, or refining a GitHub
+product issue and before locking a decomposition slice or publishing a
+selected issue.
+
+`structure-issue`, `define-acceptance-criteria`, and
+`rewrite-github-issue` are deterministic consumers of a complete
+`ProductInterview` version 2. They must not apply this rule by starting an
+embedded interview. If the canonical handoff is missing, incomplete,
+unsupported, or mismatched, they return a typed
+`ProductInterviewPrerequisite` instead.
 
 Do not turn analysis-only, quality-assessment, text-only rewrite,
 implementation-planning, review, or merge workflows into this interview.
@@ -55,6 +63,11 @@ for these topics.
 
 MUST:
 
+- Make `conduct-product-interview` the only capability that asks product
+  decision questions in the shared create, refine, and product-planning
+  workflows.
+- Accept both the tagged `new_request` and `loaded_issue` input modes and
+  preserve their evidence provenance in `ProductInterview` version 2.
 - Treat product decomposition as an interview, not as an internal guess.
 - Skip questions whose answers are already evidenced.
 - Challenge ambiguous or contradictory answers instead of smoothing them.
@@ -66,6 +79,11 @@ MUST:
 
 MUST NOT:
 
+- Ask product-decision questions from `structure-issue`,
+  `define-acceptance-criteria`, or `rewrite-github-issue`.
+- Treat any non-v2 ProductInterview handoff as unsupported; never coerce it
+  into v2 or infer missing v2 decisions through an implicit compatibility
+  adapter.
 - Invent essential product decisions or present guesses as confirmed
   requirements.
 - Re-ask a question whose answer is already evidenced.

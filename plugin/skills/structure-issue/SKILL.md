@@ -1,6 +1,6 @@
 ---
 name: structure-issue
-description: Structure issue information into a standardized IssueAssessment model covering product-interview topics without inventing product decisions. Use automatically when gathering or clarifying requirements without publishing; use compose-product-sub-issues for complete atomic sub-issue draft composition.
+description: Deterministically structure issue information into a standardized IssueAssessment from one complete ProductInterview v2 without asking product-decision questions or inventing requirements. Use automatically after conduct-product-interview; use compose-product-sub-issues for complete atomic sub-issue draft composition.
 ---
 
 # Structure Issues
@@ -8,8 +8,9 @@ description: Structure issue information into a standardized IssueAssessment mod
 Turn a vague issue or feature idea into an evidence-backed, standardized
 version-1 `IssueAssessment` handoff for a downstream rewrite or implementation
 workflow.
-Gather the product-interview topics and preserve the distinction between facts,
-confirmed requirements, assumptions, and unresolved questions.
+Map the canonical ProductInterview topics and preserve the distinction between
+facts, confirmed requirements, assumptions, accepted uncertainties, and
+unresolved questions.
 
 ## Boundaries
 
@@ -28,17 +29,12 @@ confirmed requirements, assumptions, and unresolved questions.
 - Never invent behavior, users, constraints, dependencies, risks, or
   acceptance criteria. Separate observed facts, user-confirmed requirements,
   assumptions, and open questions.
-- Ask only one or two critical questions per interview round. Resolve facts
-  from the issue or repository before asking the user to repeat them.
-- Apply [`product-interview-policy.mdc`](../../rules/product-interview-policy.mdc)
-  for the adaptive product dialog. Do not re-ask evidenced answers, invent
-  essential product decisions, or end the interview while material
-  uncertainties remain unaccepted and undocumented.
-- When a version-1 `ProductInterview` is supplied, consume it as optional
-  interview output. Skip the interview and map `confirmed_decisions` into
-  locked fields. Keep `assumptions` and `open_questions` unconfirmed. A
-  `blocked` or `needs_clarification` interview does not make the assessment
-  `ready`.
+- Require one matching `ProductInterview` version 2. This Skill owns no
+  product-decision elicitation and must never ask a substitute interview
+  question.
+- Map `confirmed_decisions` into locked fields. Keep `assumptions`,
+  `accepted_uncertainties`, and `open_questions` unconfirmed. A `blocked` or
+  `needs_clarification` interview does not make the assessment `ready`.
 - When a version-1 `ProductCapabilityMap` is supplied, consume it as optional
   grouping output. Keep one selected capability in scope and treat remaining
   capabilities as explicit non-goals or follow-up. A `blocked` map does not
@@ -62,11 +58,9 @@ confirmed requirements, assumptions, and unresolved questions.
   explicitly chosen eligible unit, in scope. An unconfirmed
   `recommended_class` does not make the assessment `ready`. A `blocked`
   ranking does not make the assessment `ready`.
-- When no `ProductInterview` is supplied and a version-1 `ProductAssessment`
-  is supplied, consume it as optional interview input. Skip topics whose
-  items are `evidenced`. Use `interview_focus`, mixed features, implicit
-  requirements, and unclear decisions to choose the next questions. Do not
-  present `inferred` items as locked requirements.
+- When a `ProductInterview` is missing, incomplete, unsupported, or mismatched,
+  return the typed [`ProductInterviewPrerequisite`](../../shared/schemas/ProductInterviewPrerequisite.yaml)
+  and do not inspect a ProductAssessment as a replacement interview.
 - Apply [`product-decomposition-policy.mdc`](../../rules/product-decomposition-policy.mdc).
   If the request contains more than one independent product outcome, do not
   lock them as one issue. Record the split, keep one selected outcome in
@@ -74,37 +68,27 @@ confirmed requirements, assumptions, and unresolved questions.
 
 ## 1. Establish available context
 
-Identify the target from the issue URL or number, repository, open workspace,
-or current branch. When a version-1 `ProductInterview` is supplied for that
-issue, treat confirmed and skipped-evidenced topics as already gathered and
-do not re-ask them. When no interview record is supplied and a version-1
-`ProductAssessment` is supplied, treat evidenced topics as already gathered
-and do not re-ask them.
-When a live issue is known, read it before asking material questions:
+Identify the target from the verified issue identity or the new-request
+Normalized Brief supplied by the caller. Require a version-2
+`ProductInterview` for that same source. Do not infer identity from the open
+workspace or current branch.
+When a live issue is known, read it before interpreting the source material:
 
 ```text
 gh issue view <number> --repo <owner>/<repo> --json title,body,labels,state,comments,url
 ```
 
 Read only the repository context needed to understand the request. If the
-target issue cannot be identified, ask for the repository and issue number
-before claiming that the result is a valid `IssueAssessment`. A standalone
-requirements brief may still be collected, but its handoff is `blocked` until
-the required issue identity is available.
+target issue or new-request identity cannot be identified, return a blocked
+assessment with a typed `ProductInterviewPrerequisite`; do not ask for
+missing product decisions in this Skill.
 
-## 2. Interview for product decisions
+## 2. Consume the canonical interview
 
-Skip this step when a version-1 `ProductInterview` with `status: complete` is
-supplied. Map its confirmed decisions into the `IssueAssessment` fields
-below. If that record is `needs_clarification` or `blocked`, keep this
-assessment from becoming `ready`.
-
-Otherwise prioritize questions that can change scope, readiness, atomicity,
-or acceptance. Apply
-[`product-interview-policy.mdc`](../../rules/product-interview-policy.mdc)
-and cover its topics only where the answer is not already evidenced by the
-issue, repository, a supplied version-1 `ProductAssessment`, a supplied
-version-1 `ProductInterview`, or a prior user confirmation:
+Require a complete `ProductInterview` version 2 and map its confirmed
+decisions into the `IssueAssessment` fields below. Never ask questions here.
+If the record is `needs_clarification` or `blocked`, return the assessment as
+not ready and preserve the typed prerequisite or interview failure.
 
 1. **Problem** — What problem exists, for whom, and what impact or evidence
    demonstrates it?
@@ -134,10 +118,10 @@ variants into `locked_requirements` or `target_behavior`; edge cases into
 into `platforms_and_integrations` and `technical_constraints`; out-of-scope
 into `explicit_non_goals`. Do not add contract fields.
 
-Use one or two questions to close the highest-impact gaps in each round. Do
-not ask broad questionnaires. Challenge ambiguous or contradictory answers.
-Stop interviewing only when remaining uncertainties are explicitly accepted
-or documented as open points.
+Use only the evidence already present in the canonical interview. Treat
+`accepted_uncertainties` as explicitly accepted residual risk, not as locked
+requirements. Do not re-extract or reinterpret decisions from the live issue
+when doing so would create a second elicitation path.
 
 ## 3. Lock and assess the requirements
 
@@ -164,8 +148,8 @@ Set the assessment status as follows:
   [`product-interview-policy.mdc`](../../rules/product-interview-policy.mdc),
   and the locked scope is nearly atomic under
   [`product-decomposition-policy.mdc`](../../rules/product-decomposition-policy.mdc).
-- `blocked` when a required source or precondition is unavailable, such as a
-  missing issue identity or inaccessible live issue.
+- `blocked` when a required source or precondition is unavailable, including a
+  missing, incomplete, unsupported, or identity-mismatched ProductInterview.
 
 Set `implementation_ready` to `true` only for `ready`. A non-empty material
 `open_questions` list always makes `implementation_ready` `false`.
@@ -178,6 +162,7 @@ provide the following English handoff using the field names from
 
 ```yaml
 status: ready
+prerequisite: null
 issue:
   repository: owner/repository
   number: 123
@@ -225,7 +210,8 @@ readiness in `assumptions` or `open_questions`. Keep label operations empty
 unless the user explicitly requests label planning; this skill never applies
 label changes.
 
-When issue identity or another required precondition is missing, preserve the
-same structure, set `status: blocked`, set `implementation_ready: false`, and
-describe the missing evidence in `open_questions`. Do not replace unknown
-repository facts with placeholders that look real.
+When the ProductInterview prerequisite is missing or unusable, preserve the
+same structure, set `status: blocked`, set `implementation_ready: false`,
+return the exact prerequisite object, and describe the missing evidence in
+`open_questions`. Do not replace unknown repository facts with placeholders
+that look real or ask a second interview.

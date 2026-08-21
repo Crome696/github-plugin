@@ -45,8 +45,9 @@ contracts plus the `HandoffGraph v1` architecture meta-schema.
 | `LoadedIssue` | Read-only snapshot of one issue, including preserved content, metadata, comments, related pull requests, and availability evidence. |
 | `IssueAnalysis` | Evidence-based requirements, gaps, contradictions, findings, and implementation-readiness analysis. |
 | `ProductAssessment` | Read-only product-topic extraction from one parent issue as interview-prep, including mixed features, implicit requirements, and unclear decisions, without creating sub-issues. |
-| `ProductInterview` | Adaptive product-interview record from one ProductAssessment, including confirmed decisions, assumptions, and open questions for later decomposition, without creating sub-issues. |
-| `ProductCapabilityMap` | Hierarchical Capability Map from one parent issue and one confirmed ProductInterview, grouping requirements by independently understandable Product Value without creating sub-issues. |
+| `ProductInterview` | Version 2 canonical adaptive product-interview record for either a normalized new request or a loaded issue, including confirmed decisions, assumptions, open questions, accepted uncertainties, and source provenance without creating sub-issues. |
+| `ProductInterviewPrerequisite` | Version 1 typed prerequisite emitted by deterministic requirements, criteria, and rewrite consumers when ProductInterview v2 is missing, incomplete, unsupported, or mismatched. |
+| `ProductCapabilityMap` | Hierarchical Capability Map from one parent issue and one confirmed ProductInterview v2, grouping requirements by independently understandable Product Value without creating sub-issues. |
 | `ProductCapabilityDecomposition` | Iterative decomposition of confirmed Product Capabilities into the smallest value-oriented units with one observable outcome and independent acceptance, without creating sub-issues. |
 | `IssueAtomicityAssessment` | Read-only atomicity classification of each proposed sub-issue candidate as too-large, atomic-enough, or over-fragmented, without creating sub-issues. |
 | `ProductDependencyGraph` | Read-only directed dependency graph of classified sub-issue candidates, distinguishing evidenced product and mandatory technical relations without ranking slices by technical order or creating sub-issues. |

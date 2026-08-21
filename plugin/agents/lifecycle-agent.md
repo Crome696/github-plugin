@@ -110,8 +110,8 @@ not continue to refine until that identity is verified.
 ### 2. Refine the issue
 
 Start `issue-agent` with `mode: refine` for the exact published or verified
-existing issue. The Agent owns the adaptive product interview through
-`conduct-product-interview`, the Capability Map through
+existing issue. The Agent owns the canonical version-2 product interview
+through `conduct-product-interview`, the Capability Map through
 `identify-product-capabilities`, atomic decomposition through
 `decompose-product-capabilities`, atomicity assessment through
 `assess-issue-atomicity`, dependency graph through

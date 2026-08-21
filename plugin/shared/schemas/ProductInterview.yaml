@@ -1,29 +1,183 @@
 schema: ProductInterview
-version: 1
-description: Structured record of an adaptive product interview based on one ProductAssessment, capturing confirmed decisions, assumptions, and open questions for later decomposition without creating sub-issues.
+version: 2
+description: Canonical versioned record of one adaptive product interview for either a new request or a loaded issue, capturing confirmed decisions, assumptions, open questions, and explicitly accepted uncertainties without creating sub-issues.
 required:
   - status
+  - input
   - source
   - coverage
   - confirmed_decisions
   - assumptions
   - open_questions
+  - accepted_uncertainties
   - recommended_next_skill
   - failure
 fields:
   status:
     type: enum
     values: [complete, needs_clarification, blocked]
+  input:
+    type: object
+    required: [mode]
+    fields:
+      mode:
+        type: enum
+        values: [new_request, loaded_issue]
+      normalized_brief:
+        type: object | null
+        required:
+          - target_repository
+          - source_request
+          - desired_outcome
+          - affected_user_or_problem
+          - current_behavior
+          - target_behavior
+          - in_scope
+          - out_of_scope
+          - platforms_and_integrations
+          - technical_constraints
+          - acceptance_criteria
+          - verification_approach
+          - future_context
+          - proposed_label_additions
+          - open_questions
+        fields:
+          target_repository:
+            type: string
+            format: owner/repository
+          source_request:
+            type: string
+          desired_outcome:
+            type: string
+          affected_user_or_problem:
+            type: string
+          current_behavior:
+            type: string
+          target_behavior:
+            type: string
+          in_scope:
+            type: list
+            items: string
+          out_of_scope:
+            type: list
+            items: string
+          platforms_and_integrations:
+            type: list
+            items: string
+          technical_constraints:
+            type: list
+            items: string
+          acceptance_criteria:
+            type: list
+            items: string
+          verification_approach:
+            type: list
+            items: string
+          future_context:
+            type: list
+            items: string
+          proposed_label_additions:
+            type: list
+            items: string
+          open_questions:
+            type: list
+            items: string
+      loaded_issue:
+        type: object | null
+        required: [schema, version, status, issue, unavailable_fields, failure]
+        fields:
+          schema:
+            type: enum
+            values: [LoadedIssue]
+          version:
+            type: integer
+            minimum: 1
+          status:
+            type: enum
+            values: [loaded, partial, blocked]
+          issue:
+            type: object
+            required: [repository, number, url]
+            fields:
+              repository:
+                type: string
+                format: owner/repository
+              number:
+                type: integer
+                minimum: 1
+              url:
+                type: string
+                format: uri
+          metadata:
+            type: object | null
+            fields:
+              retrieved_at:
+                type: string | null
+                format: iso-8601
+          unavailable_fields:
+            type: list
+            items: string
+          failure:
+            type: object | null
+            required: [code, message, operation, retryable]
+            fields:
+              code:
+                type: enum
+                values:
+                  - missing_identity
+                  - invalid_issue_number
+                  - repository_not_found
+                  - issue_not_found
+                  - inaccessible
+                  - auth_unavailable
+                  - api_failure
+              message:
+                type: string
+              operation:
+                type: string
+              retryable:
+                type: boolean
+      product_assessment:
+        type: object | null
+        required: [schema, version, status, source]
+        fields:
+          schema:
+            type: enum
+            values: [ProductAssessment]
+          version:
+            type: integer
+            minimum: 1
+          status:
+            type: enum
+            values: [analyzed, partial, blocked]
+          source:
+            type: object
+            required: [repository, number, url]
+            fields:
+              repository:
+                type: string
+                format: owner/repository
+              number:
+                type: integer
+                minimum: 1
+              url:
+                type: string
+                format: uri
   source:
     type: object | null
     required:
+      - input_mode
       - repository
       - number
       - url
+      - loaded_issue_version
       - product_assessment_version
       - product_assessment_status
       - unavailable_fields
     fields:
+      input_mode:
+        type: enum
+        values: [new_request, loaded_issue]
       repository:
         type: string | null
         format: owner/repository
@@ -33,11 +187,13 @@ fields:
       url:
         type: string | null
         format: uri
+      loaded_issue_version:
+        type: integer | null
       product_assessment_version:
-        type: integer
+        type: integer | null
       product_assessment_status:
         type: enum
-        values: [analyzed, partial, blocked]
+        values: [analyzed, partial, blocked, not_applicable]
       unavailable_fields:
         type: list
         items: string
@@ -120,7 +276,7 @@ fields:
           type: string
         origin:
           type: enum
-          values: [user_confirmed, assessment_evidenced, assumed]
+          values: [user_confirmed, assessment_evidenced]
   assumptions:
     type: list
     items:
@@ -176,13 +332,42 @@ fields:
           type: string
         origin:
           type: enum
-          values: [user_confirmed, assessment_evidenced, assumed]
+          values: [user_confirmed, assessment_evidenced]
+  accepted_uncertainties:
+    type: list
+    items:
+      type: object
+      required: [topic, text, evidence, origin]
+      fields:
+        topic:
+          type: enum
+          values:
+            - problem
+            - outcome
+            - actors
+            - user_journeys
+            - behavior
+            - variants
+            - business_rules
+            - edge_cases
+            - priorities
+            - dependencies
+            - constraints
+            - non_goals
+        text:
+          type: string
+        evidence:
+          type: string
+        origin:
+          type: enum
+          values: [user_accepted]
   recommended_next_skill:
     type: enum
     values:
       - identify-product-capabilities
       - rewrite-github-issue
       - structure-issue
+      - define-acceptance-criteria
       - none
   failure:
     type: object | null
@@ -196,6 +381,8 @@ fields:
           - unsupported_version
           - blocked_source
           - incomplete_source
+          - prerequisite_required
+          - identity_mismatch
           - interview_failure
       message:
         type: string
@@ -204,13 +391,17 @@ fields:
       retryable:
         type: boolean
 invariants:
-  - source preserves the ProductAssessment issue identity, contract version, status, and unavailable fields without inventing replacements.
-  - complete status requires a valid ProductAssessment version 1 and remaining uncertainties that are either resolved or explicitly accepted as documented open points.
-  - needs_clarification status means a material product topic remains uncovered or unaccepted; failure identifies the remaining interview gap.
-  - blocked status means the ProductAssessment is missing, invalid, unsupported, or blocked; coverage and inventories contain no fabricated product decisions.
-  - user_journeys maps from ProductAssessment.topics.use_cases; mixed features remain diagnosis only and never create GitHub sub-issues.
-  - confirmed_decisions contain only user_confirmed or assessment_evidenced items; inferred ProductAssessment items are never recorded as confirmed.
-  - assumptions and open_questions remain unconfirmed until the user confirms them or explicitly accepts them as residual risk.
+  - input.mode is new_request only when normalized_brief is present and loaded_issue and product_assessment are null.
+  - input.mode is loaded_issue only when a LoadedIssue version 1 and a matching ProductAssessment version 1 are present.
+  - source preserves the input mode, source identity, LoadedIssue version, ProductAssessment version/status, and unavailable fields without inventing replacements.
+  - loaded_issue preserves the exact LoadedIssue identity, status, unavailable_fields, and failure provenance; product_assessment preserves its source identity and deterministic assessment status.
+  - New-request source.number and source.url remain null before issue publication.
+  - complete status requires a valid canonical v2 input and remaining uncertainties that are either resolved or explicitly accepted in accepted_uncertainties.
+  - needs_clarification status means a material product topic remains uncovered, challenged, or unaccepted; failure identifies the remaining interview gap.
+  - blocked status means the canonical input is missing, invalid, unsupported, mismatched, or blocked; coverage and inventories contain no fabricated product decisions.
+  - user_journeys maps from ProductAssessment.topics.use_cases for loaded issues and from the normalized brief for new requests; mixed features remain diagnosis only and never create GitHub sub-issues.
+  - confirmed_decisions contain only user_confirmed or assessment_evidenced items; inferred items are never recorded as confirmed.
+  - assumptions and open_questions remain unconfirmed; accepted_uncertainties are explicitly accepted residuals and never become confirmed requirements.
   - coverage marks each interview topic confirmed, skipped_evidenced, open, or challenged; skipped_evidenced topics are not re-asked.
   - recommended_next_skill names at most one follow-up and does not authorize or invoke it.
   - failure is null for complete results and non-null for needs_clarification or blocked results.

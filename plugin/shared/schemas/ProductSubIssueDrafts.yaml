@@ -67,6 +67,7 @@ fields:
         values: [graphed, partial, blocked]
       product_interview_version:
         type: integer | null
+        minimum: 2
       product_interview_status:
         type: enum | null
         values: [complete, needs_clarification, blocked]
@@ -386,7 +387,8 @@ invariants:
   - Every body is independently understandable and contains parent reference, problem and outcome, scope, observable behavior, acceptance criteria, dependencies, confirmed priority, relevant constraints, and traceability to exactly one parent capability and the original requirement IDs.
   - No draft invents APIs, files, layers, technical components, implementation-plan steps, test suites, or other implementation details absent from the supplied evidence.
   - Hard dependencies come only from evidenced blocks or requires relations and contextual enables or related relations never become hard ordering constraints.
-  - Constraints and acceptance criteria come only from supplied evidence or confirmed decisions; ProductInterview assumptions and open_questions are not requirements.
+  - Constraints and acceptance criteria come only from supplied evidence or confirmed decisions; ProductInterview assumptions, accepted_uncertainties, and open_questions are not requirements.
+  - When ProductInterview is supplied, its source version is 2; an older or unsupported interview blocks composition rather than being adapted implicitly.
   - >-
     canonical_identity.digest is exactly 64 lowercase hexadecimal characters
     produced by SHA-256 over canonicalization version 1: repository and parent

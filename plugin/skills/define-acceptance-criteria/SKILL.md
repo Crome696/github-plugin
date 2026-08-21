@@ -1,12 +1,13 @@
 ---
 name: define-acceptance-criteria
-description: Formulate observable, testable acceptance criteria from feature requests, issue briefs, and scoped requirements. Use automatically when users ask for acceptance criteria, Akzeptanzkriterien, Given/When/Then checks, a Definition of Done, or verifiable completion conditions; do not use for full issue rewrites or requirements structuring.
+description: Deterministically formulate observable, testable acceptance criteria from one complete ProductInterview v2. Use automatically after conduct-product-interview when users need acceptance criteria, Akzeptanzkriterien, Given/When/Then checks, a Definition of Done, or verifiable completion conditions; do not use for full issue rewrites or requirements structuring.
 ---
 
 # Define Acceptance Criteria
 
-Turn a requested outcome into a small set of observable pass/fail conditions
-that another person can implement and verify without guessing.
+Turn the confirmed decisions from one canonical ProductInterview v2 into a
+small set of observable pass/fail conditions that another person can implement
+and verify without guessing.
 
 ## Boundaries
 
@@ -17,6 +18,14 @@ that another person can implement and verify without guessing.
 - Do not edit repository files, GitHub issues, labels, comments, or issue state.
 - Do not invent product decisions, actors, thresholds, platforms, error
   behavior, or non-goals.
+- Require one matching `ProductInterview` version 2. This Skill owns no
+  product-decision elicitation and must not ask gap-closing questions.
+- Consume only `confirmed_decisions`. Keep assumptions, accepted
+  uncertainties, and open questions out of acceptance requirements.
+- When the interview is missing, incomplete, unsupported, or mismatched,
+  return a typed [`ProductInterviewPrerequisite`](../../shared/schemas/ProductInterviewPrerequisite.yaml)
+  with `consumer: define-acceptance-criteria` instead of starting an embedded
+  interview.
 - A direct text-only rewrite of a complete GitHub issue belongs to
   [rewrite-issue](../rewrite-issue/SKILL.md); an interview-driven
   publication rewrite belongs to
@@ -28,23 +37,19 @@ that another person can implement and verify without guessing.
 
 ## Workflow
 
-1. Read the available issue, brief, or scope before asking questions. Extract
-   the desired outcome, affected actor or system, relevant trigger, target
-   behavior, and explicit non-goals.
-2. Identify only the gaps that could change whether a criterion passes. Ask no
-   more than one or two focused questions per round. If the user wants a
-   quick draft, state unresolved assumptions instead of presenting them as
-   confirmed requirements.
-3. Split the outcome into independent behaviors. Cover the normal success path
+1. Validate the supplied ProductInterview v2 and its source identity. Do not
+   replace it with a live issue, brief, ProductAssessment, or user question.
+2. Read only `confirmed_decisions` and separate them into independent
+   behaviors. Cover the normal success path
    and, when the scope includes them, validation, error, permission, and state
    boundary behavior.
-4. Write each behavior as an observable condition with a clear pass/fail
+3. Write each behavior as an observable condition with a clear pass/fail
    result. Prefer `Given/When/Then`; use an equivalent checkbox statement when
    the context does not fit that structure.
-5. Add one verification hint for each criterion when a relevant check,
+4. Add one verification hint for each criterion when a relevant check,
    command, test, or observation is known. Do not claim that a check passed
    unless it was actually performed.
-6. Return a concise conversational summary, followed by the English
+5. Return a concise conversational summary, followed by the English
    acceptance-criteria artifact.
 
 ## Quality rules
@@ -63,8 +68,9 @@ that another person can implement and verify without guessing.
   acceptance-criteria set that hides the split. Cover the selected outcome
   only and record the remainder as out of scope.
 - Replace vague terms such as "fast", "easy", "better", and "user-friendly"
-  with an agreed observable measure. If no measure exists, ask for one or
-  record the missing decision as an open question.
+  with an agreed observable measure. If no measure exists in the confirmed
+  decisions, preserve the gap as non-ready evidence and return the canonical
+  prerequisite or open question; do not ask for the missing decision here.
 - Do not combine unrelated outcomes into one checkbox. Do not turn a
   verification step into a requirement.
 - Include negative or boundary behavior only when the requested scope defines
@@ -104,6 +110,12 @@ Use this structure and keep the criteria in English:
 - Include this section only when a material decision is still unresolved.
 ```
 
-When the context is insufficient for a pass/fail criterion, do not fill the
-gap with a guess. Explain the missing decision in the conversation language
-and list it under `Open questions` in the English artifact.
+When the canonical interview prerequisite is not satisfied, return no
+acceptance criteria and provide the exact `ProductInterviewPrerequisite` v1
+object with `consumer: define-acceptance-criteria`, `required_version: 2`,
+the failure status, and the next step `conduct-product-interview`.
+
+When the confirmed evidence is insufficient for a pass/fail criterion, do not
+fill the gap with a guess. Preserve the canonical interview's open question or
+accepted uncertainty and return the prerequisite or non-ready result instead
+of asking for the decision here.

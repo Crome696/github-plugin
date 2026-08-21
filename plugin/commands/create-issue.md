@@ -15,7 +15,9 @@ interview, drafting, validation, or publication behavior.
 2. Start `issue-agent` with `mode: create`, the verified repository, and
    `$ARGUMENTS` or the current request. Stop when the target is missing,
    ambiguous, or an existing issue is the primary target.
-3. Display the Agent's exact current result, including the target, draft status,
+3. The Agent owns the `conduct-product-interview` version-2 prerequisite for
+   the new request before structuring requirements or deriving criteria.
+   Display the Agent's exact current result, including the target, draft status,
    payload, blockers, authorization, and any publication or verification result.
    Preserve the Agent's structured `IssueDraft` handoff and do not perform a
    second publication.

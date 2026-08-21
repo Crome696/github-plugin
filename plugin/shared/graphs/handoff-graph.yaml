@@ -1449,11 +1449,20 @@ nodes:
   - id: "contract:ProductInterview"
     type: "contract"
     name: "ProductInterview"
-    version: 1
+    version: 2
     meta: false
     source: "plugin/shared/schemas/ProductInterview.yaml"
     evidence:
       - "plugin/shared/schemas/ProductInterview.yaml"
+      - "plugin/shared/schemas/README.md"
+  - id: "contract:ProductInterviewPrerequisite"
+    type: "contract"
+    name: "ProductInterviewPrerequisite"
+    version: 1
+    meta: false
+    source: "plugin/shared/schemas/ProductInterviewPrerequisite.yaml"
+    evidence:
+      - "plugin/shared/schemas/ProductInterviewPrerequisite.yaml"
       - "plugin/shared/schemas/README.md"
   - id: "contract:ProductIssuePrioritization"
     type: "contract"
@@ -3878,7 +3887,7 @@ edges:
     visibility: "internal"
     optional: false
     mode: null
-    condition: null
+    condition: "create uses input.mode=new_request; refine uses input.mode=loaded_issue"
     sequence: 6
     identity_requirements:
       - "repository identity"
@@ -5355,12 +5364,12 @@ edges:
     producer: "skill:conduct-product-interview"
     consumer: "skill:identify-product-capabilities"
     contract: "contract:ProductInterview"
-    contract_version: 1
+    contract_version: 2
     owning_workflow: "product-planning"
     visibility: "internal"
     optional: false
     mode: null
-    condition: null
+    condition: "Only for input.mode=loaded_issue with matching LoadedIssue v1 and ProductAssessment v1 repository and issue identity."
     sequence: 3
     identity_requirements:
       - "repository identity"
@@ -7456,6 +7465,165 @@ edges:
     evidence:
       - "plugin/skills/rewrite-github-issue/SKILL.md"
       - "plugin/skills/compare-issue-revision/SKILL.md"
+  - id: "edge:handoff:issue-publication:03"
+    type: "handoff"
+    producer: "skill:conduct-product-interview"
+    consumer: "skill:structure-issue"
+    contract: "contract:ProductInterview"
+    contract_version: 2
+    owning_workflow: "issue-publication"
+    visibility: "internal"
+    optional: false
+    mode: "create"
+    condition: "Only after the canonical interview is complete and its input mode and repository identity match the request."
+    sequence: 3
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/conduct-product-interview/SKILL.md"
+      - "plugin/skills/structure-issue/SKILL.md"
+      - "plugin/agents/issue-agent.md"
+  - id: "edge:handoff:issue-publication:04"
+    type: "handoff"
+    producer: "skill:conduct-product-interview"
+    consumer: "skill:define-acceptance-criteria"
+    contract: "contract:ProductInterview"
+    contract_version: 2
+    owning_workflow: "issue-publication"
+    visibility: "internal"
+    optional: false
+    mode: "create"
+    condition: "Only after the canonical interview is complete; criteria are derived from confirmed decisions only."
+    sequence: 4
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/conduct-product-interview/SKILL.md"
+      - "plugin/skills/define-acceptance-criteria/SKILL.md"
+      - "plugin/agents/issue-agent.md"
+  - id: "edge:handoff:issue-publication:05"
+    type: "handoff"
+    producer: "skill:conduct-product-interview"
+    consumer: "skill:rewrite-github-issue"
+    contract: "contract:ProductInterview"
+    contract_version: 2
+    owning_workflow: "issue-publication"
+    visibility: "internal"
+    optional: true
+    mode: "refine"
+    condition: "Only for interview-driven refinement after the loaded issue and assessment identities match."
+    sequence: 5
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/conduct-product-interview/SKILL.md"
+      - "plugin/skills/rewrite-github-issue/SKILL.md"
+      - "plugin/agents/issue-agent.md"
+  - id: "edge:handoff:issue-publication:06"
+    type: "handoff"
+    producer: "skill:structure-issue"
+    consumer: "agent:issue-agent"
+    contract: "contract:ProductInterviewPrerequisite"
+    contract_version: 1
+    owning_workflow: "issue-publication"
+    visibility: "internal"
+    optional: true
+    mode: "create|refine"
+    condition: "Only when ProductInterview v2 is missing, incomplete, unsupported, or identity-mismatched."
+    sequence: 6
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/structure-issue/SKILL.md"
+      - "plugin/shared/schemas/ProductInterviewPrerequisite.yaml"
+  - id: "edge:handoff:issue-publication:07"
+    type: "handoff"
+    producer: "skill:define-acceptance-criteria"
+    consumer: "agent:issue-agent"
+    contract: "contract:ProductInterviewPrerequisite"
+    contract_version: 1
+    owning_workflow: "issue-publication"
+    visibility: "internal"
+    optional: true
+    mode: "create"
+    condition: "Only when ProductInterview v2 is missing, incomplete, unsupported, or identity-mismatched."
+    sequence: 7
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/define-acceptance-criteria/SKILL.md"
+      - "plugin/shared/schemas/ProductInterviewPrerequisite.yaml"
+  - id: "edge:handoff:issue-publication:08"
+    type: "handoff"
+    producer: "skill:rewrite-github-issue"
+    consumer: "agent:issue-agent"
+    contract: "contract:ProductInterviewPrerequisite"
+    contract_version: 1
+    owning_workflow: "issue-publication"
+    visibility: "internal"
+    optional: true
+    mode: "refine"
+    condition: "Only when ProductInterview v2 is missing, incomplete, unsupported, or identity-mismatched."
+    sequence: 8
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/rewrite-github-issue/SKILL.md"
+      - "plugin/shared/schemas/ProductInterviewPrerequisite.yaml"
   - id: "edge:handoff:issue-reprioritization:01"
     type: "handoff"
     producer: "skill:list-open-issues"
@@ -7466,7 +7634,7 @@ edges:
     visibility: "internal"
     optional: false
     mode: null
-    condition: null
+    condition: "Only when the explicitly documented mode, authorization, or current-state condition is satisfied."
     sequence: 1
     identity_requirements:
       - "repository identity"
@@ -9170,12 +9338,15 @@ contract_classifications:
       - "plugin/agents/issue-agent.md"
       - "plugin/agents/product-planner-agent.md"
   - contract: "contract:ProductInterview"
-    contract_version: 1
+    contract_version: 2
     classification: "consumed"
     produced_by:
       - "skill:conduct-product-interview"
     consumed_by:
       - "skill:identify-product-capabilities"
+      - "skill:structure-issue"
+      - "skill:define-acceptance-criteria"
+      - "skill:rewrite-github-issue"
       - "agent:issue-agent"
       - "agent:product-planner-agent"
     rationale: "The current source inventory declares this versioned handoff for a downstream Skill, Agent, or host boundary."
@@ -9186,6 +9357,24 @@ contract_classifications:
       - "plugin/shared/schemas/README.md"
       - "plugin/agents/issue-agent.md"
       - "plugin/agents/product-planner-agent.md"
+  - contract: "contract:ProductInterviewPrerequisite"
+    contract_version: 1
+    classification: "consumed"
+    produced_by:
+      - "skill:structure-issue"
+      - "skill:define-acceptance-criteria"
+      - "skill:rewrite-github-issue"
+    consumed_by:
+      - "agent:issue-agent"
+    rationale: "The current source inventory declares this typed blocked handoff for deterministic ProductInterview consumers."
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/shared/schemas/ProductInterviewPrerequisite.yaml"
+      - "plugin/shared/schemas/README.md"
+      - "plugin/skills/structure-issue/SKILL.md"
+      - "plugin/skills/define-acceptance-criteria/SKILL.md"
+      - "plugin/skills/rewrite-github-issue/SKILL.md"
   - contract: "contract:ProductIssuePrioritization"
     contract_version: 1
     classification: "consumed"

@@ -30,8 +30,8 @@ The behavioral source of truth for each stage is:
   issue snapshot used by refine mode.
 - `plugin/skills/analyze-product-issue/SKILL.md` for the read-only
   parent-issue product assessment used by refine mode as interview-prep.
-- `plugin/skills/conduct-product-interview/SKILL.md` for the adaptive
-  product interview used by refine mode after the product assessment.
+- `plugin/skills/conduct-product-interview/SKILL.md` for the sole canonical
+  product interview used by create and refine modes.
 - `plugin/skills/identify-product-capabilities/SKILL.md` for the
   hierarchical Capability Map used by refine mode after the confirmed
   interview.
@@ -79,7 +79,10 @@ or unsupported metadata change.
 
 ## Contract handoffs
 
-- Refine mode consumes an optional version-1 `LoadedIssue`.
+- Create mode produces a canonical `ProductInterview` version 2 from the
+  normalized brief; refine mode consumes an optional version-1 `LoadedIssue`
+  and matching version-1 `ProductAssessment` before producing the same
+  version-2 interview.
 - Both modes produce exactly one version-2 `IssueDraft`; publication remains
   owned by `create-github-issue`.
 
@@ -88,10 +91,10 @@ or unsupported metadata change.
 The primary responsibility is to guide one issue through the workflow selected
 by its Agent mode:
 
-- `create`: requirements collection, acceptance-criteria definition, quality
-  assessment, bounded gap resolution, exact payload validation, and create
-  handoff.
-- `refine`: live loading, product assessment of the parent issue, adaptive
+- `create`: normalized-request interview through
+  `conduct-product-interview`, deterministic requirements structuring,
+  acceptance-criteria derivation, quality assessment, and create handoff.
+- `refine`: live loading, product assessment of the parent issue, canonical
   product interview through `conduct-product-interview`, Capability Map
   through `identify-product-capabilities`, atomic decomposition through
   `decompose-product-capabilities`, atomicity assessment through
@@ -180,36 +183,42 @@ Proposed label additions:
 Open questions:
 ```
 
-Ask no more than one or two critical questions per interview round. Resolve
-facts from the available repository context before asking the user to repeat
-them. Apply
-`plugin/rules/product-interview-policy.mdc`: skip evidenced answers,
-challenge contradictions, and do not invent essential product decisions. Read
-only the applicable instructions, README, contribution guidance,
-architecture notes, configuration, or nearby source and tests needed to
-resolve a material question. Do not turn issue preparation into a repository
-audit.
+Resolve facts from the available repository context before asking the user to
+repeat them. Do not perform product elicitation in this collection step; the
+canonical interview Skill owns those questions. Read only the applicable
+instructions, README, contribution guidance, architecture notes,
+configuration, or nearby source and tests needed to resolve a material fact.
+Do not turn issue preparation into a repository audit.
 
-### 2. Elicit and structure requirements
+### 2. Conduct the canonical new-request interview
+
+Apply `plugin/skills/conduct-product-interview/SKILL.md` to the normalized
+brief using `input.mode: new_request`. Carry the resulting version-2
+`ProductInterview` forward unchanged. If it is `blocked` or
+`needs_clarification`, stop or preserve the typed prerequisite; do not ask
+product-decision questions in a later Skill.
+
+### 3. Structure requirements
 
 Apply
 `plugin/skills/structure-issue/SKILL.md` to the normalized brief.
-Cover the product-interview topics and map them into the Skill's existing
-`IssueAssessment` fields. Separate:
+Supply the complete version-2 `ProductInterview` and map its confirmed
+decisions into the Skill's existing `IssueAssessment` fields. Separate:
 
 - locked requirements confirmed by the user or direct evidence;
 - future context that is not part of this issue;
 - explicit non-goals;
-- assumptions and the evidence needed to confirm them;
+- assumptions, accepted uncertainties, and the evidence needed to confirm
+  them;
 - open questions that could materially change scope or implementation.
 
 For this new-issue flow there is intentionally no live issue number before
 publication. Do not invent an issue number, URL, title, body, labels, or live
 issue evidence to make an `IssueAssessment` appear ready. Use the Skill's
-standalone requirements-collection behavior, and keep the requirements record
-blocked or in clarification when its required evidence is missing. Only
+deterministic consumer behavior and keep the requirements record blocked or
+in clarification when the canonical interview evidence is missing. Only
 continue when remaining product uncertainties are explicitly accepted or
-documented as open points.
+documented as open points in the interview.
 
 Apply `plugin/rules/product-interview-policy.mdc` and
 `plugin/rules/product-decomposition-policy.mdc` before locking
@@ -225,19 +234,19 @@ make a request look atomic.
 The requirements stage never edits GitHub, repository files, labels, comments,
 or issue state.
 
-### 3. Define acceptance criteria
+### 4. Define acceptance criteria
 
 Apply
-`plugin/skills/define-acceptance-criteria/SKILL.md` to the structured
-requirements. Produce a small set of independent, observable English
-conditions, preferably in `Given / When / Then` form, and one verification
-hint for each criterion when a relevant check is known.
+`plugin/skills/define-acceptance-criteria/SKILL.md` to the same complete
+version-2 `ProductInterview`. Produce a small set of independent, observable
+English conditions, preferably in `Given / When / Then` form, and one
+verification hint for each criterion when a relevant check is known.
 
 Do not invent actors, thresholds, error behavior, permissions, platforms,
 non-goals, or implementation details. Include validation, error, permission,
-or boundary behavior only when the request defines that behavior. If a
-material decision is required for a pass/fail criterion, ask one or two
-focused questions and record the unresolved decision instead of guessing.
+or boundary behavior only when the confirmed interview defines that behavior.
+If a material decision is absent, preserve the interview prerequisite rather
+than asking a second question.
 
 ### 4. Assemble the exact draft
 
@@ -449,22 +458,18 @@ remain diagnostic findings for the interview; this stage does not create
 GitHub issues or lock a split. Implementation-readiness analysis belongs to
 preparation via `analyze-issue`, not this refine stage.
 
-### 3. Conduct the adaptive product interview
+### 3. Conduct the canonical loaded-issue interview
 
 Apply `plugin/skills/conduct-product-interview/SKILL.md` to the
-version-1 `ProductAssessment`. Use the resulting version-1 `ProductInterview`
-as the locked interview record: skip evidenced topics, treat assumptions as
-unconfirmed, and carry confirmed decisions, remaining assumptions, and open
-questions into drafting. The interview does not rewrite the issue or create
-sub-issues.
+version-1 `LoadedIssue` and matching version-1 `ProductAssessment` using
+`input.mode: loaded_issue`. Use the resulting version-2 `ProductInterview` as
+the locked interview record: carry confirmed decisions, assumptions, accepted
+uncertainties, and open questions into drafting. The interview does not
+rewrite the issue or create sub-issues.
 
-Ask no more than one or two critical questions per round. Apply
-`plugin/rules/product-interview-policy.mdc`. Unsuccessful
-clarification converts remaining material topics into documented open points;
-without explicit user acceptance of those points, stop with `blocked` rather
-than inventing a decision. Challenge the same ambiguity once, then treat it
-as an unresolved open point. Do not use a round budget to end the interview
-while material product topics remain uncovered.
+No later Skill may ask a product-decision question. An incomplete or blocked
+interview stops the workflow with its status or typed prerequisite rather than
+inventing a decision.
 
 A `blocked` interview stops the workflow. A `needs_clarification` interview
 continues only after the user accepts the residual open points or supplies
@@ -474,7 +479,7 @@ selected outcome in the interview and do not create GitHub issues.
 ### 4. Identify product capabilities
 
 Apply `plugin/skills/identify-product-capabilities/SKILL.md` to the
-loaded parent issue and the confirmed version-1 `ProductInterview`. Use the
+loaded parent issue and the confirmed version-2 `ProductInterview`. Use the
 resulting version-1 `ProductCapabilityMap` as the grouping record: assign
 requirements by independently understandable Product Value, keep overlaps and
 gaps visible, and carry the map into decomposition. The map does
@@ -554,7 +559,7 @@ wait for an explicit `selected_unit_id`. Skip this step when only one
 
 Apply `plugin/skills/rewrite-github-issue/SKILL.md` as the behavioral
 source of truth for English title/body drafting and label hygiene. Start from
-the loaded issue, the version-1 `ProductAssessment`, the version-1
+the loaded issue, the version-1 `ProductAssessment`, the version-2
 `ProductInterview`, the version-1 `ProductCapabilityMap`, the version-1
 `ProductCapabilityDecomposition`, the version-1 `IssueAtomicityAssessment`,
 the version-1 `ProductDependencyGraph`,
@@ -680,11 +685,12 @@ payload.
 ## Responsibilities
 
 1. Select exactly one supported Agent mode and verify its target.
-2. In `create`, collect one new request, apply the product-interview and
-   product-decomposition policies, structure requirements, define acceptance
-   criteria, assess draft quality, and resolve material gaps.
+2. In `create`, collect one new request, run the canonical v2 product
+   interview, deterministically structure requirements, derive acceptance
+   criteria, assess draft quality, and resolve material gaps through the
+   canonical interview owner.
 3. In `refine`, load one live issue, assess it from a product perspective,
-   interview through `conduct-product-interview`, map capabilities through
+   conduct the canonical v2 interview through `conduct-product-interview`, map capabilities through
    `identify-product-capabilities`, decompose units through
    `decompose-product-capabilities`, classify those units through
    `assess-issue-atomicity`, graph evidenced dependencies through
