@@ -6,8 +6,9 @@
 
 This repository publishes the standalone CromeSDK `github` plugin for
 evidence-backed GitHub issue and pull-request collaboration. The installable
-plugin lives in [`plugin/`](plugin/); the contract and scenario tests live in
-[`tests/`](tests/) and are intentionally outside the Marketplace source.
+plugin lives in [`plugin/`](plugin/). Repository-local Node/Vitest test tooling
+is intentionally not tracked; project-specific testing remains an external
+capability of the host session or target repository.
 
 [Plugin documentation](plugin/docs/README.md) ·
 [Contributing guidance](AGENTS.md) ·
@@ -25,7 +26,6 @@ plugin lives in [`plugin/`](plugin/); the contract and scenario tests live in
 | Plugin name | `github` |
 | Marketplace name | `github-plugin` |
 | Installable source | `./plugin` |
-| Test workspace | `./tests` |
 | Hosts | Cursor, Codex, GitHub Copilot, Claude |
 | Repository | [Crome696/github-plugin](https://github.com/Crome696/github-plugin) |
 
@@ -52,9 +52,10 @@ Marketplace manifests at the repository root all point to `./plugin`:
 - [Agents marketplace](.agents/plugins/marketplace.json)
 
 Only the `plugin/` directory is the installable plugin source. The root
-`tests/` directory, test fixtures, Node package metadata, TypeScript config,
-and Vitest config are development artifacts for this repository and are not
-inside the Marketplace source.
+documentation, changelog, and licensing files are repository artifacts and are
+not inside the Marketplace source. The repository does not include a local
+Node package, TypeScript configuration, Vitest configuration, test workspace,
+or checked-in test fixtures.
 
 ## Plugin structure
 
@@ -79,47 +80,39 @@ The technical entry point for the plugin is
 architecture, approval gates, external capability boundary, Shared Contracts,
 failure handling, and extension points.
 
-## Development and testing
+## Development and validation
 
-The repository test workspace is private and exists to validate the published
-plugin source. It includes contract tests for all Shared Contract descriptions,
-manifest synchronization, hook generation, handoff graphs, payload
-validation, deep invariants, and deterministic command scenarios.
+This repository tracks the installable plugin and its documentation. It does
+not include a repository-local Node/Vitest test runner. Project-specific
+implementation and testing remain external capabilities resolved by the host
+session.
 
-Run the complete validation from the repository root:
-
-```text
-npm ci
-npm run typecheck
-npm test
-npm run check
-```
-
-Regenerate the minimal valid contract fixtures when a Shared Contract changes:
+Run the static repository validation from the repository root:
 
 ```text
-npm run fixtures:generate
+git diff --check
+node --check plugin/hooks/generate-project-hooks.mjs
+node plugin/hooks/generate-project-hooks.mjs --help
 ```
 
-This command regenerates the checked-in minimal contract fixtures. Review its
-diff before keeping it: scenario and deep-invariant tests may rely on richer
-hand-authored fixture values, so unrelated fixture rewrites must be restored
-or merged deliberately.
+Also verify that deleted repository-local test paths are absent and that
+maintained documentation does not reference removed local test sources or
+root package scripts.
 
-The generator command is also available from the root package scripts:
+The project-hook generator can be invoked directly from the repository root:
 
 ```text
-npm run generate-project-hooks
+node plugin/hooks/generate-project-hooks.mjs --hosts <cursor|codex|both|cursor,codex> --target <verified-repository-root>
 ```
 
-The script invokes the installable generator at
+The command invokes the installable generator at
 `plugin/hooks/generate-project-hooks.mjs`.
 
 When changing plugin identity, keep version `0.3.118` synchronized across the
 four manifests under `plugin/` and the three root Marketplace manifests. When
 changing a Skill, Agent, Command, Rule, Hook, or Shared Contract, update the
 technical component inventory in [`plugin/docs/README.md`](plugin/docs/README.md)
-and run the typecheck and full test suite. Repository policy and synchronization
+and run the static validation above. Repository policy and synchronization
 requirements remain in [`AGENTS.md`](AGENTS.md).
 
 ## Security and safety boundaries

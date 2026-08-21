@@ -45,8 +45,9 @@ consumers must be refreshed together.
    non-UI work or work that happens to contain screenshot-like paths.
 4. Regenerate the current `ValidationResult`, `PreCommitGate`, and
    `PrePrCreateGate` snapshots. Do not merge fields from old and new versions.
-5. Re-run contract, hook, runtime, scenario, and host-projection validation
-   before committing or publishing a pull request.
+5. Re-run the applicable contract, hook, runtime, scenario, and host-projection
+   validation through the available external testing capability before
+   committing or publishing a pull request.
 
 Screenshot capture remains the responsibility of an authorized external
 capability or the project that owns the UI. There is no repository-local

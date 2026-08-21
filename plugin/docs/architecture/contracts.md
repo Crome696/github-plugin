@@ -3,8 +3,9 @@
 Shared Contracts are versioned, human-readable YAML descriptions of the
 handoffs between GitHub Skills and Agents. They are not a runtime schema
 library and they do not authorize an operation by themselves. The complete
-inventory and handoff graph are maintained in
-[`shared/schemas/README.md`](../../shared/schemas/README.md).
+contract inventory is maintained in
+[`shared/schemas/README.md`](../../shared/schemas/README.md); workflow ownership
+is maintained by the owning Agent, Command, and Skill sources.
 
 The contract system keeps GitHub collaboration independent from the
 implementation language and architecture of the target repository. A
@@ -192,8 +193,8 @@ policy source for change classification, package-version synchronization,
 public migration and changelog requirements, and external capability
 compatibility. The contract-specific procedure is:
 
-Change a contract only when the producer, consumer, fixture, and tests can be
-updated together. The required sequence is:
+Change a contract only when its producer, consumer, schema inventory, and
+affected documentation can be updated together. The required sequence is:
 
 1. Classify the change as additive and compatible, breaking, or internal
    refactoring under the `plugin-versioning` Rule.
@@ -203,11 +204,11 @@ updated together. The required sequence is:
    authorization change.
 4. Update the YAML description and
    [`shared/schemas/README.md`](../../shared/schemas/README.md).
-5. Update valid fixtures, the handoff graph, invariant helpers, and contract
-   tests.
+5. Update the affected producer and consumer references, payload validation
+   requirements, and external validation plan.
 6. Update the affected Skill, Agent, Command, and inventory documentation.
-7. Run `npm run typecheck` when TypeScript helpers change and `npm test` from
-   the repository root.
+7. Run `git diff --check`, syntax checks for affected scripts, and any required
+   external contract or scenario validation.
 
 Do not add a contract only to make an undocumented operation appear
 supported. The contract must describe a real bounded handoff with an owning
@@ -215,19 +216,14 @@ producer and consumer.
 
 ## Contract validation
 
-The plugin's contract tests validate:
+The plugin's contract definitions are maintained through the versioned YAML
+descriptions, the shared contract inventory, and the owning Skill, Agent, and
+Command sources. Those sources preserve required fields, versions, enums,
+producer/consumer compatibility, ownership, forbidden operations, and
+fail-closed authorization semantics.
 
-- all 85 schema descriptions and minimal valid fixtures;
-- required fields, versions, enums, and nested payloads;
-- producer/consumer compatibility;
-- Command-to-Agent ownership and forbidden operation graphs;
-- deep invariants for planning, review findings, validation,
-  merge-readiness, and cleanup;
-- fail-closed write and approval gates in deterministic scenarios.
-
-The main sources are
-[`tests/lib/handoff-graph.ts`](../../../tests/lib/handoff-graph.ts),
-[`tests/lib/contract-invariants.ts`](../../../tests/lib/contract-invariants.ts),
-[`tests/contract/`](../../../tests/contract/), and
-[`tests/scenarios/`](../../../tests/scenarios/). The complete test instructions
-remain in [repository README](../../../README.md).
+This repository intentionally does not ship a local contract or scenario test
+harness. When executable contract, invariant, runtime, or scenario evidence is
+needed, it must be obtained from the applicable external testing capability or
+target repository and recorded as such; the absence of that evidence is not a
+passing result.

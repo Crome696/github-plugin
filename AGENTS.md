@@ -1,18 +1,15 @@
 # Standalone GitHub Plugin
 
 This repository publishes the standalone CromeSDK `github` plugin. The
-Marketplace source is `plugin/`; the repository-root test workspace is not
-part of the installed plugin.
+Marketplace source is `plugin/`; repository-local Node/Vitest test tooling is
+intentionally not tracked and is not part of the installed plugin.
 
 ## Repository boundaries
 
 - `plugin/` contains the installable plugin manifests, Skills, Agents,
   Commands, Rules, Hooks, Shared Contracts, documentation, and assets.
-- `tests/` contains contract tests, scenario tests, fixtures, and test
-  helpers. It is deliberately outside the Marketplace source.
-- `package.json`, `package-lock.json`, `tsconfig.json`, and
-  `vitest.config.ts` belong to the repository test workspace and must remain
-  outside `plugin/`.
+- Repository-local test runners, fixtures, Node package metadata, TypeScript
+  configuration, and Vitest configuration are intentionally not tracked.
 - The plugin owns GitHub issue and pull-request collaboration and delivery
   coordination. Source-code implementation, framework architecture,
   project-specific testing, domain knowledge, and product behavior remain
@@ -38,13 +35,13 @@ Keep version `0.3.118` synchronized across:
 - `.agents/plugins/marketplace.json`
 
 All Marketplace entries must point to `./plugin`. Do not point a Marketplace
-entry at the repository root, because the root also contains the test
-workspace.
+entry at the repository root, because the root also contains non-installable
+repository documentation and release history.
 
 ## Packaging rules
 
-- Do not place `tests/`, test fixtures, test scripts, `package.json`,
-  `package-lock.json`, `tsconfig.json`, or `vitest.config.ts` under `plugin/`.
+- Do not reintroduce repository-local test runners, fixtures, package metadata,
+  TypeScript configuration, or Vitest configuration under `plugin/`.
 - Keep paths declared by plugin manifests relative to the plugin root, such as
   `./skills/`, `./agents/`, `./commands/`, `./rules/`, and `./assets/logo.png`.
 - Repository-local capability references use the standalone `plugin/` prefix.
@@ -55,26 +52,21 @@ workspace.
 
 ## Validation
 
-Run these commands from the repository root after changing plugin artifacts,
-contracts, or test helpers:
+Run these commands from the repository root after changing plugin artifacts or
+contracts:
 
 ```text
-npm ci
-npm run typecheck
-npm test
-npm run check
-npm run fixtures:generate
 git diff --check
+node --check plugin/hooks/generate-project-hooks.mjs
+node plugin/hooks/generate-project-hooks.mjs --help
 ```
 
-`npm run generate-project-hooks` executes the generator from
-`plugin/hooks/generate-project-hooks.mjs` without moving the generator into
-the test workspace.
+`node plugin/hooks/generate-project-hooks.mjs --hosts <hosts> --target <path>`
+executes the generator directly without a repository-local package script.
 
-`npm run fixtures:generate` rewrites the checked-in valid fixtures with
-minimal schema payloads. Always review the resulting diff; scenario and
-deep-invariant fixtures may contain richer hand-authored values that must be
-preserved unless the contract change explicitly requires replacing them.
+Project-specific implementation and testing remain external capabilities. Do
+not present the absence of the removed local test workspace as successful test
+execution evidence.
 
 The technical plugin entry point is
 [`plugin/docs/README.md`](plugin/docs/README.md). The root
