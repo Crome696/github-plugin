@@ -562,10 +562,10 @@ export const skillHandoffs: SkillHandoff[] = [
   {
     name: "reply-to-review-thread",
     consumes: [
-      contract("ReviewThreadReply", 2),
+      contract("ReviewThreadReply", 3),
       contract("FeedbackResolutionValidation", 1),
     ],
-    produces: [contract("ReviewThreadReply", 2)],
+    produces: [contract("ReviewThreadReply", 3)],
   },
   {
     name: "resolve-context-capabilities",
@@ -580,10 +580,10 @@ export const skillHandoffs: SkillHandoff[] = [
   {
     name: "resolve-review-thread",
     consumes: [
-      contract("ReviewThreadResolution", 2),
+      contract("ReviewThreadResolution", 3),
       contract("FeedbackResolutionValidation", 1),
     ],
-    produces: [contract("ReviewThreadResolution", 2)],
+    produces: [contract("ReviewThreadResolution", 3)],
   },
   {
     name: "rewrite-github-issue",
@@ -782,11 +782,13 @@ export const agentHandoffs: AgentHandoff[] = [
       contract("ClassifiedReviewFeedback", 1),
     ],
     produces: [
+      contract("FeedbackLifecyclePlan", 1),
+      contract("FeedbackLifecycleRun", 1),
       contract("FeedbackResolutionPlan", 1),
       contract("FeedbackResolutionValidation", 1),
       contract("FeedbackResolutionSummary", 1),
-      contract("ReviewThreadReply", 2),
-      contract("ReviewThreadResolution", 2),
+      contract("ReviewThreadReply", 3),
+      contract("ReviewThreadResolution", 3),
     ],
     skills: [
       "load-pull-request",
@@ -848,31 +850,8 @@ export const agentHandoffs: AgentHandoff[] = [
   {
     name: "review-fix-agent",
     consumes: [],
-    produces: [contract("ReviewFixRun", 1)],
-    skills: [
-      "load-pull-request",
-      "load-linked-issue",
-      "load-pr-discussions",
-      "inspect-pr-checks",
-      "analyze-pr-diff",
-      "detect-review-findings",
-      "deduplicate-review-findings",
-      "classify-review-findings",
-      "collect-review-feedback",
-      "identify-resolved-feedback",
-      "classify-review-feedback",
-      "build-review-fix-plan",
-      "resolve-feedback-capabilities",
-      "create-worktree",
-      "verify-worktree",
-      "inspect-working-tree",
-      "classify-changes",
-      "detect-unrelated-changes",
-      "validate-implementation-result",
-      "compose-commit-message",
-      "create-commit",
-      "push-branch",
-    ],
+    produces: [contract("FeedbackLifecycleRun", 1), contract("ReviewFixRun", 2)],
+    skills: [],
   },
   {
     name: "pr-ready-agent",
@@ -997,7 +976,13 @@ export const commandHandoffs: CommandHandoff[] = [
   {
     name: "address-pr-feedback",
     agent: "feedback-agent",
-    contracts: [],
+    mode: "full|follow_up",
+    contracts: [
+      contract("FeedbackLifecyclePlan", 1),
+      contract("FeedbackLifecycleRun", 1),
+      contract("ReviewThreadReply", 3),
+      contract("ReviewThreadResolution", 3),
+    ],
   },
   {
     name: "integrate-pr",
@@ -1021,8 +1006,9 @@ export const commandHandoffs: CommandHandoff[] = [
   },
   {
     name: "auto-review-fix-pr",
-    agent: "review-fix-agent",
-    contracts: [contract("ReviewFixRun", 1)],
+    agent: "feedback-agent",
+    mode: "fix",
+    contracts: [contract("FeedbackLifecycleRun", 1), contract("ReviewFixRun", 2)],
   },
   {
     name: "ready-pr",

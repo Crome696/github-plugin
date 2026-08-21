@@ -91,14 +91,14 @@ remains the refine-only Command.
 
 The explicitly invoked `/auto-review-fix-pr` command establishes one
 task-scoped routine authorization for the exact `pr:<number>` identity,
-existing head branch, and approved worktree. It covers attaching or reusing
-that worktree, one exact local commit per confirmed iteration, and one
-verified non-force push per iteration. It does not authorize review
+existing head branch, approved worktree, and canonical `fix` lifecycle mode.
+It covers attaching or reusing that worktree, one exact local commit per
+confirmed iteration, and one verified non-force push per iteration. It does not authorize review
 publication, thread reply or resolution, a second pull request,
 Ready-for-Review, rebase, merge, force-push, deletion, cleanup, or
-default-branch writes. New candidate items require host-neutral
-`ReviewFixPlan` confirmation; every push invalidates prior head evidence and
-starts a fresh review pass.
+default-branch writes. New candidate items require canonical
+`FeedbackLifecyclePlan` confirmation; every push invalidates prior head
+evidence, reloads the PR, and starts a fresh validated transition.
 
 The explicitly invoked `/auto-ci-fix-pr` command establishes one task-scoped
 routine authorization for wait, exact required-check rerun, existing-head

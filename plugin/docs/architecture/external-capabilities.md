@@ -81,21 +81,24 @@ correction across areas such as:
 
 It normally feeds
 [`build-feedback-resolution-plan`](../../skills/build-feedback-resolution-plan/SKILL.md).
-The feedback Agent does not implement the correction. After the external
-capability returns, [`validate-feedback-resolution`](../../skills/validate-feedback-resolution/SKILL.md)
-checks the current diff, commits, tests, checks, and discussion context.
+The canonical `feedback-agent` lifecycle selects `full` when the feedback
+requires implementation and hands the bounded plan to the external
+implementation capability. After the capability returns,
+[`validate-feedback-resolution`](../../skills/validate-feedback-resolution/SKILL.md)
+checks the current diff, commits, tests, checks, and discussion context before
+the lifecycle reloads and validates the current pull-request head.
 
 ### Review-fix implementation
 
-The `/auto-review-fix-pr` workflow resolves capabilities only after a
-host-neutral `ReviewFixPlan` confirms mandatory items for the exact current
-pull-request head. The handoff contains the bounded candidate-linked scope,
-implementation steps, validation requirements, existing head-branch worktree,
-and `pr:<number>` authorization. The external capability may edit project
-files in that worktree; the GitHub plugin remains responsible for inspecting
-scope, validating evidence, creating one exact commit, and pushing non-force.
-After the push, the Agent reloads the pull request and does not carry findings
-across the new head.
+The `/auto-review-fix-pr` workflow enters the canonical
+`FeedbackLifecyclePlan v1` with mode `fix`. The handoff contains the bounded
+candidate-linked scope, implementation steps, validation requirements,
+existing head-branch worktree, and `pr:<number>` authorization. The external
+capability may edit project files in that worktree; the GitHub plugin remains
+responsible for inspecting scope, validating evidence, creating one exact
+commit, and pushing non-force. After the push, `feedback-agent` reloads and
+validates the pull request head before any separate reply or resolution effect;
+it never carries findings across the new head.
 
 Missing capability evidence blocks the iteration. The workflow never asks an
 external capability to publish a review, mutate a thread, create a second PR,

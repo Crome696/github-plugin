@@ -113,11 +113,11 @@ not contain Skill chains, perform a second write, or invoke another Agent.
 | `prepare-issue` | `preparation-agent` | One `ImplementationPlan` and verified `BranchWorkspace`; no implementation. |
 | `publish-draft-pr` | `delivery-agent` | One validated commit, verified branch push, issue link, and Draft PR result. |
 | `review-pr` | `review-agent` | Evidence-backed findings and one `ReviewDecision`, with publication only after the applicable gate. |
-| `address-pr-feedback` | `feedback-agent` | Feedback collection, external resolution handoff, validation, and eligible thread actions. |
+| `address-pr-feedback` | `feedback-agent` / `full|follow_up` | Canonical feedback lifecycle with implementation-capable `full` and no-worktree `follow_up` modes, current-head validation, and separate thread effects. |
 | `integrate-pr` | `integration-agent` | `PullRequestIntegration` covering readiness, refresh, rebase, merge, closure verification, and cleanup decisions. |
 | `implement-auto-issue` | `lifecycle-agent` | One `LifecycleRun` through issue create, refine, preparation, external implementation, and Draft PR publication. |
 | `refine-auto-issue` | `lifecycle-agent` | One `LifecycleRun` through refine of a verified existing issue, preparation, external implementation, and Draft PR publication. |
-| `auto-review-fix-pr` | `review-fix-agent` | One `ReviewFixRun` that confirms mandatory fixes, commits and non-force pushes on the existing pull-request head branch, and re-reviews until complete or blocked. |
+| `auto-review-fix-pr` | `feedback-agent` / `fix` | One canonical `FeedbackLifecycleRun` fix loop, exposed through `ReviewFixRun v2`; the `review-fix-agent` identity remains a non-owning compatibility router. |
 | `auto-ci-fix-pr` | `ci-fix-agent` | One `CiFixRun` that waits for required checks, reruns only authorized required names, and coordinates a bounded external fix on the existing head without merge or review publication. |
 | `ready-pr` | `pr-ready-agent` | One `PullRequestReady` result that marks an exact Draft Ready-for-Review after unique-issue and reviewer-set authorization. |
 | `plan-product` | `product-planner-agent` | One ProductSubIssueDrafts v2 canonical set composed before one ProductPlannerRun v2 review and digest-bound approval; publication remains delegated to create-product-sub-issues. |
@@ -140,17 +140,17 @@ do not implement project code.
 | [`preparation-agent`](../../agents/preparation-agent.md) | Turn one qualified issue into an `ImplementationPlan` and a verified workspace without implementing it. |
 | [`delivery-agent`](../../agents/delivery-agent.md) | Turn one completed implementation into an exact commit, verified push, linked Draft PR, and delivery report. |
 | [`review-agent`](../../agents/review-agent.md) | Analyze one PR, deduplicate and classify findings, collect decisions, and hand publication to the review Skill. |
-| [`feedback-agent`](../../agents/feedback-agent.md) | Collect and classify feedback, resolve external capabilities, validate results, and hand off thread actions. |
+| [`feedback-agent`](../../agents/feedback-agent.md) | Own the canonical feedback lifecycle, including `fix`, `full`, and `follow_up` state, current-head validation, delivery evidence, and separately authorized thread actions. |
 | [`integration-agent`](../../agents/integration-agent.md) | Coordinate readiness, target refresh, rebase, post-rebase validation, merge, closure verification, and separate cleanup. |
 | [`lifecycle-agent`](../../agents/lifecycle-agent.md) | Sequence create or existing-issue refine, then preparation, external implementation, and Draft PR delivery by starting the existing delivery Agents. |
-| [`review-fix-agent`](../../agents/review-fix-agent.md) | Review one verified pull request, confirm mandatory fixes in a host-neutral plan, coordinate external implementation on the existing head branch, and repeat verified commit/push iterations. |
+| [`review-fix-agent`](../../agents/review-fix-agent.md) | Preserve the discoverable compatibility identity for `/auto-review-fix-pr`; route `fix` mode to `feedback-agent` without owning state or decisions. |
 | [`ci-fix-agent`](../../agents/ci-fix-agent.md) | Wait for required checks, rerun only authorized required names, confirm remaining CI failures, and repeat verified commit/push iterations on the existing head. |
 | [`pr-ready-agent`](../../agents/pr-ready-agent.md) | Verify one Draft PR, unique linked issue, and optional reviewer set, then mark it Ready-for-Review after exact authorization. |
 | [`product-planner-agent`](../../agents/product-planner-agent.md) | Turn one verified parent issue into a prioritized graph, consume the canonical ProductSubIssueDrafts v2 set, bind approval to its digest, and hand that unchanged set to `create-product-sub-issues`. |
 | [`issue-reprioritize-agent`](../../agents/issue-reprioritize-agent.md) | Inventory currently open issues, rank unique consecutive P-number titles with the user, and apply them only after exact ranked-set authorization. |
 | [`issue-close-agent`](../../agents/issue-close-agent.md) | Load one verified issue, require an exact close reason, and close it without a merged pull request after exact authorization. |
 
-`feedback-agent` owns feedback mode and `integration-agent` owns integration
+`feedback-agent` owns all feedback lifecycle modes and `integration-agent` owns integration
 mode. They must not invoke one another. `lifecycle-agent` may start
 `issue-agent`, `preparation-agent`, and `delivery-agent` sequentially and
 must not start review, feedback, integration, host-hooks, product-planner,

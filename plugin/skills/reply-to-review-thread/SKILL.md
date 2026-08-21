@@ -1,6 +1,6 @@
 ---
 name: reply-to-review-thread
-description: Drafts and publishes one factual reply to exactly one GitHub pull-request review thread, using direct user authorization, a matching target-repository AGENTS.md policy, or an exact address-pr-feedback authorization after validated follow-up, and never resolving the thread. Use automatically when the user asks to answer, respond to, or explain handling of a pull-request review thread.
+description: Drafts and publishes one factual reply to exactly one GitHub pull-request review thread, using direct user authorization, a matching target-repository AGENTS.md policy, or an exact canonical feedback-lifecycle authorization after validated follow-up, and never resolving the thread. Use automatically when the user asks to answer, respond to, or explain handling of a pull-request review thread.
 ---
 
 # Reply to a Pull-Request Review Thread
@@ -8,7 +8,8 @@ description: Drafts and publishes one factual reply to exactly one GitHub pull-r
 Draft and optionally publish one concise, factual reply to exactly one
 GitHub inline review thread. Direct invocation requires exact authorization of
 the target and response. The `/address-pr-feedback` workflow may publish
-autonomously only with a matching current validation and scoped authorization.
+autonomously only with a matching current validation and scoped lifecycle
+authorization.
 
 ## Boundaries
 
@@ -35,7 +36,7 @@ autonomously only with a matching current validation and scoped authorization.
 
 ## Input contract
 
-Require one version-2 `ReviewThreadReply` handoff or equivalent inputs:
+Require one version-3 `ReviewThreadReply` handoff or equivalent inputs:
 
 ```yaml
 repository: owner/repository
@@ -46,6 +47,13 @@ thread:
   id: PRRT_example
   parent_comment_id: 456
 head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+lifecycle:
+  run_id: feedback-run-1
+  transition_id: transition-reply-1
+  mode: follow_up
+  effect: reply
+  expected_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  validated_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 response: "Exact English response"
 evidence:
   - kind: diff | commit | test | check | requirement | user_decision
@@ -55,14 +63,24 @@ approval:
   exact_payload: false
   publication_authorized: false
 feedback_authorization:
-  mode: not_applicable
+  mode: feedback_lifecycle
   authorized: false
+  repository: owner/repository
+  pull_request_number: 123
+  feedback_item_id: FB-001
+  lifecycle_run_id: feedback-run-1
+  transition_id: transition-reply-1
+  effect: reply
+  validation_reference: validation-1
+  expected_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  current_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 ```
 
 The response must be a complete body, not merely a direction or summary. A
 draft may have both approval flags false. Publication requires both flags true
-for direct invocation, or a matching feedback-mode authorization identifying
-the exact target, parent comment, feedback item, current head SHA, and response.
+for direct invocation, or a matching feedback-lifecycle authorization
+identifying the exact target, parent comment, feedback item, lifecycle
+transition, validated current head SHA, and response.
 Before treating direct authorization as missing, read the applicable repository
 instructions, especially the target repository's `AGENTS.md`. A clear,
 scope-matched policy may authorize the exact reply, target, and publication
@@ -102,7 +120,7 @@ from a prior publication authorization.
 4. Return a `draft` `ReviewThreadReply` with the exact response and evidence.
    Present the exact target, parent comment, head SHA, response, and evidence
    to the user for approval unless a matching target-repository policy or
-   feedback-mode authorization is already present.
+   feedback-lifecycle authorization is already present.
 
 ## Publication workflow
 
@@ -111,7 +129,7 @@ exact response and publication or a matching target-repository `AGENTS.md`
 policy has authorized them. In `/address-pr-feedback` mode, continue only
 after the matching `FeedbackResolutionValidation` is current and `validated`,
 the item is `addressed`, all applicable checks and tests pass at the current
-head, and the exact feedback-mode authorization is present.
+head, and the exact feedback-lifecycle reply authorization is present.
 
 1. Reload the exact pull request and thread immediately before writing. Verify
    repository, PR number and URL, open/non-merged state, current head SHA,
@@ -158,7 +176,7 @@ and its verified URL; never claim publication without verification.
 - [ ] Response contains only evidence-backed claims and explicit limitations.
 - [ ] Exact response and publication were separately authorized by the user or
       a matching target-repository `AGENTS.md` policy, or the exact
-      feedback-mode authorization is present.
+      feedback-lifecycle reply authorization is present.
 - [ ] Current head and parent relationship were refreshed immediately before write.
 - [ ] The API operation created a reply, not a top-level comment or review.
 - [ ] Published body, parent, target, URL, and ID were verified.

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.117
+
+- Consolidate pull-request feedback fixing and discussion follow-up under the
+  canonical `feedback-agent` lifecycle.
+- Add `FeedbackLifecyclePlan v1` and `FeedbackLifecycleRun v1` with explicit
+  `fix`, `full`, and `follow_up` modes and independent worktree, commit, push,
+  reply, and resolution authorization.
+- Update `ReviewFixRun` to v2 as a compatibility projection and bind
+  `ReviewThreadReply` and `ReviewThreadResolution` to v3 lifecycle transitions
+  and validated current heads.
+- Preserve `/auto-review-fix-pr`, `/address-pr-feedback`, and the discoverable
+  `review-fix-agent` compatibility identity while routing lifecycle ownership
+  through `feedback-agent`.
+
 ## 0.3.116
 
 - Made project-hook generation transactional and ownership-aware. Desired

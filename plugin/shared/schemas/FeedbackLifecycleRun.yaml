@@ -1,0 +1,206 @@
+schema: FeedbackLifecycleRun
+version: 1
+description: Canonical state record for one head-bound pull-request feedback lifecycle, preserving transitions, delivery evidence, and independently authorized thread effects.
+required:
+  - status
+  - lifecycle_run_id
+  - plan_id
+  - repository
+  - pull_request
+  - mode
+  - current_head_sha
+  - transitions
+  - iterations
+  - feedback_item_ids
+  - remaining_item_ids
+  - authorization
+  - blockers
+  - next_action
+  - evidence
+  - metadata
+  - failure
+fields:
+  status:
+    type: enum
+    values: [planned, running, awaiting_validation, follow_up_ready, replied, resolved, completed, partial, blocked]
+  lifecycle_run_id:
+    type: string
+  plan_id:
+    type: string
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, head_branch, base_branch]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      head_branch:
+        type: string
+      base_branch:
+        type: string
+  mode:
+    type: enum
+    values: [fix, full, follow_up]
+  current_head_sha:
+    type: string
+  transitions:
+    type: list
+    items:
+      type: object
+      required: [id, from, to, head_sha, evidence]
+      fields:
+        id:
+          type: string
+        from:
+          type: enum
+          values: [planned, running, awaiting_validation, follow_up_ready, replied, resolved, completed, partial, blocked]
+        to:
+          type: enum
+          values: [running, awaiting_validation, follow_up_ready, replied, resolved, completed, partial, blocked]
+        head_sha:
+          type: string
+        evidence:
+          type: list
+          items: string
+  iterations:
+    type: list
+    items:
+      type: object
+      required: [number, input_head_sha, output_head_sha, status, commit_sha, push_sha, validation_reference]
+      fields:
+        number:
+          type: integer
+          minimum: 1
+        input_head_sha:
+          type: string
+        output_head_sha:
+          type: string | null
+        status:
+          type: enum
+          values: [running, awaiting_validation, follow_up_ready, partial, blocked]
+        commit_sha:
+          type: string | null
+        push_sha:
+          type: string | null
+        validation_reference:
+          type: string | null
+  feedback_item_ids:
+    type: list
+    items: string
+  remaining_item_ids:
+    type: list
+    items: string
+  authorization:
+    type: object
+    required: [worktree, commit, push, reply, resolve]
+    fields:
+      worktree:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+      commit:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+      push:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+      reply:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+      resolve:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, description, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+  next_action:
+    type: string
+  evidence:
+    type: list
+    items:
+      type: object
+      required: [source, reference, observed]
+      fields:
+        source:
+          type: string
+        reference:
+          type: string
+        observed:
+          type: string
+  metadata:
+    type: object
+    required: [started_at, completed_at, conversation_language]
+    fields:
+      started_at:
+        type: string
+        format: iso-8601
+      completed_at:
+        type: string | null
+        format: iso-8601
+      conversation_language:
+        type: string
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, conflicting_identity, stale_head, mode_required, push_failed, validation_failed, authorization_missing, lifecycle_blocked]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The run identifies exactly one repository, pull request, lifecycle plan, and current head SHA.
+  - Every transition and implementation iteration preserves input/output head evidence.
+  - fix and full may coordinate implementation delivery; follow_up never reports a workspace, commit, or push effect.
+  - Reply and resolution are separate transitions and separate authorized effects; reply never implies resolution.
+  - A push must be followed by a current-head reload and validation before reply or resolution.
+  - A head mismatch, failed push, missing validation, partial fix, or missing effect authorization is blocked and never claims completion.

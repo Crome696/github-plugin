@@ -1,0 +1,309 @@
+schema: CommandScenario
+version: 1
+
+repository: &repo octo-org/widgets
+pull_request_number: &pr 42
+head_sha: &head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+
+base_handoffs: &base_handoffs
+  FeedbackLifecyclePlan:
+    patch:
+      plan_id: lifecycle-plan
+      repository: *repo
+      pull_request:
+        number: *pr
+        url: https://github.com/octo-org/widgets/pull/42
+        head_sha: *head
+        head_branch: feature/feedback
+        base_branch: main
+      mode: follow_up
+      source_head_sha: *head
+  FeedbackLifecycleRun:
+    patch:
+      lifecycle_run_id: lifecycle-run
+      plan_id: lifecycle-plan
+      status: follow_up_ready
+      repository: *repo
+      pull_request:
+        number: *pr
+        url: https://github.com/octo-org/widgets/pull/42
+        head_branch: feature/feedback
+        base_branch: main
+      mode: follow_up
+      current_head_sha: *head
+  FeedbackResolutionValidation:
+    patch:
+      status: validated
+      pull_request:
+        repository: *repo
+        number: *pr
+        url: https://github.com/octo-org/widgets/pull/42
+        baseline_head_sha: *head
+        current_head_sha: *head
+      results: []
+      blockers: []
+      uncertainties: []
+  ReviewThreadReply:
+    patch:
+      status: draft
+      repository: *repo
+      pull_request:
+        number: *pr
+        url: https://github.com/octo-org/widgets/pull/42
+      head_sha: *head
+      lifecycle:
+        run_id: lifecycle-run
+        transition_id: transition-reply
+        mode: follow_up
+        effect: reply
+        expected_head_sha: *head
+        validated_head_sha: *head
+      feedback_authorization:
+        mode: feedback_lifecycle
+        authorized: true
+        repository: *repo
+        pull_request_number: *pr
+        feedback_item_id: FB-001
+        lifecycle_run_id: lifecycle-run
+        transition_id: transition-reply
+        effect: reply
+        validation_reference: FeedbackResolutionValidation
+        expected_head_sha: *head
+        current_head_sha: *head
+  ReviewThreadResolution:
+    patch:
+      status: approved
+      repository: *repo
+      pull_request:
+        number: *pr
+        url: https://github.com/octo-org/widgets/pull/42
+      head_sha: *head
+      lifecycle:
+        run_id: lifecycle-run
+        transition_id: transition-resolve
+        mode: follow_up
+        effect: resolve
+        expected_head_sha: *head
+        validated_head_sha: *head
+      validation:
+        status: addressed
+        resolution_eligible: true
+        evidence_references: [FeedbackResolutionValidation]
+      platform:
+        resolution_supported: true
+      approval:
+        exact_target: true
+        resolution_authorized: false
+      feedback_authorization:
+        mode: feedback_lifecycle
+        authorized: true
+        repository: *repo
+        pull_request_number: *pr
+        feedback_item_id: FB-001
+        lifecycle_run_id: lifecycle-run
+        transition_id: transition-resolve
+        effect: resolve
+        validation_reference: FeedbackResolutionValidation
+        expected_head_sha: *head
+        current_head_sha: *head
+
+scenarios:
+  - id: address-pr-feedback-no-change-follow-up
+    command: address-pr-feedback
+    description: Executes a reply-only follow-up without opening a workspace or creating a commit.
+    expected:
+      status: completed
+      successful_writes: [reply-to-review-thread]
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      feedback_mode: follow_up
+      no_change_follow_up: true
+    authorizations:
+      feedback_reply: true
+    handoffs:
+      <<: *base_handoffs
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: build-feedback-lifecycle-plan
+        effect: read
+        handoff: FeedbackLifecyclePlan
+      - operation: reload-feedback-head
+        effect: read
+        handoff: FeedbackLifecycleRun
+      - operation: validate-feedback-resolution
+        effect: read
+        handoff: FeedbackResolutionValidation
+      - operation: reply-to-review-thread
+        effect: write
+        handoff: ReviewThreadReply
+
+  - id: address-pr-feedback-head-changed-before-thread-action
+    command: address-pr-feedback
+    description: Blocks the thread action when the remote PR head changes after the lifecycle snapshot.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: reply-to-review-thread
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      feedback_mode: follow_up
+      head_changed_after_push: true
+    authorizations:
+      feedback_reply: true
+    handoffs:
+      <<: *base_handoffs
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: build-feedback-lifecycle-plan
+        effect: read
+        handoff: FeedbackLifecyclePlan
+      - operation: reload-feedback-head
+        effect: read
+        handoff: FeedbackLifecycleRun
+      - operation: validate-feedback-resolution
+        effect: read
+        handoff: FeedbackResolutionValidation
+      - operation: reply-to-review-thread
+        effect: write
+        handoff: ReviewThreadReply
+
+  - id: address-pr-feedback-reply-denied
+    command: address-pr-feedback
+    description: Keeps a validated follow-up blocked when reply authorization is denied.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: reply-to-review-thread
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      feedback_mode: follow_up
+      reply_denied: true
+    authorizations:
+      feedback_reply: false
+    handoffs:
+      <<: *base_handoffs
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: build-feedback-lifecycle-plan
+        effect: read
+        handoff: FeedbackLifecyclePlan
+      - operation: reload-feedback-head
+        effect: read
+        handoff: FeedbackLifecycleRun
+      - operation: validate-feedback-resolution
+        effect: read
+        handoff: FeedbackResolutionValidation
+      - operation: reply-to-review-thread
+        effect: write
+        handoff: ReviewThreadReply
+
+  - id: address-pr-feedback-resolution-denied
+    command: address-pr-feedback
+    description: Publishes an independently authorized reply but blocks the separately denied resolution.
+    expected:
+      status: blocked
+      successful_writes: [reply-to-review-thread]
+      blocked_operation: resolve-review-thread
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      feedback_mode: follow_up
+      resolution_denied: true
+    authorizations:
+      feedback_reply: true
+      feedback_resolution: false
+    handoffs:
+      <<: *base_handoffs
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: build-feedback-lifecycle-plan
+        effect: read
+        handoff: FeedbackLifecyclePlan
+      - operation: reload-feedback-head
+        effect: read
+        handoff: FeedbackLifecycleRun
+      - operation: validate-feedback-resolution
+        effect: read
+        handoff: FeedbackResolutionValidation
+      - operation: reply-to-review-thread
+        effect: write
+        handoff: ReviewThreadReply
+      - operation: resolve-review-thread
+        effect: write
+        handoff: ReviewThreadResolution
+
+  - id: address-pr-feedback-follow-up-no-implementation
+    command: address-pr-feedback
+    description: Stops a follow-up before it can create an implementation worktree.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: create-worktree
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      feedback_mode: follow_up
+      reply_only: true
+    authorizations:
+      routine: true
+      workspace_attachment: true
+    handoffs:
+      <<: *base_handoffs
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: build-feedback-lifecycle-plan
+        effect: read
+        handoff: FeedbackLifecyclePlan
+      - operation: create-worktree
+        effect: write
+
+  - id: address-pr-feedback-mode-required
+    command: address-pr-feedback
+    description: Stops with mode_required instead of guessing when the requested feedback mode is ambiguous.
+    expected:
+      status: blocked
+      successful_writes: []
+      blocked_operation: build-feedback-lifecycle-plan
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      mode_required: true
+    authorizations: {}
+    handoffs: {}
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: build-feedback-lifecycle-plan
+        effect: read

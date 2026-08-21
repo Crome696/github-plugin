@@ -26,10 +26,11 @@ Routine delivery includes:
 
 The explicitly invoked `/address-pr-feedback` command establishes a separate,
 task-scoped routine authorization for the exact verified pull request, selected
-open feedback IDs, current head SHA, and resolution plan. After current
-validation proves an item addressed and all applicable tests and checks pass,
-that authorization covers the exact evidence-backed reply and, separately, the
-matching supported open-thread resolution. It does not cover unresolved,
+open feedback IDs, current head SHA, selected `full` or `follow_up` mode, and
+canonical `FeedbackLifecyclePlan`. After current validation proves an item
+addressed and all applicable tests and checks pass, the lifecycle records
+independent authorization for the exact evidence-backed reply and, separately,
+the matching supported open-thread resolution. It does not cover unresolved,
 outdated, ambiguous, unverifiable, or disputed items, replies to other threads,
 review publication, check reruns, rebase, merge, force-push, deletion, or
 default-branch writes. Direct reply or resolution Skill invocations retain
@@ -55,7 +56,8 @@ merge, Ready-for-Review, force-push, deletion, or default-branch writes.
 
 The explicitly invoked `/auto-review-fix-pr` command establishes one
 task-scoped routine authorization for the exact verified pull request,
-head-branch identity, and `pr:<number>` task scope. It covers only:
+head-branch identity, `fix` lifecycle mode, and `pr:<number>` task scope. It
+covers only:
 
 - attaching to or reusing the existing pull-request head worktree;
 - creating one exact local commit for each confirmed fix iteration; and
@@ -64,11 +66,13 @@ head-branch identity, and `pr:<number>` task scope. It covers only:
 The command never publishes `COMMENT` or `REQUEST_CHANGES`, replies to or
 resolves review threads, creates a second pull request, marks Ready-for-Review,
 rebases, merges, force-pushes, deletes a branch or worktree, prunes metadata,
-or writes the default branch. New candidate items require the host-neutral
-`ReviewFixPlan` confirmation; a previous decision is reusable only when the
-repository, pull request, head, branch, problem core, and scope still match.
-The loop reloads the pull request after every verified push and stops after
-five iterations with `fixes_complete`, `partial`, or `blocked`.
+or writes the default branch. New candidate items require confirmation in the
+canonical `FeedbackLifecyclePlan v1` with `fix` mode; a previous decision is
+reusable only when the repository, pull request, head, branch, problem core,
+and scope still match. The canonical `FeedbackLifecycleRun` reloads and
+validates the pull request after every verified push and stops after five
+iterations with `fixes_complete`, `partial`, or `blocked`. `ReviewFixRun v2`
+is only its compatibility projection.
 
 The explicitly invoked `/auto-ci-fix-pr` command establishes one
 task-scoped routine authorization for the exact verified pull request,
@@ -295,6 +299,10 @@ MUST NOT:
 - perform a hard operation under routine delivery authorization;
 - treat `/address-pr-feedback` authorization as approval for a merge, rebase,
   review publication, or any target outside the validated feedback item;
+- treat `follow_up` lifecycle authorization as approval for a worktree, commit,
+  or push;
+- treat reply authorization as approval for resolution, or resolution
+  authorization as approval for reply;
 - treat `/integrate-pr` lifecycle scope as approval for a fetch, rebase,
   force-push, merge, branch deletion, or worktree cleanup; its close-on-merge
   fallback is limited to the exact validated post-merge condition described

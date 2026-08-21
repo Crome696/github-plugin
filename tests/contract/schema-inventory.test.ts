@@ -21,16 +21,17 @@ const expectedVersionTwo = new Set([
   "LinkedIssueClosure",
   "LoadedPullRequestDiscussions",
   "PullRequestMerge",
-  "ReviewThreadReply",
-  "ReviewThreadResolution",
   "ValidationResult",
   "ProductSubIssueDrafts",
   "ProductPlannerRun",
   "ProductSubIssuePublication",
+  "ReviewFixRun",
 ]);
 const expectedVersionThree = new Set([
   "MergeReadiness",
   "PrePrCreateGate",
+  "ReviewThreadReply",
+  "ReviewThreadResolution",
 ]);
 const expectedVersionFour = new Set([
   "PreCommitGate",
@@ -121,8 +122,8 @@ describe("shared contract schema inventory", () => {
   it("parses every YAML contract and keeps the filename identity stable", async () => {
     const paths = await listSchemaPaths(schemaDirectory);
 
-    expect(paths).toHaveLength(85);
-    expect(schemas).toHaveLength(85);
+    expect(paths).toHaveLength(87);
+    expect(schemas).toHaveLength(87);
     for (const schema of schemas) {
       expect(schema.schema).toBe(basename(schema.path, ".yaml"));
       expect(schema.description.trim()).not.toBe("");
@@ -189,7 +190,7 @@ describe("shared contract schema inventory", () => {
     ].map((match) => match[1]!);
     const names = schemas.map((schema) => schema.schema).sort();
 
-    expect(entries).toHaveLength(85);
+    expect(entries).toHaveLength(87);
     expect(new Set(entries).size).toBe(entries.length);
     expect([...entries].sort()).toEqual(names);
   });

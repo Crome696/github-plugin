@@ -440,18 +440,19 @@ const feedbackAuthorization = (
   context: GateContext,
   payload: Record<string, unknown>,
   authorizationKey: string,
+  effect: "reply" | "resolve",
 ): GateDecision | null => {
   const feedback = recordAt(payload, "feedback_authorization");
   if (!feedback || booleanAt(feedback, "authorized") !== true) {
     return decision(
       "feedback_authorization_required",
-      "The exact address-pr-feedback authorization is missing.",
+      `The exact feedback-lifecycle ${effect} authorization is missing.`,
     );
   }
-  if (stringAt(feedback, "mode") !== "address_pr_feedback") {
+  if (stringAt(feedback, "mode") !== "feedback_lifecycle") {
     return decision(
       "feedback_authorization_mode",
-      "The feedback authorization mode does not match address-pr-feedback.",
+      "The feedback authorization mode does not match the canonical lifecycle.",
     );
   }
   if (
@@ -467,12 +468,99 @@ const feedbackAuthorization = (
       "Feedback authorization is not bound to the exact current target.",
     );
   }
+  const lifecycle = recordAt(payload, "lifecycle");
+  const run = handoff(context, "FeedbackLifecycleRun");
+  if (!lifecycle || !run) {
+    return decision(
+      "feedback_lifecycle_missing",
+      "Thread actions require the canonical lifecycle run and transition.",
+    );
+  }
+  if (
+    stringAt(feedback, "lifecycle_run_id") !==
+      stringAt(lifecycle, "run_id") ||
+    stringAt(feedback, "lifecycle_run_id") !==
+      stringAt(run, "lifecycle_run_id") ||
+    stringAt(feedback, "transition_id") !==
+      stringAt(lifecycle, "transition_id") ||
+    stringAt(feedback, "effect") !== effect ||
+    stringAt(lifecycle, "effect") !== effect ||
+    stringAt(feedback, "expected_head_sha") !==
+      stringAt(lifecycle, "expected_head_sha") ||
+    stringAt(feedback, "expected_head_sha") !==
+      context.scenario.target.head_sha ||
+    stringAt(lifecycle, "validated_head_sha") !==
+      context.scenario.target.head_sha
+  ) {
+    return decision(
+      "feedback_lifecycle_mismatch",
+      "The thread effect is not bound to the exact lifecycle transition and validated head.",
+    );
+  }
   return context.scenario.authorizations[authorizationKey] === true
     ? null
     : decision(
         "feedback_authorization_required",
-        "The exact address-pr-feedback authorization is missing.",
+        `The exact feedback-lifecycle ${effect} authorization is missing.`,
       );
+};
+
+const feedbackLifecycleGate = (
+  context: GateContext,
+  effect: "implementation" | "reply" | "resolve",
+): GateDecision | null => {
+  const plan = handoff(context, "FeedbackLifecyclePlan");
+  const run = handoff(context, "FeedbackLifecycleRun");
+  if (!plan || !run) {
+    return decision(
+      "feedback_lifecycle_missing",
+      "The canonical FeedbackLifecyclePlan and FeedbackLifecycleRun are required.",
+    );
+  }
+  const mode = stringAt(run, "mode");
+  const expectedMode =
+    context.scenario.facts.feedback_mode ??
+    (context.scenario.command === "auto-review-fix-pr" ? "fix" : "follow_up");
+  if (mode !== expectedMode || stringAt(plan, "mode") !== expectedMode) {
+    return decision(
+      "feedback_lifecycle_mode_mismatch",
+      `The lifecycle mode must be ${expectedMode} for this command.`,
+    );
+  }
+  if (
+    context.scenario.facts.head_changed_after_push === true ||
+    stringAt(run, "current_head_sha") !== context.scenario.target.head_sha
+  ) {
+    return decision(
+      "head_changed_after_push",
+      "The lifecycle run is not bound to the current validated pull-request head.",
+    );
+  }
+  if (["partial", "blocked"].includes(String(run.status))) {
+    return decision(
+      "feedback_lifecycle_blocked",
+      "A partial or blocked lifecycle cannot perform a further effect.",
+    );
+  }
+  if (effect === "implementation" && mode === "follow_up") {
+    return decision(
+      "follow_up_no_implementation",
+      "follow_up mode cannot create a worktree, commit, or push.",
+    );
+  }
+  if (effect === "reply" && !["follow_up_ready", "replied"].includes(String(run.status))) {
+    return decision(
+      "follow_up_transition_required",
+      "Reply requires a current follow_up_ready or replied lifecycle state.",
+    );
+  }
+  if (effect === "resolve" && !["follow_up_ready", "replied"].includes(String(run.status))) {
+    return decision(
+      "follow_up_transition_required",
+      "Resolution requires a current follow_up_ready or replied lifecycle state.",
+    );
+  }
+  return null;
 };
 
 const reviewDecisionGate = (context: GateContext): GateDecision | null => {
@@ -1020,11 +1108,33 @@ export const evaluateWriteGate = (
       }
       return allowed();
     }
-    if (context.scenario.command === "auto-review-fix-pr") {
+    if (
+      context.scenario.command === "auto-review-fix-pr" ||
+      context.scenario.command === "address-pr-feedback"
+    ) {
+      const lifecycle = feedbackLifecycleGate(context, "implementation");
+      if (lifecycle) return lifecycle;
       const target = targetGate(context, false, true);
       if (target) return target;
       const auth = authorization(context, "workspace_attachment");
       if (auth) return auth;
+      if (!context.completedOperations.has("build-feedback-lifecycle-plan")) {
+        return decision(
+          "feedback_lifecycle_plan_step_missing",
+          "Feedback implementation requires the completed canonical lifecycle plan.",
+        );
+      }
+      const workspace = handoff(context, "BranchWorkspace");
+      if (!workspace) return requireHandoff(context, "BranchWorkspace")!;
+      if (workspace.status !== "planned") {
+        return decision(
+          "workspace_state_mismatch",
+          "An existing pull-request worktree must start from planned state.",
+        );
+      }
+      if (context.scenario.command === "address-pr-feedback") return allowed();
+    }
+    if (context.scenario.command === "auto-review-fix-pr") {
       if (!context.completedOperations.has("build-review-fix-plan")) {
         return decision(
           "review_fix_plan_step_missing",
@@ -1131,7 +1241,15 @@ export const evaluateWriteGate = (
   if (operation === "create-commit") {
     const prBased =
       context.scenario.command === "auto-review-fix-pr" ||
-      context.scenario.command === "auto-ci-fix-pr";
+      context.scenario.command === "auto-ci-fix-pr" ||
+      context.scenario.command === "address-pr-feedback";
+    if (
+      context.scenario.command === "auto-review-fix-pr" ||
+      context.scenario.command === "address-pr-feedback"
+    ) {
+      const lifecycle = feedbackLifecycleGate(context, "implementation");
+      if (lifecycle) return lifecycle;
+    }
     const target = prBased
       ? targetGate(context, false, true)
       : targetGate(context, true, false);
@@ -1175,7 +1293,15 @@ export const evaluateWriteGate = (
   if (operation === "push-branch") {
     const prBased =
       context.scenario.command === "auto-review-fix-pr" ||
-      context.scenario.command === "auto-ci-fix-pr";
+      context.scenario.command === "auto-ci-fix-pr" ||
+      context.scenario.command === "address-pr-feedback";
+    if (
+      context.scenario.command === "auto-review-fix-pr" ||
+      context.scenario.command === "address-pr-feedback"
+    ) {
+      const lifecycle = feedbackLifecycleGate(context, "implementation");
+      if (lifecycle) return lifecycle;
+    }
     const target = prBased
       ? targetGate(context, false, true)
       : targetGate(
@@ -1296,6 +1422,11 @@ export const evaluateWriteGate = (
   ) {
     const target = targetGate(context, false, true);
     if (target) return target;
+    const lifecycle = feedbackLifecycleGate(
+      context,
+      operation === "reply-to-review-thread" ? "reply" : "resolve",
+    );
+    if (lifecycle) return lifecycle;
     const validation = currentFeedbackValidation(context);
     if (validation) return validation;
     if (!context.completedOperations.has("validate-feedback-resolution")) {
@@ -1326,6 +1457,7 @@ export const evaluateWriteGate = (
       operation === "reply-to-review-thread"
         ? "feedback_reply"
         : "feedback_resolution",
+      operation === "reply-to-review-thread" ? "reply" : "resolve",
     );
     if (feedback) return feedback;
     if (operation === "resolve-review-thread") {
@@ -1876,6 +2008,16 @@ export const evaluateReadGate = (
   context: GateContext,
   action: ScenarioAction,
 ): GateDecision => {
+  if (
+    action.operation === "build-feedback-lifecycle-plan" &&
+    context.scenario.command === "address-pr-feedback" &&
+    context.scenario.facts.mode_required === true
+  ) {
+    return decision(
+      "mode_required",
+      "address-pr-feedback requires an explicit full or follow_up mode when the request is ambiguous.",
+    );
+  }
   if (action.operation === "assess-merge-readiness") {
     return readinessGate(context) ?? allowed();
   }

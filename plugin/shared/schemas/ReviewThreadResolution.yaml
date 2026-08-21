@@ -1,6 +1,6 @@
 schema: ReviewThreadResolution
-version: 2
-description: Scoped or approval-gated resolution of exactly one GitHub pull-request review thread after current evidence confirms the feedback was addressed.
+version: 3
+description: Scoped or approval-gated resolution of exactly one GitHub pull-request review thread after current evidence confirms the feedback was addressed, bound to a canonical feedback lifecycle transition and validated current head.
 required:
   - status
   - repository
@@ -8,6 +8,7 @@ required:
   - thread
   - validation
   - head_sha
+  - lifecycle
   - platform
   - approval
   - feedback_authorization
@@ -74,6 +75,24 @@ fields:
         items: string
   head_sha:
     type: string
+  lifecycle:
+    type: object
+    required: [run_id, transition_id, mode, effect, expected_head_sha, validated_head_sha]
+    fields:
+      run_id:
+        type: string
+      transition_id:
+        type: string
+      mode:
+        type: enum
+        values: [fix, full, follow_up]
+      effect:
+        type: enum
+        values: [resolve]
+      expected_head_sha:
+        type: string
+      validated_head_sha:
+        type: string
   platform:
     type: object
     required: [provider, resolution_supported, evidence]
@@ -104,11 +123,11 @@ fields:
         type: string | null
   feedback_authorization:
     type: object
-    required: [mode, authorized, repository, pull_request_number, feedback_item_id, validation_reference, current_head_sha, evidence]
+    required: [mode, authorized, repository, pull_request_number, feedback_item_id, lifecycle_run_id, transition_id, effect, validation_reference, expected_head_sha, current_head_sha, evidence]
     fields:
       mode:
         type: enum
-        values: [address_pr_feedback, not_applicable]
+        values: [feedback_lifecycle, address_pr_feedback, not_applicable]
       authorized:
         type: boolean
       repository:
@@ -117,7 +136,16 @@ fields:
         type: integer | null
       feedback_item_id:
         type: string | null
+      lifecycle_run_id:
+        type: string | null
+      transition_id:
+        type: string | null
+      effect:
+        type: enum
+        values: [reply, resolve, none]
       validation_reference:
+        type: string | null
+      expected_head_sha:
         type: string | null
       current_head_sha:
         type: string | null
@@ -181,5 +209,7 @@ invariants:
   - Platform support and exact target identity must be freshly verified immediately before mutation.
   - A state-change approval is required when applicable unless the exact feedback-mode authorization is present; general readiness or validation evidence is not authorization.
   - Feedback-mode authorization is valid only for the named repository, pull request, feedback item, current head SHA, and exact thread; it does not authorize replies or any other mutation.
+  - Canonical lifecycle resolutions require lifecycle.effect resolve, matching run and transition IDs, and equal expected, validated, and current head SHAs.
+  - Resolution is a separate effect and is never implied by a published reply.
   - Mutation is the only permitted GitHub write; replies, reopens, dismissals, edits, reviews, merges, and unrelated changes are outside this contract.
   - Resolved requires verified target, head, thread, and resolved-status matches after the mutation.
