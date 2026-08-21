@@ -1,0 +1,90 @@
+schema: HandoffGraph
+version: 1
+description: >-
+  Structural version-1 meta-schema for the canonical typed workflow graph of
+  the standalone GitHub plugin. This schema describes architecture source data
+  and is not itself a workflow output.
+required:
+  - schema
+  - version
+  - graph_id
+  - source_of_truth
+  - projection
+  - meta_schema
+  - nodes
+  - edges
+  - contract_classifications
+fields:
+  graph_id:
+    type: string
+    description: Stable graph identity.
+  source_of_truth:
+    type: relative_path
+    description: Canonical YAML data source.
+  projection:
+    type: relative_path
+    description: Generated or parity-checked Mermaid projection.
+  nodes:
+    type: array
+    item_required: [id, type, name, source, evidence]
+    id_pattern: '^(command|agent|skill|contract|capability|terminal):[A-Za-z0-9._-]+$'
+    type_enum: [command, agent, skill, contract, capability, terminal]
+    contract_node_rules:
+      version: required for non-meta contract nodes
+      meta: true for HandoffGraph and excluded from contract classifications
+  edges:
+    type: array
+    item_required:
+      - id
+      - type
+      - producer
+      - consumer
+      - contract
+      - contract_version
+      - owning_workflow
+      - visibility
+      - optional
+      - mode
+      - condition
+      - sequence
+      - identity_requirements
+      - freshness_requirements
+      - mutation_boundary
+      - terminal
+      - terminal_rationale
+      - audited_gap
+      - evidence
+    type_enum: [entry, handoff, capability, terminal]
+    edge_rules:
+      entry_and_capability:
+        contract: null
+        contract_version: null
+        terminal: false
+      handoff_and_terminal:
+        contract: existing contract node
+        contract_version: exact source schema version
+      terminal:
+        terminal: true
+        terminal_rationale: non-empty
+        audited_gap: null
+      audited_gap:
+        key_pattern: '^(AUD-[0-9]+|S[0-9]+)$'
+        required: [key, owner, rationale]
+        terminal: false
+  contract_classifications:
+    type: array
+    item_required: [contract, contract_version, classification, produced_by, consumed_by, rationale, terminal_rationale, audited_gap, evidence]
+    classification_enum: [consumed, terminal, temporary_orphan]
+    rules:
+      - HandoffGraph is excluded because it is the meta-schema.
+      - temporary_orphan requires audited_gap and a valid existing AUD-* or S* key.
+      - terminal requires terminal_rationale and no audited_gap.
+      - consumed may also appear on a terminal edge when the same payload is an approved downstream input and final report.
+validation:
+  yaml_parser: required
+  source_paths: required
+  exact_contract_versions: required
+  entry_cardinality: one per current Command
+  workflow_traversal: required for Product Planning, Feedback, CI-Fix, Review, Delivery, and Integration
+  mermaid_parity: compare machine-readable edge comments with canonical YAML edges
+  root_test_workspace: not applicable on the standalone plugin repository

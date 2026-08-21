@@ -12,9 +12,31 @@ implementation language and architecture of the target repository. A
 handoff preserves identity, evidence, availability, uncertainty, scope, and
 authorization state so the next Skill can make a bounded decision.
 
+## HandoffGraph v1
+
+`HandoffGraph v1` is the structural meta-schema for the plugin's architecture source; it is not a runtime workflow payload. The exact schema is [`../../shared/schemas/HandoffGraph.yaml`](../../shared/schemas/HandoffGraph.yaml), and the canonical data is [`../../shared/graphs/handoff-graph.yaml`](../../shared/graphs/handoff-graph.yaml). [`../../shared/graphs/handoff-graph.mmd`](../../shared/graphs/handoff-graph.mmd) is its parity-checked Mermaid projection.
+
+The graph distinguishes:
+
+- `entry` edges from each current Command to exactly one Agent;
+- ordered `capability` edges from Agents to the Skills they explicitly delegate;
+- `handoff` edges carrying an existing Shared Contract and the exact source version; and
+- `terminal` edges carrying a versioned result with an explicit rationale.
+
+Entry and capability edges are control edges and therefore carry explicit `contract: null` and `contract_version: null`. Handoff and terminal edges must reference existing `contract:<name>` nodes with an exact `contract_version`. Every edge also records its owning workflow, visibility, optionality, mode/condition, identity requirements, freshness requirements, mutation boundary, terminal state, rationale, and evidence paths.
+
+A temporary orphan is classified in `contract_classifications` only when the current plugin sources do not provide a directly declared producer/consumer edge. It must carry an existing `AUD-*` or `S*` key, owner, and rationale. `audited_gap` and `terminal` are mutually exclusive. The `HandoffGraph` meta-schema is excluded from orphan classification.
+
+The canonical graph requires complete traversals for Product Planning, Feedback, CI-Fix, Review, Delivery, and Integration. It also inventories the remaining current plugin workflows without treating text-only contract mentions as runtime edges. The removed root test workspace is not a graph source; executable graph validation is an external capability and the plugin-only static checks remain the applicable repository evidence.
+
+### Graph versioning
+
+Graph schema changes follow the same producer/consumer review discipline as other Shared Contracts. A structural breaking change increments `HandoffGraph`'s version and updates the YAML source, Mermaid projection, documentation, and external validator together. A graph-only change does not authorize a plugin version bump or a runtime handoff change.
+
 ## Contract families
 
-The plugin currently defines 85 versioned contracts.
+The plugin currently defines 88 versioned YAML schemas: 87 runtime handoff
+contracts plus the `HandoffGraph v1` architecture meta-schema.
 
 ### Issue and linkage contracts
 

@@ -10,6 +10,7 @@ version changes.
 
 | Contract | Purpose |
 | --- | --- |
+| `HandoffGraph` | Version 1 structural meta-schema for the canonical typed workflow graph; describes architecture source data and is excluded from workflow-output orphan classification. |
 | `LoadedIssue` | Version 1 read-only GitHub issue snapshot with preserved content, related pull requests, comments, metadata, and availability evidence. |
 | `LoadedPullRequest` | Version 1 read-only GitHub pull-request snapshot with preserved content, head and base revisions, commits, file metadata, checks, reviews, draft state, authors, related issues, and availability evidence. |
 | `PullRequestDiffAnalysis` | Version 1 read-only analysis of one pull-request diff across eight review categories, with evidence-backed findings, applied capability evidence, and separate uncertainties. |
@@ -125,199 +126,13 @@ gate may create one non-authorizing receipt, which `post-merge` consumes and
 removes exactly once. Receipts and consumed markers are not reusable by an
 older plugin version during rollback.
 
-## Workflow relationships
+## Canonical workflow graph
 
-```mermaid
-flowchart LR
-  loadedIssue[LoadedIssue] --> issueAssessment[IssueAssessment]
-  loadedIssue --> issueAnalysis[IssueAnalysis]
-  loadedIssue --> productAssessment[ProductAssessment]
-  productAssessment --> productInterview[ProductInterview]
-  loadedIssue --> productCapabilityMap[ProductCapabilityMap]
-  productInterview --> productCapabilityMap
-  loadedIssue --> productCapabilityDecomposition[ProductCapabilityDecomposition]
-  productCapabilityMap --> productCapabilityDecomposition
-  productCapabilityDecomposition --> issueAtomicityAssessment[IssueAtomicityAssessment]
-  productCapabilityDecomposition --> productDependencyGraph[ProductDependencyGraph]
-  issueAtomicityAssessment --> productDependencyGraph
-  productDependencyGraph --> productIssuePrioritization[ProductIssuePrioritization]
-  productCapabilityDecomposition --> composeProductSubIssues[compose-product-sub-issues]
-  productIssuePrioritization --> composeProductSubIssues
-  productDependencyGraph -.-> composeProductSubIssues
-  productInterview -.-> composeProductSubIssues
-  loadedIssue -.-> composeProductSubIssues
-  composeProductSubIssues --> productSubIssueDrafts[ProductSubIssueDrafts v2]
-  loadedIssue --> productPlannerRun[ProductPlannerRun v2]
-  productSubIssueDrafts --> productPlannerRun
-  productPlannerRun --> createProductSubIssues[create-product-sub-issues]
-  productSubIssueDrafts --> createProductSubIssues
-  createProductSubIssues --> issueDraftAdapter[lossless IssueDraft v2 adapter]
-  issueDraftAdapter --> createGithubIssue[create-github-issue]
-  createGithubIssue --> productSubIssuePublication[ProductSubIssuePublication v2]
-  productInterview --> issueAssessment
-  productInterview --> issueDraft
-  productCapabilityMap --> issueDraft
-  productCapabilityDecomposition --> issueDraft
-  issueAtomicityAssessment --> issueDraft
-  productDependencyGraph --> issueDraft
-  productIssuePrioritization --> issueDraft
-  productAssessment --> issueAssessment
-  loadedIssue --> issueDraft
-  loadedIssue --> issueUpdate[IssueUpdate]
-  openIssueInventory[OpenIssueInventory] --> openIssueRanking[OpenIssueRanking]
-  openIssueRanking --> issueReprioritization[IssueReprioritization]
-  openIssueRanking --> issueUpdate
-  issueReprioritization --> issueUpdate
-  loadedIssue --> issueRevisionComparison[IssueRevisionComparison]
-  loadedIssue --> affectedAreas[AffectedAreas]
-  issueAnalysis --> affectedAreas
-  issueAnalysis --> implementationEvaluation[ImplementationEvaluation]
-  repositoryContext[RepositoryContext] --> affectedAreas
-  repositoryContext --> implementationEvaluation
-  repositoryConventions[RepositoryConventions] --> implementationEvaluation
-  loadedIssue --> branchNameProposal[BranchNameProposal]
-  repositoryContext --> branchNameProposal
-  repositoryConventions --> branchNameProposal
-  repositoryContext --> targetBranchFetch[TargetBranchFetch]
-  targetBranchFetch --> implementationPlan
-  targetBranchFetch --> branchRebase[BranchRebase]
-  branchWorkspace --> branchRebase
-  branchRebase --> rebasedBranch
-  rebaseConflictAnalysis[RebaseConflictAnalysis] --> rebaseResolution["Separate rebase resolution"]
-  affectedAreas --> contextCapabilities[ContextCapabilities]
-  implementationEvaluation --> contextCapabilities
-  repositoryContext --> contextCapabilities
-  repositoryConventions --> contextCapabilities
-  issueDraft --> issueAssessment
-  issueDraft --> issueRevisionComparison
-  issueRevisionComparison --> issueAssessment
-  issueUpdate --> liveIssue[Updated live issue]
-  implementationEvaluation --> implementationPlan[ImplementationPlan]
-  contextCapabilities --> implementationPlan
-  issueAssessment --> implementationPlan
-  affectedAreas --> implementationPlan
-  repositoryContext --> branchWorkspace[BranchWorkspace]
-  repositoryContext --> repositoryConventions[RepositoryConventions]
-  repositoryConventions --> implementationPlan
-  branchNameProposal --> implementationPlan
-  branchNameProposal --> branchWorkspace
-  branchWorkspace -.-> implementationPlan["Optional existing workspace"]
-  branchWorkspace --> workingTreeInspection[WorkingTreeInspection]
-  workingTreeInspection --> changeClassification[ChangeClassification]
-  implementationPlan --> changeClassification
-  changeClassification --> unrelatedChangeDetection[UnrelatedChangeDetection]
-  implementationPlan --> unrelatedChangeDetection
-  implementationPlan --> validationResult[ValidationResult]
-  workingTreeInspection --> validationResult
-  changeClassification --> validationResult
-  unrelatedChangeDetection --> commitProposal[CommitProposal]
-  validationResult --> commitProposal
-  unrelatedChangeDetection --> validationResult
-  rebasedBranch[Completed rebased branch] --> rebasedValidation[validate-rebased-branch]
-  implementationPlan --> rebasedValidation
-  workingTreeInspection --> rebasedValidation
-  changeClassification --> rebasedValidation
-  rebasedValidation --> validationResult
-  validationResult --> composePrDescription["compose-pr-description"]
-  commitProposal --> composePrDescription
-  loadedIssue --> composePrDescription
-  implementationPlan --> composePrDescription
-  composePrDescription --> pullRequestDraft[PullRequestDraft]
-  pullRequestDraft --> pullRequestIssueLink[PullRequestIssueLink]
-  loadedIssue --> pullRequestIssueLink
-  draftPrIdentity["Draft PR identity"] --> pullRequestIssueLink
-  repositoryConventions --> pullRequestIssueLink
-  pullRequestIssueLink -.-> composePrDescription["Optional recompose with validated link"]
-  commitProposal --> createCommit[create-commit]
-  branchWorkspace --> branchPush[push-branch]
-  commitProposal --> branchPush
-  createCommit --> branchPush
-  branchPush --> pullRequestDraft
-  pullRequestDraft --> createDraftPr["create-draft-pr"]
-  branchPush --> createDraftPr
-  createDraftPr --> publishedPullRequest["PullRequestDraft publication result"]
-  loadedPullRequest[LoadedPullRequest] --> pullRequestDiffAnalysis[PullRequestDiffAnalysis]
-  pullRequestDiffAnalysis --> reviewFinding[ReviewFinding]
-  loadedPullRequest --> pullRequestCheckInspection[PullRequestCheckInspection]
-  loadedPullRequest --> requiredApprovalInspection[RequiredApprovalInspection]
-  loadedPullRequestDiscussions --> openReviewThreadAssessment[OpenReviewThreadAssessment]
-  buildReadinessEvidence[build-pr-readiness-evidence]
-  readinessSnapshot[PullRequestReadinessEvidence]
-  loadedPullRequest --> buildReadinessEvidence
-  loadedPullRequestDiscussions --> buildReadinessEvidence
-  pullRequestCheckInspection --> buildReadinessEvidence
-  requiredApprovalInspection --> buildReadinessEvidence
-  openReviewThreadAssessment --> buildReadinessEvidence
-  linkedIssueStatusAssessment --> buildReadinessEvidence
-  buildReadinessEvidence --> readinessSnapshot
-  readinessSnapshot --> mergeReadiness[MergeReadiness v3]
-  loadedPullRequestDiscussions[LoadedPullRequestDiscussions] --> reviewFinding[ReviewFinding]
-  publishedPullRequest --> reviewFinding[ReviewFinding]
-  pullRequestDiffAnalysis --> detectedReviewFindings[DetectedReviewFindings]
-  linkedIssue[LinkedIssue_LoadedIssue] --> detectedReviewFindings
-  pullRequestCheckInspection --> detectedReviewFindings
-  loadedPullRequestDiscussions --> detectedReviewFindings
-  externalRules[ExternalRules] --> detectedReviewFindings
-  detectedReviewFindings --> deduplicatedReviewFindings[DeduplicatedReviewFindings]
-  loadedPullRequestDiscussions --> deduplicatedReviewFindings
-  deduplicatedReviewFindings --> classifiedReviewFindings[ClassifiedReviewFindings]
-  classifiedReviewFindings --> reviewFinding
-  classifiedReviewFindings --> composeReview["compose-review"]
-  composeReview --> reviewDecision[ReviewDecision]
-  reviewDecision --> preReviewSubmitGate[PreReviewSubmitGate]
-  preReviewSubmitGate --> submitPrReview["submit-pr-review"]
-  loadedPullRequestDiscussions --> reviewThreadReply[ReviewThreadReply]
-  feedbackResolutionValidation --> reviewThreadReply
-  reviewThreadReply --> publishedThreadReply["Published thread reply"]
-  loadedPullRequestDiscussions --> collectedReviewFeedback[CollectedReviewFeedback]
-  classifiedReviewFindings --> collectedReviewFeedback
-  pullRequestCheckInspection --> collectedReviewFeedback
-  collectedReviewFeedback --> classifiedReviewFeedback[ClassifiedReviewFeedback]
-  classifiedReviewFeedback --> feedbackResolutionCapabilities[FeedbackResolutionCapabilities]
-  feedbackResolutionCapabilities --> feedbackResolutionPlan[FeedbackResolutionPlan]
-  classifiedReviewFeedback --> feedbackResolutionPlan[FeedbackResolutionPlan]
-  externalImplementationCapability[External implementation capability] --> feedbackResolutionPlan
-  collectedReviewFeedback --> resolvedReviewFeedback[ResolvedReviewFeedback]
-  loadedPullRequest --> resolvedReviewFeedback
-  latestDiffAndCommits[LatestDiffAndCommits] --> resolvedReviewFeedback
-  explicitTestEvidence[ExplicitTestEvidence] --> resolvedReviewFeedback
-  classifiedReviewFeedback --> feedbackResolutionValidation[FeedbackResolutionValidation]
-  feedbackResolutionPlan --> feedbackResolutionValidation
-  loadedPullRequest --> feedbackResolutionValidation
-  loadedPullRequestDiscussions --> feedbackResolutionValidation
-  pullRequestCheckInspection --> feedbackResolutionValidation
-  explicitTestEvidence --> feedbackResolutionValidation
-  resolvedReviewFeedback -. optional supporting evidence .-> feedbackResolutionValidation
-  feedbackResolutionValidation --> separateThreadResolution["Separate thread-resolution workflow"]
-  feedbackResolutionValidation --> reviewThreadResolution[ReviewThreadResolution]
-  feedbackResolutionValidation --> feedbackResolutionSummary[FeedbackResolutionSummary]
-  mergeReadiness --> pullRequestMerge[PullRequestMerge v2]
-  mergeReadiness --> preMergeGate[PreMergeGate]
-  pullRequestMerge --> preMergeGate
-  preMergeGate --> mergePullRequest[\"merge-pull-request\"]
-  mergePullRequest --> verifiedMerge[\"Verified merged pull request\"]
-  verifiedMerge --> postMergeStatus[PostMergeStatus]
-  postMergeStatus --> postMergeActions["Separate authorization required"]
-  verifiedMerge --> linkedIssueClosureVerification[LinkedIssueClosureVerification]
-  linkedIssue --> linkedIssueClosureVerification
-  linkedIssueClosureVerification --> linkedIssueClosure[LinkedIssueClosure]
-  linkedIssueStatusAssessment --> linkedIssueClosure
-  linkedIssueClosure --> closureResult["Verified issue closure"]
-  verifiedMerge --> cleanupWorktree[\"cleanup-worktree\"]
-  verifiedMerge --> cleanupResult[CleanupResult]
-  cleanupWorktree --> cleanupResult
-  loadedPullRequest --> linkedIssue[LinkedIssue]
-  linkedIssue --> linkedLoadedIssue[LoadedIssue]
-  linkedIssue --> linkedIssueStatusAssessment[LinkedIssueStatusAssessment]
-  loadedPullRequest --> linkedIssueStatusAssessment
-  pullRequestDiffAnalysis --> linkedIssueStatusAssessment
-  mergeReadiness --> pullRequestIntegration[PullRequestIntegration]
-  branchRebase --> pullRequestIntegration
-  rebasedValidation --> pullRequestIntegration
-  verifiedMerge --> pullRequestIntegration
-  linkedIssueClosureVerification --> pullRequestIntegration
-  cleanupResult --> pullRequestIntegration
-```
+The `HandoffGraph v1` entry above is a structural meta-schema, not a runtime payload. The canonical workflow data is [`../graphs/handoff-graph.yaml`](../graphs/handoff-graph.yaml), and [`../graphs/handoff-graph.mmd`](../graphs/handoff-graph.mmd) is its checked Mermaid projection.
+
+The canonical source owns the complete current Command, Agent, Skill, Shared Contract, external-capability, and terminal-node inventory. Its edge set distinguishes `entry`, `capability`, `handoff`, and `terminal` edges; payload-bearing edges use exact contract versions, while control edges explicitly use null payload fields. Producer classifications, optional/mode-specific transitions, identity/freshness requirements, mutation boundaries, and `AUD-*`/`S*`-bound gaps are maintained there.
+
+The former full handoff Mermaid block is intentionally not maintained as an independent definition in this inventory. Product-planning and other workflow views must be obtained as filtered projections of the canonical YAML source. This directory remains the contract inventory; the graph source remains the architecture source of truth.
 
 ## Conventions
 
