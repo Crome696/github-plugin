@@ -1,0 +1,174 @@
+schema: CommandScenario
+version: 1
+
+repository: &repo octo-org/widgets
+pull_request_number: &pr 42
+head_sha: &head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+head_branch: &branch feature/feedback-full
+worktree_path: &worktree C:/workspace/feedback-full
+
+scenarios:
+  - id: address-pr-feedback-full-implementation
+    command: address-pr-feedback
+    description: Runs the full feedback lifecycle through an authorized implementation, push, head reload, and current validation.
+    expected:
+      status: completed
+      successful_writes: [create-worktree, create-commit, push-branch]
+      preserved_artifacts: []
+    target:
+      repository: *repo
+      pull_request_number: *pr
+      head_sha: *head
+      exact: true
+    facts:
+      feedback_mode: full
+    authorizations:
+      routine: true
+      workspace_attachment: true
+      commit: true
+      push: true
+      feedback_reply: true
+      feedback_resolution: true
+    handoffs:
+      FeedbackLifecyclePlan:
+        patch:
+          plan_id: full-feedback-plan
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/42
+            head_sha: *head
+            head_branch: *branch
+            base_branch: main
+          mode: full
+          source_head_sha: *head
+          feedback_item_ids: [FB-001]
+      FeedbackLifecycleRun:
+        patch:
+          lifecycle_run_id: full-feedback-run
+          plan_id: full-feedback-plan
+          status: planned
+          repository: *repo
+          pull_request:
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/42
+            head_branch: *branch
+            base_branch: main
+          mode: full
+          current_head_sha: *head
+          feedback_item_ids: [FB-001]
+          remaining_item_ids: [FB-001]
+      BranchWorkspace:
+        patch:
+          status: planned
+          repository: *repo
+          base_branch: main
+          branch_name: *branch
+          worktree_path: *worktree
+          isolation_mode: dedicated_worktree
+          primary_checkout_untouched: true
+      ContextCapabilities:
+        patch:
+          status: resolved
+          missing_capabilities: []
+          failure: null
+      UnrelatedChangeDetection:
+        patch:
+          status: clear
+          repository: *repo
+          branch_name: *branch
+          worktree_path: *worktree
+          findings: []
+          blockers: []
+          clarifications: []
+      ValidationResult:
+        patch:
+          status: passed
+          workspace:
+            path: *worktree
+            branch: *branch
+            head_sha: *head
+          required_checks_passed: true
+          evaluation:
+            scope:
+              status: aligned
+          blockers: []
+          evidence_requirements: []
+          readiness:
+            commit_preparation_allowed: true
+            draft_pr_preparation_allowed: false
+      CommitProposal:
+        patch:
+          status: approved
+          repository: *repo
+          branch: *branch
+          authorization:
+            exact_scope_approved: true
+            commit_authorized: true
+      PreCommitGate:
+        patch:
+          workspace:
+            repository: *repo
+            path: *worktree
+            branch: *branch
+            head_sha: *head
+          validation:
+            status: passed
+            readiness:
+              commit_preparation_allowed: true
+          commit_proposal:
+            status: approved
+            repository: *repo
+            authorization:
+              exact_scope_approved: true
+              commit_authorized: true
+      FeedbackResolutionValidation:
+        patch:
+          status: validated
+          pull_request:
+            repository: *repo
+            number: *pr
+            url: https://github.com/octo-org/widgets/pull/42
+            baseline_head_sha: *head
+            current_head_sha: *head
+          results: []
+          blockers: []
+          uncertainties: []
+    actions:
+      - operation: verify-repository
+        effect: read
+      - operation: collect-review-feedback
+        effect: read
+      - operation: classify-review-feedback
+        effect: read
+      - operation: build-feedback-lifecycle-plan
+        effect: read
+        handoff: FeedbackLifecyclePlan
+      - operation: create-worktree
+        effect: write
+        handoff: BranchWorkspace
+      - operation: verify-worktree
+        effect: read
+      - operation: handoff-external-implementation
+        effect: read
+      - operation: inspect-working-tree
+        effect: read
+      - operation: classify-changes
+        effect: read
+      - operation: detect-unrelated-changes
+        effect: read
+      - operation: validate-implementation-result
+        effect: read
+      - operation: compose-commit-message
+        effect: read
+      - operation: create-commit
+        effect: write
+        handoff: CommitProposal
+      - operation: push-branch
+        effect: write
+      - operation: reload-feedback-head
+        effect: read
+        handoff: FeedbackLifecycleRun
+      - operation: validate-feedback-resolution
+        effect: read
+        handoff: FeedbackResolutionValidation

@@ -1,6 +1,6 @@
 ---
 name: resolve-review-thread
-description: Resolve exactly one GitHub pull-request review thread only after validate-feedback-resolution confirms the addressed feedback is fully evidenced and the platform supports resolution, using direct user authorization, a matching target-repository AGENTS.md policy, or exact address-pr-feedback authorization. Use automatically after eligible feedback-resolution validation when thread resolution is requested.
+description: Resolve exactly one GitHub pull-request review thread only after validate-feedback-resolution confirms the addressed feedback is fully evidenced and the platform supports resolution, using direct user authorization, a matching target-repository AGENTS.md policy, or exact canonical feedback-lifecycle authorization. Use automatically after eligible feedback-resolution validation when thread resolution is requested.
 ---
 
 # Resolve a Pull-Request Review Thread
@@ -10,8 +10,8 @@ evidence-backed validation confirms that its feedback was addressed. This Skill
 performs one narrowly scoped GitHub state mutation and returns its verified
 final status.
 
-In `/address-pr-feedback` mode, require the exact command-scoped authorization
-and current validation evidence before proceeding; direct invocation retains
+In `/address-pr-feedback` mode, require the exact canonical lifecycle
+authorization and current validation evidence before proceeding; direct invocation retains
 the independent approval gate unless a matching target-repository `AGENTS.md`
 policy authorizes the exact resolution.
 
@@ -19,7 +19,7 @@ policy authorizes the exact resolution.
 
 - Keep the handoff and GitHub-facing fields in English; chat may follow the
   conversation language.
-- Require one version-2
+- Require one version-3
   [`ReviewThreadResolution`](../../shared/schemas/ReviewThreadResolution.yaml)
   handoff and one matching current discussion target.
 - Accept repository, pull-request, thread, parent comment, feedback item, and
@@ -67,7 +67,7 @@ Skill; it does not itself authorize a GitHub write.
    exists, require explicit user authorization of the exact operation unless an exact
    `/address-pr-feedback` authorization is present. Do not infer authorization
    from validation, readiness, a previous reply approval, or a general request.
-4. Produce a `draft` or `approved` `ReviewThreadResolution` handoff before the
+4. Produce a `draft` or `approved` `ReviewThreadResolution v3` handoff before the
    write. The exact target, validation references, platform evidence, and
    approval state must be visible.
 
@@ -112,7 +112,7 @@ failure must remain visible and must not be reported as resolved.
 - [ ] Platform capability is verified.
 - [ ] Required state-change authorization is exact and recorded from the user
       or a matching target-repository `AGENTS.md` policy, or an exact
-      feedback-mode authorization is present.
+      feedback-lifecycle resolution authorization is present.
 - [ ] Thread status was refreshed immediately before mutation.
 - [ ] Only the resolution operation was attempted.
 - [ ] Final status was refreshed and verified.

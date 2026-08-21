@@ -105,8 +105,10 @@ The plugin currently defines 85 versioned contracts.
 | `ResolvedReviewFeedback` | Advisory candidates supported by later commits, diff, tests, and current discussion evidence. |
 | `FeedbackResolutionValidation` | Per-item addressed, partial, not-addressed, or unverifiable result with current evidence. |
 | `FeedbackResolutionSummary` | Resolved, open, disputed, and blocked feedback outcomes with next steps and diagnostic merge impact. |
-| `ReviewThreadReply` | Exact evidence-backed reply to one thread without resolving it. |
-| `ReviewThreadResolution` | Exact eligible resolution of one validated open thread. |
+| `FeedbackLifecyclePlan` | Canonical v1 plan with explicit `fix`, `full`, and `follow_up` modes, typed transitions, head binding, validation, and independent effect authorization. |
+| `FeedbackLifecycleRun` | Canonical v1 lifecycle state preserving current head, transitions, delivery evidence, blockers, and separate thread effects. |
+| `ReviewThreadReply` | Version-3 exact evidence-backed reply to one thread without resolving it, bound to a lifecycle transition and validated head. |
+| `ReviewThreadResolution` | Version-3 exact eligible resolution of one validated open thread, bound to a lifecycle transition and validated head. |
 
 ### Integration, cleanup, and host-gate contracts
 

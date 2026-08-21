@@ -1,52 +1,57 @@
 schema: ReviewFixRun
-version: 1
-status: fixes_complete
+version: 2
+status: running
+lifecycle_run_id: lifecycle_run_id-value
+canonical_agent: feedback-agent
+mode: fix
+lifecycle_status: planned
 repository: octo-org/widgets
 pull_request:
-  number: 42
-  url: https://github.com/octo-org/widgets/pull/42
-  title: Review fix fixture
-  head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-  head_branch: feature/review-fix
-  base_branch: main
-iterations:
-  - number: 1
-    input_head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-    output_head_sha: null
-    status: fixes_complete
-    candidate_item_ids: []
-    mandatory_item_ids: []
-    commit_sha: null
-    remote_sha: null
-    evidence: [handoff:ReviewFixPlan]
-    blockers: []
+  number: 1
+  url: https://github.com/octo-org/widgets
+  title: title-value
+  head_sha: head_sha-value
+  head_branch: head_branch-value
+  base_branch: base_branch-value
+iterations: []
 plan:
-  status: confirmed
-  plan_id: review-fix-plan-fixture
-  head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  status: status-value
+  plan_id: plan_id-value
+  head_sha: head_sha-value
   mandatory_item_ids: []
-workspace: null
-commit: null
-push: null
+workspace:
+  status: status-value
+  branch_name: branch_name-value
+  worktree_path: C:/workspace/github
+  isolation_mode: isolation_mode-value
+commit:
+  status: status-value
+  sha: sha-value
+push:
+  status: status-value
+  branch_name: branch_name-value
+  remote_sha: remote_sha-value
 remaining_item_ids: []
 authorization:
-  source: task_intent
-  task_scope: pr:42
-  routine_operations: [workspace_attach, commit, push]
-  exact_scope_approved: true
-  commit_authorized: true
-  push_authorized: true
-  evidence: [user:task-intent]
+  source: source-value
+  task_scope: task_scope-value
+  routine_operations: []
+  exact_scope_approved: false
+  commit_authorized: false
+  push_authorized: false
+  evidence: []
 blockers: []
-next_user_action: Optionally run /address-pr-feedback for thread follow-up; do not merge automatically.
-evidence:
-  - source: handoff
-    reference: ReviewFixPlan
-    observed: No mandatory items remain after the current re-review.
-failure: null
+next_user_action: next_user_action-value
+evidence: []
+failure:
+  code: code-value
+  message: message-value
+  operation: operation-value
+  retryable: false
+  evidence: []
 metadata:
-  run_id: review-fix-run-fixture
-  max_iterations: 5
+  run_id: run_id-value
+  max_iterations: 1
   started_at: '2026-01-01T00:00:00.000Z'
   completed_at: '2026-01-01T00:00:00.000Z'
-  conversation_language: en
+  conversation_language: conversation_language-value

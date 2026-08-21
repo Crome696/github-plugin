@@ -85,7 +85,9 @@ const buildPayload = (schema) => {
   const payload = { schema: schema.schema, version: schema.version };
   for (const requiredName of schema.required ?? []) {
     const field = schema.fields?.[requiredName];
-    if (requiredName === "lifecycle") {
+    if (requiredName === "lifecycle" && field?.fields?.run_id) {
+      payload[requiredName] = minimalValue(field, requiredName, true);
+    } else if (requiredName === "lifecycle") {
       payload[requiredName] = lifecycleFixture(lifecycleOperationFor(schema.schema));
     } else if (field) {
       payload[requiredName] = minimalValue(field, requiredName, true);
@@ -93,6 +95,13 @@ const buildPayload = (schema) => {
   }
   if (schema.fields?.status && !Object.hasOwn(payload, "status")) {
     payload.status = minimalValue(schema.fields.status, "status", true);
+  }
+  if (
+    schema.schema === "ReviewThreadResolution" &&
+    payload.feedback_authorization &&
+    typeof payload.feedback_authorization === "object"
+  ) {
+    payload.feedback_authorization.effect = "resolve";
   }
   return payload;
 };

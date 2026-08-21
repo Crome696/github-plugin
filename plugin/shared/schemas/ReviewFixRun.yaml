@@ -1,8 +1,12 @@
 schema: ReviewFixRun
-version: 1
-description: Lifecycle record for one internal pull-request review-and-fix loop on an existing head branch.
+version: 2
+description: Compatibility projection for the canonical FeedbackLifecycleRun fix mode on an existing pull-request head branch.
 required:
   - status
+  - lifecycle_run_id
+  - canonical_agent
+  - mode
+  - lifecycle_status
   - repository
   - pull_request
   - iterations
@@ -21,6 +25,17 @@ fields:
   status:
     type: enum
     values: [running, fixes_complete, partial, blocked]
+  lifecycle_run_id:
+    type: string
+  canonical_agent:
+    type: enum
+    values: [feedback-agent]
+  mode:
+    type: enum
+    values: [fix]
+  lifecycle_status:
+    type: enum
+    values: [planned, running, awaiting_validation, follow_up_ready, replied, resolved, completed, partial, blocked]
   repository:
     type: string
     format: owner/repository

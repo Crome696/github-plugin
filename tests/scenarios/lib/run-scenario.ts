@@ -91,6 +91,8 @@ const updateHandoffAfterWrite = (
   if (operation === "create-worktree") {
     const workspace = context.handoffs.get("BranchWorkspace");
     if (isRecord(workspace)) workspace.status = "active";
+    const lifecycle = context.handoffs.get("FeedbackLifecycleRun");
+    if (isRecord(lifecycle)) lifecycle.status = "running";
     return;
   }
   if (operation === "create-commit") {
@@ -105,6 +107,8 @@ const updateHandoffAfterWrite = (
         files_committed: [],
       };
     }
+    const lifecycle = context.handoffs.get("FeedbackLifecycleRun");
+    if (isRecord(lifecycle)) lifecycle.status = "awaiting_validation";
     return;
   }
   if (operation === "push-branch") {
@@ -123,6 +127,18 @@ const updateHandoffAfterWrite = (
         push_authorized: true,
       };
     }
+    const lifecycle = context.handoffs.get("FeedbackLifecycleRun");
+    if (isRecord(lifecycle)) lifecycle.status = "awaiting_validation";
+    return;
+  }
+  if (operation === "reply-to-review-thread") {
+    const lifecycle = context.handoffs.get("FeedbackLifecycleRun");
+    if (isRecord(lifecycle)) lifecycle.status = "replied";
+    return;
+  }
+  if (operation === "resolve-review-thread") {
+    const lifecycle = context.handoffs.get("FeedbackLifecycleRun");
+    if (isRecord(lifecycle)) lifecycle.status = "resolved";
     return;
   }
   if (operation === "rebase-branch") {
@@ -257,6 +273,23 @@ export const runScenario = async (
 
       if (action.effect === "read") {
         if (
+          action.operation === "reload-feedback-head" ||
+          (action.operation === "load-pull-request" &&
+            action.phase === "post-push")
+        ) {
+          const lifecycle = context.handoffs.get("FeedbackLifecycleRun");
+          if (isRecord(lifecycle)) {
+            if (scenario.facts.head_changed_after_push === true) {
+              lifecycle.current_head_sha = "cccccccccccccccccccccccccccccccccccccccc";
+              lifecycle.status = "blocked";
+            } else if (scenario.facts.partial_fix === true) {
+              lifecycle.status = "partial";
+            } else if (lifecycle.status === "awaiting_validation") {
+              lifecycle.status = "follow_up_ready";
+            }
+          }
+        }
+        if (
           scenario.command === "auto-review-fix-pr" &&
           action.operation === "load-pull-request" &&
           action.phase === "iteration-2"
@@ -373,6 +406,15 @@ export const runScenario = async (
   ) {
     status = "blocked";
     blockedOperation = "wait-required-checks";
+  }
+
+  const lifecycle = handoffs.get("FeedbackLifecycleRun");
+  if (isRecord(lifecycle) && status === "completed") {
+    if (lifecycle.status === "partial") status = "partial";
+    if (lifecycle.status === "blocked") {
+      status = "blocked";
+      blockedOperation ??= "reload-feedback-head";
+    }
   }
 
   return {

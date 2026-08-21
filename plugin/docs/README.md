@@ -98,7 +98,7 @@ The following files are the sources of truth for the corresponding concerns:
 | Structured handoffs and contract inventory | [`../shared/schemas/README.md`](../shared/schemas/README.md) |
 | Repository-owned configurable hook preferences | [`repository-policy.md`](repository-policy.md) |
 | Explicit evidence migration for `0.3.112` | [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md) |
-| Immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, and transactional ownership-safe project-hook generation for `0.3.116` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
+| Canonical head-bound feedback lifecycle contracts, independent effect authorization, immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, and transactional ownership-safe project-hook generation for `0.3.117` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
 | Contract producers, consumers, and workflow graph | [`../../tests/lib/handoff-graph.ts`](../../tests/lib/handoff-graph.ts), [`../../tests/scenarios/lib/workflow-graphs.ts`](../../tests/scenarios/lib/workflow-graphs.ts) |
 | Host compatibility assumptions and limitations | [`../../README.md`](../../README.md) and the host manifests |
 
@@ -124,22 +124,23 @@ the sources of truth.
 | [preparation-agent](../agents/preparation-agent.md) | Explicit | Prepare one qualified issue into an ImplementationPlan, create or reuse the authorized workspace through create-worktree, and verify it read-only. |
 | [delivery-agent](../agents/delivery-agent.md) | Explicit | Validate one completed implementation, compose the exact commit and Draft PR handoffs, and delegate routine delivery writes to their owning Skills. |
 | [review-agent](../agents/review-agent.md) | Explicit | Analyze one verified PR, apply a matching target-repository AGENTS.md policy before asking for finding or publication decisions, and hand the exact authorized review draft to publication. |
-| [feedback-agent](../agents/feedback-agent.md) | Explicit | Collect feedback, identify advisory resolved candidates, triage selected open items, coordinate external resolution, validate results, and hand eligible thread actions to Skills. |
+| [feedback-agent](../agents/feedback-agent.md) | Explicit | Own the canonical `fix`, `full`, and `follow_up` lifecycle, coordinate independently authorized delivery effects, validate the current head, and hand separate reply/resolution effects to Skills. |
 | [integration-agent](../agents/integration-agent.md) | Explicit | Coordinate one PR's readiness, target-repository-policy-aware base refresh and rebase, post-rebase validation, separately authorized merge, issue-closure verification, and cleanup decisions. |
 | [host-hooks-agent](../agents/host-hooks-agent.md) | Explicit | Coordinate one verified repository's project-hook generation by delegating interactive host selection and bounded projection to generate-project-hooks. |
 | [lifecycle-agent](../agents/lifecycle-agent.md) | Explicit | Sequence issue create or existing-issue refine, then preparation, external implementation, and Draft PR delivery by starting the existing delivery Agents; stop before review. |
-| [review-fix-agent](../agents/review-fix-agent.md) | Explicit | Review one verified pull request, confirm mandatory fixes, coordinate external implementation on its existing head branch, commit and non-force push, and repeat until complete or blocked. |
+| [review-fix-agent](../agents/review-fix-agent.md) | Explicit | Preserve the discoverable compatibility identity for `/auto-review-fix-pr` while routing `fix` mode to `feedback-agent` without owning feedback state or decisions. |
 | [ci-fix-agent](../agents/ci-fix-agent.md) | Explicit | Wait for required checks on one verified pull request, rerun only exactly authorized required names, confirm remaining CI failures, coordinate external implementation on its existing head branch, commit and non-force push, and reassess checks until complete or blocked. |
 | [pr-ready-agent](../agents/pr-ready-agent.md) | Explicit | Verify one Draft pull request, unique linked issue, and optional reviewer set, then mark it Ready-for-Review after exact authorization. |
 | [product-planner-agent](../agents/product-planner-agent.md) | Explicit | Turn one verified parent issue into a prioritized graph, consume the canonical ProductSubIssueDrafts v2 set, bind approval to its digest, and hand that unchanged set to create-product-sub-issues. |
 | [issue-reprioritize-agent](../agents/issue-reprioritize-agent.md) | Explicit | Inventory currently open issues in one repository, rank them into unique consecutive P1-through-Pn titles with the user, and apply those titles only after exact ranked-set authorization. |
 | [issue-close-agent](../agents/issue-close-agent.md) | Explicit | Load one verified issue, require an exact close reason and duplicate target when needed, then close it without a merged pull request after exact authorization. |
 
-feedback-agent owns feedback mode and integration-agent owns integration mode;
-they share only verified pull-request identity and must not invoke one another.
-review-fix-agent and ci-fix-agent orchestrate their declared Skills for one
-pull-request scope and do not publish review actions or perform merge,
-Ready-for-Review, rebase, or cleanup writes. lifecycle-agent is the only Agent
+feedback-agent owns all feedback modes and integration-agent owns integration
+mode; they share only verified pull-request identity and must not invoke one
+another. ci-fix-agent orchestrates its declared Skills for one pull-request
+scope, while review-fix-agent is only a compatibility router. Neither path
+publishes review actions or performs merge, Ready-for-Review, rebase, or
+cleanup writes. lifecycle-agent is the only Agent
 that may start other plugin Agents, and may start only issue-agent,
 preparation-agent, and delivery-agent sequentially.
 
@@ -157,7 +158,7 @@ preparation-agent, and delivery-agent sequentially.
 | [generate-project-hooks](../commands/generate-project-hooks.md) | host-hooks-agent | Resolve one repository, start hook projection, and display the selected-host generation result. |
 | [implement-auto-issue](../commands/implement-auto-issue.md) | lifecycle-agent | Resolve one repository and request, start the lifecycle Agent, and display the LifecycleRun through Draft PR publication. |
 | [refine-auto-issue](../commands/refine-auto-issue.md) | lifecycle-agent | Resolve one existing issue, start the lifecycle Agent at refine, and display the LifecycleRun through Draft PR publication. |
-| [auto-review-fix-pr](../commands/auto-review-fix-pr.md) | review-fix-agent | Resolve one pull request, start the review-fix Agent, and display the ReviewFixRun without publishing a review or merging. |
+| [auto-review-fix-pr](../commands/auto-review-fix-pr.md) | feedback-agent (`fix`) | Resolve one pull request, start the canonical fix lifecycle, and display the ReviewFixRun v2 compatibility projection without publishing a review or merging. |
 | [auto-ci-fix-pr](../commands/auto-ci-fix-pr.md) | ci-fix-agent | Resolve one pull request, start the CI-fix Agent, and display the CiFixRun without publishing a review, merging, or treating green checks as Ready-for-Review. |
 | [ready-pr](../commands/ready-pr.md) | pr-ready-agent | Resolve one pull request, start Ready-for-Review, and display the PullRequestReady result. |
 | [plan-product](../commands/plan-product.md) | product-planner-agent | Resolve one repository and parent issue, compose and display the canonical ProductSubIssueDrafts v2 set with ProductPlannerRun v2, then publish only after digest-bound approval. |

@@ -1,5 +1,5 @@
 schema: ReviewThreadResolution
-version: 2
+version: 3
 status: draft
 repository: octo-org/widgets
 pull_request:
@@ -17,6 +17,13 @@ validation:
   resolution_eligible: false
   evidence_references: []
 head_sha: head_sha-value
+lifecycle:
+  run_id: run_id-value
+  transition_id: transition_id-value
+  mode: fix
+  effect: resolve
+  expected_head_sha: expected_head_sha-value
+  validated_head_sha: validated_head_sha-value
 platform:
   provider: provider-value
   resolution_supported: false
@@ -27,12 +34,16 @@ approval:
   state_change_gate: required_and_granted
   evidence: evidence-value
 feedback_authorization:
-  mode: address_pr_feedback
+  mode: feedback_lifecycle
   authorized: false
   repository: repository-value
   pull_request_number: 1
   feedback_item_id: feedback_item_id-value
+  lifecycle_run_id: lifecycle_run_id-value
+  transition_id: transition_id-value
+  effect: resolve
   validation_reference: validation_reference-value
+  expected_head_sha: expected_head_sha-value
   current_head_sha: current_head_sha-value
   evidence: []
 mutation:

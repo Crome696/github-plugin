@@ -311,13 +311,14 @@ verify repository and exact pull request
   -> analyze the current diff
   -> detect, deduplicate, and classify findings
   -> collect, resolve-candidate, and classify open feedback
-  -> confirm one host-neutral ReviewFixPlan
+  -> create one FeedbackLifecyclePlan in fix mode and confirm its selected items
   -> attach or reuse the existing head worktree
   -> resolve external implementation capability
   -> inspect, classify, validate, and scope-check changes
   -> compose and create one exact commit
   -> push the same branch without force
   -> reload the pull request at the new head
+  -> reload and validate the new head before the next lifecycle transition
   -> repeat up to five iterations
 ```
 
@@ -365,13 +366,13 @@ verify exact pull request and current head
   -> collect review threads, findings, comments, and failed checks
   -> identify advisory resolved candidates
   -> classify explicitly selected open feedback
-  -> resolve external capabilities
-  -> build bounded FeedbackResolutionPlan
-  -> external capability implements selected corrections
-  -> validate every selected item against current evidence
+  -> select FeedbackLifecyclePlan mode full or follow_up
+  -> for full: coordinate separately authorized worktree, commit, and push
+  -> after push: reload and validate the new head
+  -> for follow_up: keep the workspace, commit, and push effects absent
   -> summarize resolved, open, disputed, and blocked items
-  -> publish eligible reply
-  -> resolve eligible thread separately
+  -> publish eligible reply as a separate lifecycle transition
+  -> resolve eligible thread as a separate lifecycle transition
 ```
 
 Selection is explicit. The feedback workflow cannot silently expand to another

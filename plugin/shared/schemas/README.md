@@ -80,11 +80,13 @@ version changes.
 | `ReviewFinding` | Evidence-based finding with severity, location, impact, recommendation, and verification. |
 | `ReviewDecision` | Version 1 composition-only or authorization-gated review event payload, confirmation evidence, publication result, and verification. |
 | `ReviewFixPlan` | Version 1 host-neutral, interactively confirmed plan of mandatory fixes for one existing pull-request head branch. |
-| `ReviewFixRun` | Version 1 lifecycle record for one internal pull-request review-and-fix loop, preserving head continuity, delivery evidence, remaining items, blockers, and stop conditions. |
+| `FeedbackLifecyclePlan` | Version 1 canonical head-bound feedback plan with `fix`, `full`, and `follow_up` modes, typed transitions, validation requirements, and independent effect authorization. |
+| `FeedbackLifecycleRun` | Version 1 canonical lifecycle state record preserving transitions, current head, implementation delivery evidence, feedback IDs, blockers, and separately authorized thread effects. |
+| `ReviewFixRun` | Version 2 compatibility projection of the canonical `FeedbackLifecycleRun` fix mode; it does not own independent review-fix state. |
 | `ProductPlannerRun` | Version 2 lifecycle record for one interactive parent-issue product-planning run that consumes one canonical ProductSubIssueDrafts v2 identity and binds exact-set approval to its digest without carrying an independent publishable title/body set. |
 | `ProductSubIssuePublication` | Version 2 exact-set publication result that records the canonical identity, exact approved unit set, lossless IssueDraft v2 adapter verification, GitHub mappings, parent and hard-dependency outcomes, and failed operations after attempting every confirmed sub-issue before finalizing relationships. |
-| `ReviewThreadReply` | Version 2 exact, evidence-backed reply to one pull-request review-thread comment with direct user or repository-policy authorization or exact feedback-mode authorization and post-publication verification, without resolving the thread. |
-| `ReviewThreadResolution` | Version 2 scoped or authorization-gated resolution of exactly one open pull-request review thread after current validation proves the feedback was addressed. |
+| `ReviewThreadReply` | Version 3 exact, evidence-backed reply to one pull-request review-thread comment bound to a canonical lifecycle transition and validated current head, without resolving the thread. |
+| `ReviewThreadResolution` | Version 3 scoped or authorization-gated resolution of exactly one open pull-request review thread bound to a canonical lifecycle transition and validated current head. |
 | `MergeReadiness` | Version 3 deterministic read-only transformation of exactly one complete version-1 `PullRequestReadinessEvidence` snapshot into mergeability, draft and review state, open-thread, approval, required-check, issue-coverage, blocker, and remaining-condition diagnostics. |
 | `PullRequestReadinessEvidence` | Version 1 immutable, identity-bound snapshot of one pull request's repository, PR node, URL, head/base OIDs, freshness, policy, required checks, approvals, dismissals, change requests, fully paginated discussions, linked issue, acceptance criteria, conditional merge-method evidence, and per-source provenance. |
 | `RequiredApprovalInspection` | Version 1 read-only inspection of explicitly retrieved branch-protection and ruleset review requirements, effective approvals, active change requests, pending review requests, and satisfied or missing approval conditions. |
@@ -377,15 +379,22 @@ flowchart LR
   the approved payload exactly, and returns verified publication evidence.
   Stale or ambiguous inline locations block publication instead of being
   relocated or silently converted.
-- `ReviewThreadReply` is the exact, evidence-backed handoff for one reply to
+- `FeedbackLifecyclePlan` and `FeedbackLifecycleRun` are the canonical plan
+  and state contracts for one feedback lifecycle. Their `fix`, `full`, and
+  `follow_up` modes preserve exact head continuity and independently authorize
+  worktree, commit, push, reply, and resolution effects.
+- `ReviewFixRun` v2 is a compatibility projection for `fix` mode. It retains
+  the discoverable review-fix identity without owning a competing state
+  machine.
+- `ReviewThreadReply` v3 is the exact, evidence-backed handoff for one reply to
   one inline review-thread parent comment. Direct invocation requires user or
-  matching repository-policy authorization; `/address-pr-feedback` may carry
-  exact scoped authorization after current validation. Publication refreshes the
+  matching repository-policy authorization; the canonical lifecycle may carry
+  exact scoped reply authorization after current validation. Publication refreshes the
   pull request, thread, parent
   relationship, and head SHA immediately before writing, verifies the reply
   afterward, and never resolves, reopens, edits, dismisses, or minimizes the
   thread.
-- `ReviewThreadResolution` is the exact version-2 handoff for one resolution
+- `ReviewThreadResolution` is the exact version-3 handoff for one resolution
   mutation. It requires current addressed and resolution-eligible validation,
   verified platform support, an immediate pre-mutation open-thread refresh, and
   post-mutation verification. The feedback command may supply exact scoped

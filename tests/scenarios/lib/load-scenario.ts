@@ -128,12 +128,30 @@ const parseFacts = (value: unknown, path: string): ScenarioDefinition["facts"] =
     "parent_overwrite",
     "retry_matching_digest",
     "retry_digest_changed",
+    "mode_required",
+    "head_changed_after_push",
+    "push_failed",
+    "partial_fix",
+    "reply_only",
+    "no_change_follow_up",
+    "reply_denied",
+    "resolution_denied",
   ] as const) {
     const entry = value[key];
     if (entry !== undefined && typeof entry !== "boolean") {
       throw new Error(`${path}.${key} must be a boolean`);
     }
     if (entry !== undefined) facts[key] = entry;
+  }
+  if (value.feedback_mode !== undefined) {
+    if (
+      value.feedback_mode !== "fix" &&
+      value.feedback_mode !== "full" &&
+      value.feedback_mode !== "follow_up"
+    ) {
+      throw new Error(`${path}.feedback_mode must be fix, full, or follow_up`);
+    }
+    facts.feedback_mode = value.feedback_mode;
   }
   if (value.api_errors !== undefined) {
     facts.api_errors = requireStringList(value.api_errors, `${path}.api_errors`);

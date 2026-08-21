@@ -18,6 +18,30 @@ defaults:
     commit: true
     push: true
   review_handoffs: &review_handoffs
+    FeedbackLifecyclePlan:
+      patch:
+        plan_id: auto-feedback-plan
+        repository: *repo
+        pull_request:
+          number: *pr
+          url: https://github.com/octo-org/widgets/pull/42
+          head_sha: *head
+          head_branch: *branch
+          base_branch: main
+        mode: fix
+        source_head_sha: *head
+    FeedbackLifecycleRun:
+      patch:
+        lifecycle_run_id: auto-feedback-run
+        plan_id: auto-feedback-plan
+        repository: *repo
+        pull_request:
+          number: *pr
+          url: https://github.com/octo-org/widgets/pull/42
+          head_branch: *branch
+          base_branch: main
+        mode: fix
+        current_head_sha: *head
     LoadedPullRequest:
       patch:
         pull_request:
@@ -355,6 +379,9 @@ defaults:
   review_actions: &review_actions
     - operation: verify-repository
       effect: read
+    - operation: build-feedback-lifecycle-plan
+      effect: read
+      handoff: FeedbackLifecyclePlan
     - operation: load-pull-request
       effect: read
     - operation: load-linked-issue
@@ -399,6 +426,9 @@ defaults:
       effect: write
     - operation: push-branch
       effect: write
+    - operation: reload-feedback-head
+      effect: read
+      handoff: FeedbackLifecycleRun
 
 scenarios:
   - id: auto-review-fix-pr-happy-path
@@ -535,6 +565,38 @@ scenarios:
     target: *target
     facts:
       max_iterations_reached: true
+    authorizations: *authorizations
+    handoffs:
+      <<: *review_handoffs
+    actions: *review_actions
+
+  - id: auto-review-fix-pr-partial-fix
+    command: auto-review-fix-pr
+    description: Preserves a partial canonical lifecycle when delivery evidence leaves an unresolved item.
+    expected:
+      status: partial
+      successful_writes: [create-worktree, create-commit, push-branch]
+      preserved_artifacts: []
+    target: *target
+    facts:
+      partial_fix: true
+    authorizations: *authorizations
+    handoffs:
+      <<: *review_handoffs
+    actions: *review_actions
+
+  - id: auto-review-fix-pr-push-failure
+    command: auto-review-fix-pr
+    description: Stops the canonical lifecycle after a failed push without claiming the fix was delivered.
+    expected:
+      status: partial
+      successful_writes: [create-worktree, create-commit]
+      blocked_operation: push-branch
+      preserved_artifacts: []
+    target: *target
+    facts:
+      push_failed: true
+      api_errors: [push-branch]
     authorizations: *authorizations
     handoffs:
       <<: *review_handoffs

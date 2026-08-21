@@ -252,7 +252,7 @@ describe("generate-project-hooks", () => {
     expect(manifest.schema).toBe("ProjectHookManifest");
     expect(manifest.version).toBe(1);
     expect(manifest.plugin).toBe("github");
-    expect(manifest.plugin_version).toBe("0.3.116");
+    expect(manifest.plugin_version).toBe("0.3.117");
     expect(manifest.hosts).toEqual(["cursor", "codex"]);
     expect(artifacts.some((artifact) => artifact.path === "AGENTS.md" && artifact.mode === "marked-block")).toBe(true);
     expect(artifacts.some((artifact) => artifact.path === ".gitignore" && artifact.mode === "managed-entries")).toBe(true);

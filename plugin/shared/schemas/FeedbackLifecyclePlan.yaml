@@ -1,0 +1,163 @@
+schema: FeedbackLifecyclePlan
+version: 1
+description: Canonical, head-bound plan for one pull-request feedback lifecycle with explicit fix, full, or follow-up mode and independent effect authorization.
+required:
+  - status
+  - plan_id
+  - repository
+  - pull_request
+  - mode
+  - source_head_sha
+  - feedback_item_ids
+  - transitions
+  - authorization
+  - validation
+  - forbidden_operations
+  - metadata
+  - failure
+fields:
+  status:
+    type: enum
+    values: [planned, partial, blocked]
+  plan_id:
+    type: string
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, head_sha, head_branch, base_branch]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      head_sha:
+        type: string
+      head_branch:
+        type: string
+      base_branch:
+        type: string
+  mode:
+    type: enum
+    values: [fix, full, follow_up]
+  source_head_sha:
+    type: string
+  feedback_item_ids:
+    type: list
+    items: string
+  transitions:
+    type: list
+    items:
+      type: object
+      required: [from, to, reason]
+      fields:
+        from:
+          type: enum
+          values: [planned, running, awaiting_validation, follow_up_ready, replied, resolved, completed, partial, blocked]
+        to:
+          type: enum
+          values: [running, awaiting_validation, follow_up_ready, replied, resolved, completed, partial, blocked]
+        reason:
+          type: string
+        head_sha:
+          type: string | null
+  authorization:
+    type: object
+    required: [worktree, commit, push, reply, resolve]
+    fields:
+      worktree:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+      commit:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+      push:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+      reply:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+      resolve:
+        type: object
+        required: [authorized, evidence]
+        fields:
+          authorized:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+  validation:
+    type: object
+    required: [required_tests, required_checks, head_binding, push_reload_required]
+    fields:
+      required_tests:
+        type: list
+        items: string
+      required_checks:
+        type: list
+        items: string
+      head_binding:
+        type: string
+      push_reload_required:
+        type: boolean
+  forbidden_operations:
+    type: list
+    items: string
+  metadata:
+    type: object
+    required: [created_at, read_only]
+    fields:
+      created_at:
+        type: string
+        format: iso-8601
+      read_only:
+        type: boolean
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable]
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, conflicting_identity, stale_head, mode_required, insufficient_evidence, planning_failure]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+invariants:
+  - The plan identifies exactly one repository, pull request, and source head SHA.
+  - mode fix is the canonical implementation entry for auto-review-fix-pr; full is the implementation-capable address-pr-feedback mode; follow_up never creates a workspace, commit, or push.
+  - Every transition is explicit and carries its reason and, when known, the head SHA.
+  - Worktree, commit, push, reply, and resolve authorization are independent effects.
+  - A pushed fix must reload and validate the new pull-request head before any thread action.
+  - Reply authorization never authorizes resolution, and resolution authorization never authorizes reply.
+  - Merge, rebase, Ready-for-Review, review publication, branch deletion, and worktree cleanup are forbidden operations.
+  - A non-null failure is required for blocked plans; failure is null for planned and partial plans unless a failure is being reported.

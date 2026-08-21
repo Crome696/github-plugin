@@ -37,6 +37,15 @@ export interface ScenarioFacts {
   parent_overwrite?: boolean;
   retry_matching_digest?: boolean;
   retry_digest_changed?: boolean;
+  mode_required?: boolean;
+  feedback_mode?: "fix" | "full" | "follow_up";
+  head_changed_after_push?: boolean;
+  push_failed?: boolean;
+  partial_fix?: boolean;
+  reply_only?: boolean;
+  no_change_follow_up?: boolean;
+  reply_denied?: boolean;
+  resolution_denied?: boolean;
   api_errors?: string[];
 }
 
