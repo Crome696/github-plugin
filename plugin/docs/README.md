@@ -13,6 +13,25 @@ product or project code being delivered. The operational behavior remains
 defined by the plugin's Skills, Agents, Rules, Hooks, and Shared Contracts;
 this documentation explains how those pieces fit together.
 
+## Agent state-machine boundary
+
+Every Agent under [`../agents/`](../agents/) is a declarative orchestration
+state machine. Each file declares its activation boundary, typed inputs and
+outputs, states and transitions, ordered Skill handoffs, authorization
+checkpoints, recovery and resume point, forbidden operations, and terminal
+outputs. Agents route evidence and bounded decisions; they do not copy Git,
+GitHub API, schema-validation, hook, or mutation procedures.
+
+`lifecycle-agent` is the only cross-Agent sequencer and may start only
+`issue-agent`, `preparation-agent`, and `delivery-agent` in that order.
+`feedback-agent` owns every feedback mode, `integration-agent` owns rebase,
+merge, closure, and cleanup orchestration, and `review-fix-agent` is only the
+compatibility router for `mode: fix`. The durable scenario matrix is
+[`workflows/agent-state-machine-scenarios.md`](workflows/agent-state-machine-scenarios.md).
+The dependency-free structural packaging check is
+`node scripts/validate-agent-state-machines.mjs`; the repository intentionally
+does not restore a local package or test runner.
+
 ## Choose a reading path
 
 ### For developers integrating or extending the plugin

@@ -1,5 +1,6 @@
 %% Canonical projection of plugin/shared/graphs/handoff-graph.yaml.
 %% Edge comments are machine-readable parity records; this file defines no independent edge set.
+%% Base commit: 3849fd61ae41f8d7c4be5133292ee23806fb3a02.
 flowchart LR
   n1["command: address-pr-feedback"]
   n2["command: auto-ci-fix-pr"]
@@ -227,8 +228,8 @@ flowchart LR
   n1 -->|entry| n19
 %% edge {"id":"edge:entry:auto-ci-fix-pr","type":"entry","producer":"command:auto-ci-fix-pr","consumer":"agent:ci-fix-agent","contract":null,"contract_version":null}
   n2 -->|entry| n17
-%% edge {"id":"edge:entry:auto-review-fix-pr","type":"entry","producer":"command:auto-review-fix-pr","consumer":"agent:feedback-agent","contract":null,"contract_version":null}
-  n3 -->|entry| n19
+%% edge {"id":"edge:entry:auto-review-fix-pr","type":"entry","producer":"command:auto-review-fix-pr","consumer":"agent:review-fix-agent","contract":null,"contract_version":null}
+  n3 -->|entry| n30
 %% edge {"id":"edge:entry:close-issue","type":"entry","producer":"command:close-issue","consumer":"agent:issue-close-agent","contract":null,"contract_version":null}
   n4 -->|entry| n23
 %% edge {"id":"edge:entry:create-issue","type":"entry","producer":"command:create-issue","consumer":"agent:issue-agent","contract":null,"contract_version":null}
@@ -523,6 +524,8 @@ flowchart LR
   n39 -->|PullRequestFixPlan v1| n65
 %% edge {"id":"edge:handoff:review-fix:05","type":"handoff","producer":"skill:build-review-fix-plan","consumer":"skill:create-worktree","contract":"contract:PullRequestFixPlan","contract_version":1}
   n43 -->|PullRequestFixPlan v1| n65
+%% edge {"id":"edge:handoff:review-fix-agent:feedback","type":"handoff","producer":"agent:review-fix-agent","consumer":"agent:feedback-agent","contract":"contract:ReviewFixRun","contract_version":2}
+  n30 -->|ReviewFixRun v2| n19
 %% edge {"id":"edge:handoff:feedback:06","type":"handoff","producer":"skill:resolve-feedback-capabilities","consumer":"skill:validate-feedback-resolution","contract":"contract:ExternalCapabilityResolution","contract_version":1}
   n100 -->|ExternalCapabilityResolution v1| n108
 %% edge {"id":"edge:handoff:feedback:07","type":"handoff","producer":"skill:validate-feedback-resolution","consumer":"skill:summarize-feedback-resolution","contract":"contract:FeedbackResolutionValidation","contract_version":1}

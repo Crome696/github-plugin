@@ -24,6 +24,14 @@ verified issue without a merged pull request after exact close-reason
 authorization.
 The full sequence is shown here to make the boundaries explicit.
 
+Each phase is implemented by an orchestration state machine, not by a second
+procedure surface. The Agent records the current typed state and delegates the
+operation to its ordered Skills; Skills, Rules, Hooks, and Shared Contracts
+remain authoritative for algorithms and writes. A stale identity, denied
+authorization, partial external result, or unverifiable head is a terminal
+branch for the current run and includes a safe resume state. See the complete
+[Agent state-machine scenario matrix](agent-state-machine-scenarios.md).
+
 ## Lifecycle map
 
 ```mermaid
