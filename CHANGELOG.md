@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.120
+
+- Introduce the shared `PullRequestFixPlan v1` contract with a top-level
+  `source_kind` discriminator and lossless tagged review, feedback, and
+  required-check candidates.
+- Migrate the three fix-plan builders, worktree and delivery consumers,
+  validation handoffs, Agents, Commands, run summaries, and capability
+  boundaries to the common contract.
+- Preserve `ReviewFixPlan v1`, `CiFixPlan v1`, and `FeedbackResolutionPlan v1`
+  as historical contracts with explicit fail-closed ingress adapters that
+  never create authorization.
+- Synchronize the handoff graph, architecture documentation, and package
+  metadata to version `0.3.120` while retaining the standalone plugin's
+  external-validation boundary.
+
 ## 0.3.119
 
 - Unify context and feedback capability resolution behind the canonical

@@ -18,13 +18,16 @@ behavior itself.
 
 `FeedbackLifecyclePlan v1` is the planning source of truth and
 `FeedbackLifecycleRun v1` is the only lifecycle state record. The older
-`FeedbackResolutionPlan v1`, `FeedbackResolutionValidation v1`, and
+`FeedbackResolutionPlan v1` is retained only as a lossless, fail-closed
+ingress adapter. `PullRequestFixPlan v1` with `source_kind: feedback` is the
+bounded fix handoff. `FeedbackResolutionValidation v1` and
 `FeedbackResolutionSummary v1` remain stage handoffs. `ReviewFixRun v2` is a
 compatibility projection for `mode: fix`; it is not a second state machine.
 
 The Agent consumes `LoadedPullRequest v1` and `ClassifiedReviewFeedback v1`.
 It produces `FeedbackLifecyclePlan v1`, `FeedbackLifecycleRun v1`,
-`FeedbackResolutionPlan v1`, `FeedbackResolutionValidation v1`,
+`PullRequestFixPlan v1` with `source_kind: feedback`,
+`FeedbackResolutionValidation v1`,
 `FeedbackResolutionSummary v1`, `ReviewThreadReply v3`, and
 `ReviewThreadResolution v3`.
 
@@ -70,7 +73,8 @@ silently reclassifies resolved or outdated feedback as open.
   requirements and delegates narrowest external-capability resolution to
   `plugin/skills/resolve-external-capabilities/SKILL.md`.
 - `plugin/skills/build-feedback-resolution-plan/SKILL.md` builds the bounded
-  stage handoff.
+  `PullRequestFixPlan` stage handoff and preserves legacy input only through
+  its explicit adapter.
 - `plugin/skills/validate-feedback-resolution/SKILL.md` validates the external
   result against the current PR head.
 - `plugin/skills/summarize-feedback-resolution/SKILL.md` reports addressed,
@@ -92,8 +96,8 @@ authorization for one effect never authorizes another effect.
 3. Require one exact decision per selected item and create
    `FeedbackLifecyclePlan v1` with the selected mode, source head, transition
    policy, validation requirements, and independent authorization records.
-4. Resolve capabilities and hand the bounded implementation work to the
-   external implementation capability. External capabilities may change
+4. Resolve capabilities and hand the bounded common fix plan to the external
+   implementation capability. External capabilities may change
    source, tests, or documentation, but never commit, push, reply, or resolve.
 5. For `fix` or `full`, coordinate the authorized worktree, commit, and
    non-force push effects. Validate exact path scope and preserve every

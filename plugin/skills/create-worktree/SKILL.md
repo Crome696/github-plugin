@@ -1,13 +1,13 @@
 ---
 name: create-worktree
-description: Create or explicitly reuse one authorized Git implementation worktree from a verified ImplementationPlan, ReviewFixPlan, or CiFixPlan and return BranchWorkspace creation evidence. Use explicitly when preparation owns workspace creation; never verify, repair, reset, clean, or remove a worktree.
+description: Create or explicitly reuse one authorized Git implementation worktree from a verified ImplementationPlan or PullRequestFixPlan and return BranchWorkspace creation evidence. Use explicitly when preparation owns workspace creation; never verify, repair, reset, clean, or remove a worktree.
 disable-model-invocation: true
 ---
 
 # Create Worktree
 
 Create or explicitly reuse exactly one authorized implementation workspace
-described by a version-1 `ImplementationPlan` or `ReviewFixPlan`. Return
+described by a version-1 `ImplementationPlan` or `PullRequestFixPlan`. Return
 one version-1 [`BranchWorkspace`](../../shared/schemas/BranchWorkspace.yaml)
 with the observed creation or reuse result. Workspace verification remains the
 separate responsibility of `verify-worktree`.
@@ -41,10 +41,11 @@ Require exactly one version-1 planning handoff:
 
 - `ImplementationPlan` for creating or reusing the authorized implementation
   workspace; or
-- `ReviewFixPlan` or `CiFixPlan` for attaching or reusing the existing
-  pull-request head workspace. Its `pull_request`, `workspace`, `scope`, and
-  `authorization` must identify the exact repository, head branch, worktree
-  path, and task scope.
+- `PullRequestFixPlan` for attaching or reusing the existing pull-request
+  head workspace. Its `repository`, `pull_request`, `base`, `head`, `workspace`,
+  `scope`, and `authorization` must identify the exact repository, base/head
+  revisions, worktree path, and task scope. Its `source_kind` and adapter
+  state must also be validated before any workspace write.
 
 The selected handoff must provide:
 
@@ -88,6 +89,7 @@ Before the write or reuse decision:
    authorized.
 
 Use sanitized evidence references such as `handoff:ImplementationPlan.workspace`,
+`handoff:PullRequestFixPlan.workspace`, `handoff:PullRequestFixPlan.head`,
 `git:worktree-list`, `git:show-ref`, `filesystem:<path>`, and
 `authorization:<source>`. Preserve unavailable command results as failures,
 never as passed checks.
@@ -110,8 +112,8 @@ For an explicitly authorized existing target, perform no creation write and
 record the exact reuse evidence. Do not turn reuse into a claim that the
 workspace is verified.
 
-For `ReviewFixPlan` or `CiFixPlan` with `workspace.operation: attach_existing_branch`, the
-existing pull-request head branch is the target. After verifying the exact
+For `PullRequestFixPlan` with `workspace.operation: attach_existing_branch`,
+the existing pull-request head branch is the target. After verifying the exact
 repository, branch, base, absolute path, and task-scoped authorization, use
 only the bounded equivalent of:
 

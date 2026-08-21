@@ -1,6 +1,6 @@
 ---
 name: compose-commit-message
-description: Compose an evidence-backed English Git commit proposal from a verified issue, ImplementationPlan or ReviewFixPlan or CiFixPlan, repository conventions, validated working-tree changes, and an existing task-scoped delivery authorization. Use automatically when a validated implementation is ready for commit preparation; never stage or create a commit.
+description: Compose an evidence-backed English Git commit proposal from a verified issue, ImplementationPlan or PullRequestFixPlan, repository conventions, validated working-tree changes, and an existing task-scoped delivery authorization. Use automatically when a validated implementation is ready for commit preparation; never stage or create a commit.
 ---
 
 # Compose Commit Message
@@ -38,8 +38,12 @@ handoffs:
 2. `WorkingTreeInspection` with `status: inspected`, or `status: partial` with
    a trusted repository, branch, identity, and usable file inventory.
 3. Either `ImplementationPlan` with the objective, scope, and implementation
-   evidence for the change, or `ReviewFixPlan` with the confirmed review-fix
-   scope, implementation steps, and validation evidence.
+   evidence for the change, or `PullRequestFixPlan` with its confirmed
+   `source_kind`, exact repository/PR/base/head identity, selected mandatory
+   candidate IDs, scope, implementation steps, and validation evidence. The
+   common plan is the normative input for review, feedback, and CI-fix commit
+   composition; legacy identities are accepted only through a lossless,
+   fail-closed ingress adapter.
 4. A task-scoped delivery authorization from the current task context,
    `ImplementationPlan.authorization`, or applicable repository policy when
    autonomous routine delivery is enabled.
@@ -78,9 +82,11 @@ Use concise, reproducible references in `rationale` and
 - `handoff:WorkingTreeInspection.files.deleted`
 - `handoff:WorkingTreeInspection.files.renamed`
 - `handoff:ImplementationPlan.objective` or
-  `handoff:ReviewFixPlan.pull_request.title`
+  `handoff:PullRequestFixPlan.pull_request.title`
+- `handoff:PullRequestFixPlan.source_kind` and
+  `handoff:PullRequestFixPlan.selection.mandatory_item_ids`
 - `handoff:ImplementationPlan.implementation_steps[<id>]` or
-  `handoff:ReviewFixPlan.implementation_steps[<id>]`
+  `handoff:PullRequestFixPlan.implementation_steps[<id>]`
 - `handoff:LoadedIssue.title` or `handoff:LoadedIssue.number`
 - `handoff:RepositoryConventions.conventions[<index>]`
 - `handoff:ChangeClassification.changes[<path>]`
@@ -96,7 +102,10 @@ requirement.
 
 ## Compose the file scope
 
-1. Use `WorkingTreeInspection.files` as the authoritative scope source.
+1. Use `WorkingTreeInspection.files` as the authoritative observed scope
+   source and `PullRequestFixPlan.scope` as the authoritative approved scope
+   when a common plan is supplied. Require the same `head.sha` before using
+   either source for a commit proposal.
 2. Populate `CommitProposal.files.added` from `files.added`, which already
    includes untracked paths that would become additions.
 3. Populate `files.modified` from `files.modified` and `files.deleted` from

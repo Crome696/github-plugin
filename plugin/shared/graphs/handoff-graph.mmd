@@ -222,6 +222,7 @@ flowchart LR
   n219["contract: ProductInterviewPrerequisite"]
   n220["skill: resolve-external-capabilities"]
   n221["contract: ExternalCapabilityResolution"]
+  n222["contract: PullRequestFixPlan"]
 %% edge {"id":"edge:entry:address-pr-feedback","type":"entry","producer":"command:address-pr-feedback","consumer":"agent:feedback-agent","contract":null,"contract_version":null}
   n1 -->|entry| n19
 %% edge {"id":"edge:entry:auto-ci-fix-pr","type":"entry","producer":"command:auto-ci-fix-pr","consumer":"agent:ci-fix-agent","contract":null,"contract_version":null}
@@ -518,8 +519,10 @@ flowchart LR
   n80 -->|ResolvedReviewFeedback v1| n49
 %% edge {"id":"edge:handoff:feedback:04","type":"handoff","producer":"skill:classify-review-feedback","consumer":"skill:build-feedback-resolution-plan","contract":"contract:ClassifiedReviewFeedback","contract_version":1}
   n49 -->|ClassifiedReviewFeedback v1| n39
-%% edge {"id":"edge:handoff:feedback:05","type":"handoff","producer":"skill:build-feedback-resolution-plan","consumer":"skill:resolve-feedback-capabilities","contract":"contract:FeedbackResolutionPlan","contract_version":1}
-  n39 -->|FeedbackResolutionPlan v1| n100
+%% edge {"id":"edge:handoff:feedback:05","type":"handoff","producer":"skill:build-feedback-resolution-plan","consumer":"skill:create-worktree","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n39 -->|PullRequestFixPlan v1| n65
+%% edge {"id":"edge:handoff:review-fix:05","type":"handoff","producer":"skill:build-review-fix-plan","consumer":"skill:create-worktree","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n43 -->|PullRequestFixPlan v1| n65
 %% edge {"id":"edge:handoff:feedback:06","type":"handoff","producer":"skill:resolve-feedback-capabilities","consumer":"skill:validate-feedback-resolution","contract":"contract:ExternalCapabilityResolution","contract_version":1}
   n100 -->|ExternalCapabilityResolution v1| n108
 %% edge {"id":"edge:handoff:feedback:07","type":"handoff","producer":"skill:validate-feedback-resolution","consumer":"skill:summarize-feedback-resolution","contract":"contract:FeedbackResolutionValidation","contract_version":1}
@@ -536,8 +539,8 @@ flowchart LR
   n81 -->|PullRequestCheckInspection v1| n98
 %% edge {"id":"edge:handoff:ci-fix:05","type":"handoff","producer":"skill:rerun-required-checks","consumer":"skill:build-ci-fix-plan","contract":"contract:RequiredCheckRerun","contract_version":1}
   n98 -->|RequiredCheckRerun v1| n38
-%% edge {"id":"edge:handoff:ci-fix:06","type":"handoff","producer":"skill:build-ci-fix-plan","consumer":"skill:resolve-feedback-capabilities","contract":"contract:CiFixPlan","contract_version":1}
-  n38 -->|CiFixPlan v1| n100
+%% edge {"id":"edge:handoff:ci-fix:06","type":"handoff","producer":"skill:build-ci-fix-plan","consumer":"skill:create-worktree","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n38 -->|PullRequestFixPlan v1| n65
 %% edge {"id":"edge:handoff:ci-fix:07","type":"handoff","producer":"skill:resolve-feedback-capabilities","consumer":"skill:create-worktree","contract":"contract:ExternalCapabilityResolution","contract_version":1}
   n100 -->|ExternalCapabilityResolution v1| n65
 %% edge {"id":"edge:handoff:ci-fix:08","type":"handoff","producer":"skill:create-worktree","consumer":"skill:verify-worktree","contract":"contract:BranchWorkspace","contract_version":1}
@@ -586,6 +589,16 @@ flowchart LR
   n56 -->|CommitProposal v1| n61
 %% edge {"id":"edge:handoff:delivery:06","type":"handoff","producer":"skill:create-commit","consumer":"skill:push-branch","contract":"contract:CommitProposal","contract_version":1}
   n61 -->|CommitProposal v1| n94
+%% edge {"id":"edge:handoff:fix-plan:delivery:inspect-working-tree","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:inspect-working-tree","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n18 -->|PullRequestFixPlan v1| n83
+%% edge {"id":"edge:handoff:fix-plan:delivery:classify-changes","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:classify-changes","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n18 -->|PullRequestFixPlan v1| n48
+%% edge {"id":"edge:handoff:fix-plan:delivery:detect-unrelated-changes","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:detect-unrelated-changes","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n18 -->|PullRequestFixPlan v1| n74
+%% edge {"id":"edge:handoff:fix-plan:delivery:validate-implementation-result","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:validate-implementation-result","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n18 -->|PullRequestFixPlan v1| n109
+%% edge {"id":"edge:handoff:fix-plan:delivery:compose-commit-message","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:compose-commit-message","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n18 -->|PullRequestFixPlan v1| n56
 %% edge {"id":"edge:handoff:delivery:07","type":"handoff","producer":"skill:push-branch","consumer":"skill:compose-pr-description","contract":"contract:BranchPush","contract_version":1}
   n94 -->|BranchPush v1| n57
 %% edge {"id":"edge:handoff:delivery:08","type":"handoff","producer":"skill:compose-pr-description","consumer":"skill:link-pr-to-issue","contract":"contract:PullRequestDraft","contract_version":1}
@@ -688,10 +701,10 @@ flowchart LR
   n27 -->|ImplementationPlan v1| n203
 %% edge {"id":"edge:handoff:lifecycle:04","type":"handoff","producer":"capability:external-implementation","consumer":"agent:delivery-agent","contract":"contract:BranchWorkspace","contract_version":1}
   n203 -->|BranchWorkspace v1| n18
-%% edge {"id":"edge:handoff:feedback:10","type":"handoff","producer":"agent:feedback-agent","consumer":"capability:external-implementation","contract":"contract:FeedbackResolutionPlan","contract_version":1}
-  n19 -->|FeedbackResolutionPlan v1| n203
-%% edge {"id":"edge:handoff:ci-fix:16","type":"handoff","producer":"agent:ci-fix-agent","consumer":"capability:external-implementation","contract":"contract:CiFixPlan","contract_version":1}
-  n17 -->|CiFixPlan v1| n203
+%% edge {"id":"edge:handoff:feedback:10","type":"handoff","producer":"agent:feedback-agent","consumer":"capability:external-implementation","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n19 -->|PullRequestFixPlan v1| n203
+%% edge {"id":"edge:handoff:ci-fix:16","type":"handoff","producer":"agent:ci-fix-agent","consumer":"capability:external-implementation","contract":"contract:PullRequestFixPlan","contract_version":1}
+  n17 -->|PullRequestFixPlan v1| n203
 %% edge {"id":"edge:capability:external-implementation:delivery-boundary","type":"capability","producer":"capability:external-implementation","consumer":"agent:delivery-agent","contract":null,"contract_version":null}
   n203 -.->|capability| n18
 %% edge {"id":"edge:capability:external-validation:graph-validator","type":"capability","producer":"capability:external-validation","consumer":"contract:HandoffGraph","contract":null,"contract_version":null}

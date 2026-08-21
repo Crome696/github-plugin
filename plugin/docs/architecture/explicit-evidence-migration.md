@@ -15,7 +15,7 @@ depend on repository heuristics.
 The new contract is:
 
 - `ImplementationPlan.validation.evidence_requirements` and
-  `ReviewFixPlan.validation.evidence_requirements` are additive inputs.
+  `PullRequestFixPlan.validation.evidence_requirements` are additive inputs.
 - `ValidationResult v2.evidence_requirements` is mandatory, including when it
   is an empty list.
 - Every normalized entry preserves its `id`, exact requirement text, source
@@ -53,6 +53,27 @@ Screenshot capture remains the responsibility of an authorized external
 capability or the project that owns the UI. There is no repository-local
 screenshot-capture skill, fallback skill, or fixed
 repository screenshot-manifest convention in this plugin.
+
+## Pull-request fix-plan migration
+
+`PullRequestFixPlan v1` is now the common evidence input for review, feedback,
+and CI-fix delivery. Its `source_kind` discriminator is carried into every
+validation mapping, and its head-bound scope, workspace, authorization,
+required checks, and evidence requirements must refer to the same current
+head. Review findings, review feedback, and required-check failures remain
+tagged source variants; locations, IDs, resolution groups, wait/rerun
+references, failure evidence, and reassessment requirements are never
+flattened or discarded.
+
+`ReviewFixPlan v1`, `CiFixPlan v1`, and `FeedbackResolutionPlan v1` remain
+legacy inputs only. A lossless, fail-closed adapter must prove all common and
+source-specific fields, exact repository/PR/base/head identity, scope
+boundaries, evidence freshness, and authorization state. Missing fields,
+mixed heads, source-kind conflicts, stale evidence, or non-representable
+authorization block conversion. The adapter never creates new commit, push,
+thread, review, Ready-for-Review, rebase, merge, deletion, cleanup, or
+default-branch authorization. `FeedbackLifecyclePlan v1` remains separate as
+the feedback lifecycle/effect authority.
 
 ## Rollback
 

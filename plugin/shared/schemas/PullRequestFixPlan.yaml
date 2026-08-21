@@ -1,0 +1,672 @@
+schema: PullRequestFixPlan
+version: 1
+description: >-
+  Common, head-bound fix-plan contract for review findings, confirmed review
+  feedback, and failed required checks. The source discriminator changes only
+  the evidence collector and candidate variant; identity, scope, workspace,
+  authorization, validation, and safety semantics are shared.
+required:
+  - status
+  - source_kind
+  - repository
+  - pull_request
+  - base
+  - head
+  - source
+  - candidate_items
+  - selection
+  - scope
+  - implementation_steps
+  - capabilities
+  - workspace
+  - authorization
+  - blockers
+  - unresolved_questions
+  - validation
+  - risks
+  - rollback
+  - metadata
+  - failure
+fields:
+  status:
+    type: enum
+    values: [draft, confirmed, partial, blocked]
+  source_kind:
+    type: enum
+    description: Top-level discriminator for the source-specific candidate union.
+    values: [review, feedback, ci]
+  repository:
+    type: string
+    format: owner/repository
+  pull_request:
+    type: object
+    required: [number, url, title]
+    fields:
+      number:
+        type: integer
+        minimum: 1
+      url:
+        type: string
+        format: uri
+      title:
+        type: string | null
+  base:
+    type: object
+    required: [branch, sha]
+    fields:
+      branch:
+        type: string
+      sha:
+        type: string
+        format: full git commit SHA
+  head:
+    type: object
+    required: [branch, sha]
+    fields:
+      branch:
+        type: string
+      sha:
+        type: string
+        format: full git commit SHA
+  source:
+    type: object
+    required: [references, evidence, adapter]
+    fields:
+      references:
+        type: list
+        items: string
+      evidence:
+        type: list
+        items: string
+      adapter:
+        type: object
+        required:
+          - status
+          - input_contract
+          - input_version
+          - source_kind
+          - lossless
+          - preserved_fields
+          - missing_fields
+          - conflicts
+          - authorization_preserved
+          - evidence
+        fields:
+          status:
+            type: enum
+            values: [native, adapted, blocked]
+          input_contract:
+            type: enum
+            values: [PullRequestFixPlan, ReviewFixPlan, CiFixPlan, FeedbackResolutionPlan, null]
+          input_version:
+            type: integer | null
+          source_kind:
+            type: enum
+            values: [review, feedback, ci, null]
+          lossless:
+            type: boolean
+          preserved_fields:
+            type: list
+            items: string
+          missing_fields:
+            type: list
+            items: string
+          conflicts:
+            type: list
+            items: string
+          authorization_preserved:
+            type: boolean
+          evidence:
+            type: list
+            items: string
+  candidate_items:
+    type: tagged_union
+    discriminator: candidate_kind
+    common_fields:
+      required: [id, candidate_kind, problem_core, decision, evidence, correction, risk, status]
+      fields:
+        id:
+          type: string
+        candidate_kind:
+          type: enum
+          values: [review_finding, review_feedback, required_check_failure]
+        source_references:
+          type: list
+          items: string
+        problem_core:
+          type: string
+        decision:
+          type: enum
+          values: [fix, skip, clarify, resolved]
+        decision_reason:
+          type: string | null
+        evidence:
+          type: list
+          items: string
+        impact:
+          type: string | null
+        correction:
+          type: string
+        risk:
+          type: enum
+          values: [low, medium, high]
+        status:
+          type: enum
+          values: [new, previously_skipped, previously_confirmed, resolved]
+        scope:
+          type: object | null
+          required: [in_scope, out_of_scope, exact_path_allowlist, evidence]
+          fields:
+            in_scope:
+              type: list
+              items: string
+            out_of_scope:
+              type: list
+              items: string
+            exact_path_allowlist:
+              type: list
+              items: string
+            evidence:
+              type: list
+              items: string
+    variants:
+      - candidate_kind: review_finding
+        required: [review_finding]
+        fields:
+          review_finding:
+            type: object
+            required: [locations, severity, confidence, success_criteria]
+            fields:
+              locations:
+                type: list
+                items:
+                  type: object
+                  required: [path, start_line, end_line, side]
+                  fields:
+                    path:
+                      type: string
+                    start_line:
+                      type: integer | null
+                    end_line:
+                      type: integer | null
+                    side:
+                      type: enum
+                      values: [LEFT, RIGHT, null]
+              severity:
+                type: enum
+                values: [blocker, major, minor, suggestion]
+              confidence:
+                type: enum
+                values: [high, medium, low]
+              success_criteria:
+                type: list
+                items: string
+              finding_references:
+                type: list
+                items: string
+      - candidate_kind: review_feedback
+        required: [review_feedback]
+        fields:
+          review_feedback:
+            type: object
+            required: [feedback_item_ids, resolution_group_ids, affected_areas, dependencies, non_goals, external_handoffs]
+            fields:
+              feedback_item_ids:
+                type: list
+                items: string
+              resolution_group_ids:
+                type: list
+                items: string
+              affected_areas:
+                type: list
+                items:
+                  type: object
+                  required: [path, reason]
+                  fields:
+                    path:
+                      type: string
+                    reason:
+                      type: string
+              dependencies:
+                type: list
+                items: string
+              non_goals:
+                type: list
+                items: string
+              external_handoffs:
+                type: list
+                items:
+                  type: object
+                  required: [capability_type, required_outcome, constraints, evidence, capability_references]
+                  fields:
+                    capability_type:
+                      type: enum
+                      values: [implementation, domain, tool, external_dependency]
+                    required_outcome:
+                      type: string
+                    constraints:
+                      type: list
+                      items: string
+                    evidence:
+                      type: list
+                      items: string
+                    capability_references:
+                      type: list
+                      items: string
+              validation:
+                type: list
+                items: string
+              confidence:
+                type: enum
+                values: [high, medium, low]
+      - candidate_kind: required_check_failure
+        required: [required_check_failure]
+        fields:
+          required_check_failure:
+            type: object
+            required: [check_names, wait_references, rerun_references, failure_evidence, reassessment_required]
+            fields:
+              check_names:
+                type: list
+                items: string
+              wait_references:
+                type: list
+                items: string
+              rerun_references:
+                type: list
+                items: string
+              failure_evidence:
+                type: list
+                items:
+                  type: object
+                  required: [reference, summary, head_sha, required]
+                  fields:
+                    reference:
+                      type: string
+                    summary:
+                      type: string
+                    head_sha:
+                      type: string | null
+                    required:
+                      type: boolean
+              reassessment_required:
+                type: boolean
+              success_criteria:
+                type: list
+                items: string
+              check_run_ids:
+                type: list
+                items: string
+  selection:
+    type: object
+    required: [mandatory_item_ids, excluded_item_ids, clarify_item_ids]
+    fields:
+      mandatory_item_ids:
+        type: list
+        items: string
+      excluded_item_ids:
+        type: list
+        items: string
+      clarify_item_ids:
+        type: list
+        items: string
+  scope:
+    type: object
+    required: [in_scope, out_of_scope, exact_path_allowlist, scope_evidence, head_sha]
+    fields:
+      in_scope:
+        type: list
+        items: string
+      out_of_scope:
+        type: list
+        items: string
+      exact_path_allowlist:
+        type: list
+        items: string
+      scope_evidence:
+        type: list
+        items: string
+      head_sha:
+        type: string
+        format: full git commit SHA
+  implementation_steps:
+    type: list
+    items:
+      type: object
+      required: [id, description, candidate_item_ids, status]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        candidate_item_ids:
+          type: list
+          items: string
+        paths:
+          type: list
+          items: string
+        dependencies:
+          type: list
+          items: string
+        status:
+          type: enum
+          values: [planned, in_progress, completed]
+        evidence:
+          type: list
+          items: string
+  capabilities:
+    type: object
+    required: [required_skills, applicable_rules, external_implementation]
+    fields:
+      required_skills:
+        type: list
+        items: string
+      applicable_rules:
+        type: list
+        items: string
+      external_implementation:
+        type: object
+        required: [required, capability_ids, status, gaps, handoff_evidence]
+        fields:
+          required:
+            type: boolean
+          capability_ids:
+            type: list
+            items: string
+          status:
+            type: enum
+            values: [required, available, not_required, unavailable, blocked]
+          gaps:
+            type: list
+            items: string
+          handoff_evidence:
+            type: list
+            items: string
+  workspace:
+    type: object
+    required: [operation, base_branch, base_sha, branch_name, head_sha, worktree_path, isolation_mode, primary_checkout_untouched]
+    fields:
+      operation:
+        type: enum
+        values: [create_new_branch, attach_existing_branch, reuse_existing_worktree]
+      base_branch:
+        type: string
+      base_sha:
+        type: string
+        format: full git commit SHA
+      branch_name:
+        type: string
+      head_sha:
+        type: string
+        format: full git commit SHA
+      worktree_path:
+        type: string
+        format: absolute-path
+      isolation_mode:
+        type: enum
+        values: [dedicated_worktree, authorized_branch_fallback]
+      primary_checkout_untouched:
+        type: boolean
+      verification_evidence:
+        type: list
+        items: string
+  authorization:
+    type: object
+    required: [identity, source, task_scope, routine_operations, exact_scope_approved, implementation_authorized, commit_authorized, push_authorized, evidence, forbidden_operations]
+    fields:
+      identity:
+        type: object
+        required: [repository, pull_request_number, base_branch, base_sha, head_branch, head_sha]
+        fields:
+          repository:
+            type: string
+            format: owner/repository
+          pull_request_number:
+            type: integer
+            minimum: 1
+          base_branch:
+            type: string
+          base_sha:
+            type: string
+            format: full git commit SHA
+          head_branch:
+            type: string
+          head_sha:
+            type: string
+            format: full git commit SHA
+      source:
+        type: enum
+        values: [explicit_user, task_intent, plan_build, repository_policy, session_continuity, null]
+      task_scope:
+        type: string
+      routine_operations:
+        type: list
+        items: string
+      exact_scope_approved:
+        type: boolean
+      implementation_authorized:
+        type: boolean
+      commit_authorized:
+        type: boolean
+      push_authorized:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+      forbidden_operations:
+        type: list
+        items: string
+  blockers:
+    type: list
+    items:
+      type: object
+      required: [id, description, evidence]
+      fields:
+        id:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: list
+          items: string
+        status:
+          type: enum
+          values: [open, resolved, informational]
+  unresolved_questions:
+    type: list
+    items:
+      type: object
+      required: [id, question, impact, blocking, evidence]
+      fields:
+        id:
+          type: string
+        question:
+          type: string
+        impact:
+          type: string
+        blocking:
+          type: boolean
+        evidence:
+          type: list
+          items: string
+  validation:
+    type: object
+    required: [required_tests, required_checks, success_criteria, re_review_required, reassessment_required, evidence_requirements]
+    fields:
+      required_tests:
+        type: list
+        items: string
+      required_checks:
+        type: list
+        items: string
+      success_criteria:
+        type: list
+        items: string
+      re_review_required:
+        type: boolean
+      reassessment_required:
+        type: boolean
+      evidence_requirements:
+        type: list
+        items:
+          type: object
+          required: [id, requirement, source, expected_kind, location]
+          fields:
+            id:
+              type: string
+            requirement:
+              type: string
+            source:
+              type: object
+              required: [kind, reference]
+              fields:
+                kind:
+                  type: enum
+                  values: [issue, pull_request, implementation_plan, repository_policy, external_capability]
+                reference:
+                  type: string
+            expected_kind:
+              type: string
+            location:
+              type: string | null
+            required_capability:
+              type: string | null
+  risks:
+    type: list
+    items:
+      type: object
+      required: [severity, description, mitigation]
+      fields:
+        severity:
+          type: enum
+          values: [low, medium, high]
+        description:
+          type: string
+        mitigation:
+          type: string
+        evidence:
+          type: list
+          items: string
+  rollback:
+    type: object
+    required: [strategy, limitations, evidence]
+    fields:
+      strategy:
+        type: string
+      limitations:
+        type: list
+        items: string
+      evidence:
+        type: list
+        items: string
+  metadata:
+    type: object
+    required: [plan_id, iteration, created_at, updated_at, confirmation_source, source_kind]
+    fields:
+      plan_id:
+        type: string
+      iteration:
+        type: integer
+        minimum: 1
+      created_at:
+        type: string
+        format: iso-8601
+      updated_at:
+        type: string
+        format: iso-8601
+      confirmation_source:
+        type: string
+      source_kind:
+        type: enum
+        values: [review, feedback, ci]
+  failure:
+    type: object | null
+    required: [code, message, operation, retryable, evidence]
+    fields:
+      code:
+        type: enum
+        values: [missing_input, invalid_input, unsupported_version, conflicting_identity, mixed_head, source_kind_conflict, stale_evidence, scope_unresolved, authorization_mismatch, adapter_loss, planning_failure]
+      message:
+        type: string
+      operation:
+        type: string
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+legacy_adapters:
+  type: list
+  description: >-
+    Explicit ingress mappings only. These mappings do not mutate or redefine
+    the legacy contracts and never create authorization.
+  items:
+    type: object
+    required: [from_contract, from_version, to_contract, to_version, source_kind, required_preservation, fail_closed_conditions]
+    fields:
+      from_contract:
+        type: enum
+        values: [ReviewFixPlan, CiFixPlan, FeedbackResolutionPlan]
+      from_version:
+        type: integer
+      to_contract:
+        type: enum
+        values: [PullRequestFixPlan]
+      to_version:
+        type: integer
+      source_kind:
+        type: enum
+        values: [review, ci, feedback]
+      required_preservation:
+        type: list
+        items: string
+      fail_closed_conditions:
+        type: list
+        items: string
+      authorization_rule:
+        type: string
+invariants:
+  - >-
+    The plan binds exactly one repository, one pull request, one base branch
+    and base SHA, one head branch, and one current head SHA; repository,
+    pull-request, base, head, scope, workspace, and authorization identities
+    must agree exactly.
+  - >-
+    source_kind is the sole top-level discriminator and must match every
+    candidate variant, source adapter, metadata record, and evidence source.
+    Mixed source kinds or mixed heads are blocked.
+  - >-
+    Every candidate is losslessly tagged as review_finding, review_feedback,
+    or required_check_failure; source-specific evidence remains inside its
+    variant and is never flattened into an incompatible common field.
+  - >-
+    Only candidates with an explicit fix decision may enter
+    selection.mandatory_item_ids. clarify candidates, unresolved questions,
+    unclear candidates, resolved or excluded items, and blockers never enter
+    the mandatory set. An empty mandatory set is valid.
+  - >-
+    Scope, authorization, and workspace are bound to the same repository,
+    pull request, branch, base SHA, and current head SHA. Scope drift,
+    authorization mismatch, stale evidence, or an unrepresentable state is
+    blocked rather than repaired or reauthorized.
+  - >-
+    Optional checks, pending checks, skipped checks, and unavailable policy
+    evidence never become mandatory required checks.
+  - >-
+    Feedback planning and validation remain read-only and cannot expand
+    commit, push, thread, review, or other effect authorization. Conversion
+    from a legacy plan preserves authorization exactly and never creates new
+    authorization.
+  - >-
+    Review publication, thread reply or resolution, Ready-for-Review, rebase,
+    merge, force-push, branch deletion, worktree cleanup, and default-branch
+    writes remain forbidden unless separately authorized by their own exact
+    operation gate.
+  - >-
+    ReviewFixPlan v1, CiFixPlan v1, and FeedbackResolutionPlan v1 remain
+    historical legacy contracts. An adapter is valid only when all common and
+    source-specific fields, IDs, evidence, scope limits, head identity, and
+    authorization state are preserved; otherwise the result is blocked.
+  - >-
+    FeedbackLifecyclePlan v1 remains the lifecycle and effect authority. It is
+    not merged into this fix-plan contract and no second lifecycle is created.

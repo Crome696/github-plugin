@@ -15,7 +15,8 @@ implementation decision, lifecycle state, commit decision, push decision,
 reply decision, or resolution decision.
 
 The command routes to the canonical `feedback-agent` with `mode: fix`. The
-canonical Agent produces `FeedbackLifecycleRun v1`; this identity exposes the
+canonical Agent produces `FeedbackLifecycleRun v1` and carries
+`PullRequestFixPlan v1` with `source_kind: review`; this identity exposes the
 compatible `ReviewFixRun v2` projection with a `lifecycle_run_id`,
 `canonical_agent: feedback-agent`, and `mode: fix`.
 
@@ -43,6 +44,6 @@ second PR, Ready-for-Review, rebase, merge, force-push, branch deletion,
 worktree cleanup, issue closure, check reruns, and default-branch writes remain
 outside this compatibility identity.
 
-All persisted state uses `FeedbackLifecyclePlan v1`, `FeedbackLifecycleRun
-v1`, and `ReviewFixRun v2`. A missing or unmappable old run fails closed rather
+All persisted state uses `FeedbackLifecyclePlan v1`, `PullRequestFixPlan v1`,
+`FeedbackLifecycleRun v1`, and `ReviewFixRun v2`. A missing or unmappable old run fails closed rather
 than being interpreted as current feedback state.

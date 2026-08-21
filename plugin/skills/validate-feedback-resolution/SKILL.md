@@ -6,7 +6,8 @@ description: Validate whether every explicitly confirmed pull-request feedback i
 # Validate Pull-Request Feedback Resolution
 
 Consume one version-1 `ClassifiedReviewFeedback` and one version-1
-`FeedbackResolutionPlan`, then return exactly one version-1
+`PullRequestFixPlan` with `source_kind: feedback`, then return exactly one
+version-1
 [`FeedbackResolutionValidation`](../../shared/schemas/FeedbackResolutionValidation.yaml)
 handoff. This Skill verifies external follow-up; it never performs or
 authorizes a GitHub or Git operation.
@@ -18,7 +19,11 @@ authorizes a GitHub or Git operation.
   comments, checks, or discussions.
 - Never reply, resolve or reopen a thread, submit a review, rerun checks, mark
   a pull request ready, merge, or invoke another Skill.
-- Evaluate exactly the IDs in `FeedbackResolutionPlan.scope.confirmed_feedback_item_ids`.
+- Evaluate exactly the IDs in
+  `PullRequestFixPlan.selection.mandatory_item_ids` and the preserved
+  `review_feedback.feedback_item_ids` candidate payloads. Do not select IDs
+  from any other source or reactivate excluded, resolved, outdated, or
+  unclear items.
   Preserve every selected ID exactly once, including when evidence is missing.
 - Preserve repository, pull-request number, canonical URL, plan baseline SHA,
   and current head SHA. Reject conflicting identity or stale current-state
@@ -31,7 +36,9 @@ authorizes a GitHub or Git operation.
 Require:
 
 1. `ClassifiedReviewFeedback` with status `classified` or `partial`.
-2. `FeedbackResolutionPlan` with status `planned` or `partial`.
+2. `PullRequestFixPlan` with status `confirmed` or `partial` and
+   `source_kind: feedback`. A legacy `FeedbackResolutionPlan v1` is accepted
+   only through the common contract's explicit lossless adapter.
 3. A current pull-request snapshot with diff and commit evidence.
 4. A current discussion snapshot identifying each relevant thread and its
    current state or explicitly recording that it is unavailable.
@@ -88,13 +95,15 @@ problem or uncertainty exists. This is an advisory diagnostic field only.
 
 Set `resolution_eligible: false` with `do_not_resolve` for every partial,
 unaddressed, unverifiable, stale, ambiguous, or insufficiently evidenced item.
-An already resolved thread is context, not proof of the correction.
+An already resolved thread is context, not proof of the correction. This
+validation remains read-only and never grants thread, review, Ready-for-Review,
+commit, push, rebase, merge, deletion, or cleanup authorization.
 
 ## Workflow
 
-1. Validate versions, exact identity, plan baseline, selected IDs, and current
-   head freshness.
-2. Preserve selected IDs in plan order and map each to its classification,
+1. Validate versions, exact identity, common-plan base/head binding, selected
+   IDs, source kind, and current head freshness.
+2. Preserve selected IDs in common-plan order and map each to its classification,
    resolution group, original location, and discussion thread.
 3. Compare the current diff and later commits by causal mechanism and expected
    behavior, not keyword overlap.

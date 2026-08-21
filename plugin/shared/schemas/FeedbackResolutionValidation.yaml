@@ -37,12 +37,24 @@ fields:
         type: string | null
   source:
     type: object
-    required: [classified_review_feedback_version, feedback_resolution_plan_version, references, unavailable_inputs]
+    required: [classified_review_feedback_version, pull_request_fix_plan_version, pull_request_fix_plan_source_kind, references, unavailable_inputs]
     fields:
       classified_review_feedback_version:
         type: integer | null
+      pull_request_fix_plan_version:
+        type: integer | null
+      pull_request_fix_plan_source_kind:
+        type: enum
+        values: [feedback, null]
       feedback_resolution_plan_version:
         type: integer | null
+        description: Legacy input version retained only for lossless adapter traceability.
+      legacy_adapter_status:
+        type: enum
+        values: [native, adapted, blocked, null]
+      adapter_evidence:
+        type: list
+        items: string
       collected_review_feedback_version:
         type: integer | null
       resolved_review_feedback_version:
@@ -225,10 +237,11 @@ fields:
         type: boolean
 invariants:
   - Every selected feedback item appears exactly once in results, including items with missing evidence.
-  - The selected IDs are copied only from FeedbackResolutionPlan.scope.confirmed_feedback_item_ids.
+  - The selected IDs are copied only from PullRequestFixPlan.selection.mandatory_item_ids and its tagged review_feedback candidates; a legacy plan ID is accepted only through a lossless, fail-closed adapter.
   - Addressed requires direct current evidence matching the problem core and expected correction.
   - Pending, skipped, missing, unavailable, or differently SHA-bound tests and checks cannot prove resolution.
   - Thread state is context only and never proves a correction.
   - resolution_eligible is advisory only; this contract never resolves, reopens, or modifies a thread.
   - Every partial, not_addressed, or unverifiable result uses do_not_resolve and states remaining problems or required verification.
-  - The current pull-request identity and head SHA are preserved exactly and never inferred.
+  - The current pull-request identity, base identity, and head SHA are preserved exactly and never inferred.
+  - The common PullRequestFixPlan source_kind is exactly feedback and remains non-authorizing; this validation cannot create commit, push, thread, review, Ready-for-Review, rebase, merge, deletion, cleanup, or default-branch authorization.

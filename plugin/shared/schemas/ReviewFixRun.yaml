@@ -91,12 +91,20 @@ fields:
           items: string
   plan:
     type: object | null
-    required: [status, plan_id, head_sha, mandatory_item_ids]
+    required: [status, plan_id, plan_contract, plan_version, source_kind, head_sha, mandatory_item_ids]
     fields:
       status:
         type: string
       plan_id:
         type: string
+      plan_contract:
+        type: enum
+        values: [PullRequestFixPlan, null]
+      plan_version:
+        type: integer | null
+      source_kind:
+        type: enum
+        values: [review, feedback, ci, null]
       head_sha:
         type: string
       mandatory_item_ids:
@@ -219,6 +227,7 @@ fields:
         type: string
 invariants:
   - The run identifies exactly one repository and pull request.
+  - Every fix iteration references PullRequestFixPlan v1 and preserves its source_kind; ReviewFixRun remains only the FeedbackLifecycleRun fix-mode compatibility projection and does not introduce a second lifecycle.
   - Every iteration records its input and verified output head identity.
   - fixes_complete requires no remaining mandatory item IDs and no open blocker.
   - partial and blocked results preserve their limiting evidence and never claim completion.

@@ -5,6 +5,9 @@ required:
   - status
   - lifecycle_run_id
   - plan_id
+  - fix_plan_contract
+  - fix_plan_version
+  - fix_plan_source_kind
   - repository
   - pull_request
   - mode
@@ -27,6 +30,14 @@ fields:
     type: string
   plan_id:
     type: string
+  fix_plan_contract:
+    type: enum
+    values: [PullRequestFixPlan, null]
+  fix_plan_version:
+    type: integer | null
+  fix_plan_source_kind:
+    type: enum
+    values: [review, feedback, ci, null]
   repository:
     type: string
     format: owner/repository
@@ -199,6 +210,7 @@ fields:
         type: boolean
 invariants:
   - The run identifies exactly one repository, pull request, lifecycle plan, and current head SHA.
+  - When implementation work is present, the run references PullRequestFixPlan v1 and its source_kind; FeedbackLifecyclePlan remains the lifecycle and effect authority.
   - Every transition and implementation iteration preserves input/output head evidence.
   - fix and full may coordinate implementation delivery; follow_up never reports a workspace, commit, or push effect.
   - Reply and resolution are separate transitions and separate authorized effects; reply never implies resolution.

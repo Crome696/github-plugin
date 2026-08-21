@@ -35,7 +35,7 @@ Graph schema changes follow the same producer/consumer review discipline as othe
 
 ## Contract families
 
-The plugin currently defines 90 versioned YAML schemas: 89 runtime handoff
+The plugin currently defines 91 versioned YAML schemas: 90 runtime handoff
 contracts plus the `HandoffGraph v1` architecture meta-schema.
 
 ### Issue and linkage contracts
@@ -76,6 +76,7 @@ contracts plus the `HandoffGraph v1` architecture meta-schema.
 | `ImplementationEvaluation` | Feasibility, architectural fit, complexity, compatibility, dependencies, risks, testing implications, and alternatives. |
 | `ExternalCapabilityResolution` | Canonical pure resolution of normalized context or feedback requirements against current host-session evidence, including availability, ambiguity, provenance, stale-session, and fail-closed gap semantics. |
 | `ContextCapabilities` | Legacy lossless, fail-closed transition projection of ExternalCapabilityResolution for planning. |
+| `PullRequestFixPlan` | Version 1 common head-bound fix plan for review, feedback, and CI sources with a top-level discriminator, lossless tagged candidates, shared scope/authorization/validation semantics, and explicit legacy adapters. |
 | `ImplementationPlan` | Task-authorized objective, ordered steps, dependencies, validation, workspace, risks, blockers, assumptions, and delivery authorization. |
 | `BranchNameProposal` | Evidence-backed branch name candidate, convention, rationale, and alternatives. |
 
@@ -106,7 +107,7 @@ contracts plus the `HandoffGraph v1` architecture meta-schema.
 | `PullRequestCheckInspection` | Check, status, CI, branch-protection, and ruleset evidence with pass, fail, pending, skipped, or missing outcomes. |
 | `RequiredCheckWait` | Wait for required checks after a verified head without treating pending or unavailable policy as a pass. |
 | `RequiredCheckRerun` | Exact authorized rerun of failed required checks with live run-identity verification. |
-| `CiFixPlan` | Host-neutral confirmed plan of remaining failed required checks on an existing PR head. |
+| `CiFixPlan` | Legacy version 1 plan retained as a lossless, fail-closed ingress shape for `PullRequestFixPlan`. |
 | `CiFixRun` | Lifecycle record for wait, authorized rerun, and bounded CI-fix iterations. |
 | `RequiredApprovalInspection` | Explicit review requirements, effective approvals, change requests, pending requests, and missing conditions. |
 | `LoadedPullRequestDiscussions` | Version-2 reviews, grouped threads, replies, comments, authors, locations, timestamps, resolution state, and exact PR/head/base identity with retrieval provenance. |
@@ -126,7 +127,7 @@ contracts plus the `HandoffGraph v1` architecture meta-schema.
 | `CollectedReviewFeedback` | Grouped open, resolved, outdated, or addressed feedback from threads, findings, comments, and checks. |
 | `ClassifiedReviewFeedback` | Cause, severity, affected component, and required action for selected open feedback. |
 | `FeedbackResolutionCapabilities` | Legacy lossless, fail-closed transition projection of ExternalCapabilityResolution for explicitly confirmed feedback IDs at one PR head. |
-| `FeedbackResolutionPlan` | Bounded corrections, dependencies, validations, risks, and external implementation handoffs. |
+| `FeedbackResolutionPlan` | Legacy version 1 feedback plan retained as a lossless, fail-closed ingress shape for `PullRequestFixPlan`. |
 | `ResolvedReviewFeedback` | Advisory candidates supported by later commits, diff, tests, and current discussion evidence. |
 | `FeedbackResolutionValidation` | Per-item addressed, partial, not-addressed, or unverifiable result with current evidence. |
 | `FeedbackResolutionSummary` | Resolved, open, disputed, and blocked feedback outcomes with next steps and diagnostic merge impact. |
@@ -186,6 +187,44 @@ Every consumer must verify the supplied handoff before using it:
 - confirm that the input's scope matches the current task and operation;
 - reject missing required fields and incompatible producer/consumer edges;
 - return `partial` or `blocked` instead of fabricating unavailable evidence.
+
+### Common pull-request fix plan
+
+`PullRequestFixPlan v1` is the normative plan input for review, feedback, and
+CI-fix implementation delivery. It binds one repository, pull request, base
+branch/SHA, and current head branch/SHA. Its top-level `source_kind` is one of
+`review`, `feedback`, or `ci`, and its tagged candidate union preserves
+`review_finding`, `review_feedback`, and `required_check_failure` evidence in
+source-specific fields without flattening.
+
+The common fields for selection, scope, implementation steps, capabilities,
+workspace, authorization, blockers, unresolved questions, validation, risks,
+rollback, metadata, and failure are defined once in
+[`PullRequestFixPlan.yaml`](../../shared/schemas/PullRequestFixPlan.yaml).
+All downstream consumers validate the common head binding and reject mixed
+heads, source-kind conflicts, scope drift, optional-to-required check drift,
+stale evidence, and authorization mismatches. `clarify` candidates and
+blockers never enter the mandatory set.
+
+`ReviewFixPlan v1`, `CiFixPlan v1`, and `FeedbackResolutionPlan v1` remain
+historical legacy contracts. Their only supported ingress is an explicit,
+lossless, fail-closed adapter to `PullRequestFixPlan v1`; missing fields,
+unrepresentable states, stale evidence, mixed identities, or source-kind
+conflicts block conversion. Adapters preserve authorization exactly and never
+create commit, push, review, thread, Ready-for-Review, rebase, merge,
+deletion, cleanup, or default-branch authorization. `FeedbackLifecyclePlan v1`
+remains the separate lifecycle/effect authority.
+
+The adapter matrix is deliberately limited to these mappings:
+
+| Legacy input | Common output | Required source preservation |
+| --- | --- | --- |
+| `ReviewFixPlan v1` | `PullRequestFixPlan v1`, `source_kind: review` | finding locations, severity, confidence, success criteria, review-feedback IDs, resolution groups, and source evidence when present |
+| `CiFixPlan v1` | `PullRequestFixPlan v1`, `source_kind: ci` | required check names, wait/rerun references, failure evidence, required flags, and reassessment requirements |
+| `FeedbackResolutionPlan v1` | `PullRequestFixPlan v1`, `source_kind: feedback` | feedback IDs, resolution groups, affected areas, dependencies, non-goals, external handoffs, scope, and non-authorizing state |
+
+Any missing source-specific field, mixed head, source-kind conflict, stale
+evidence, scope drift, or non-representable authorization blocks the adapter.
 
 An `ImplementationContext` may be used as prose in the workflow; it is not a
 versioned Shared Contract. External implementation capabilities are referenced

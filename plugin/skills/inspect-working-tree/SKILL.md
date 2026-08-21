@@ -47,8 +47,10 @@ Accept one expected workspace from the following sources:
   [`BranchWorkspace`](../../shared/schemas/BranchWorkspace.yaml) handoff.
 - An optional version-1
   [`ImplementationPlan`](../../shared/schemas/ImplementationPlan.yaml),
-  `ReviewFixPlan`, or `CiFixPlan` whose
-  `workspace` supplies the branch and worktree values.
+  [`PullRequestFixPlan`](../../shared/schemas/PullRequestFixPlan.yaml) whose
+  `workspace` supplies the branch and worktree values. For the common plan,
+  preserve and verify `source_kind`, `base`, `head`, `scope.head_sha`, and
+  `authorization` in addition to the workspace identity.
 - An optional version-1
   [`RepositoryContext`](../../shared/schemas/RepositoryContext.yaml) for
   verified repository identity, the primary checkout, and target remote
@@ -97,8 +99,8 @@ inventory for commit scope.
 ### 1. Validate and normalize expected values
 
 1. Resolve the effective workspace from explicit input, validated
-   `BranchWorkspace`, `ImplementationPlan.workspace`, or
-   `ReviewFixPlan.workspace` without overwriting
+   `BranchWorkspace`, `PullRequestFixPlan.workspace`, or
+   `ImplementationPlan.workspace` without overwriting
    explicit values with lower-priority values.
 2. Confirm all required fields and the supplied contract versions.
 3. Confirm that `worktree_path` is absolute and that the expected branch and
@@ -415,7 +417,7 @@ and sanitized evidence.
 | --- | --- | --- |
 | `missing_input` | A required repository, branch, or worktree path value is absent. | `blocked` |
 | `invalid_input` | A supplied workspace, path, repository identity, or handoff cannot be validated. | `blocked` |
-| `unsupported_version` | A supplied `BranchWorkspace`, `ImplementationPlan`, or `RepositoryContext` is not version 1. | `blocked` |
+| `unsupported_version` | A supplied `BranchWorkspace`, `PullRequestFixPlan`, `ImplementationPlan`, or `RepositoryContext` is not version 1. | `blocked` |
 | `worktree_missing` | The expected path does not exist, is not a Git worktree, or is not registered at that path. | `blocked` |
 | `repository_mismatch` | Local worktree or sanitized remote identity does not match the expected repository. | `blocked` |
 | `branch_mismatch` | The expected branch is absent, detached, or different from the checked-out branch. | `blocked` |
