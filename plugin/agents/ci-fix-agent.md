@@ -44,9 +44,13 @@ and MUST NOT rerun checks. `lifecycle-agent` MUST NOT start this Agent.
 For each verified head, delegate:
 
 1. `load-pull-request`
-2. `inspect-pr-checks`
-3. `check-required-status-checks`
-4. `wait-required-checks`
+2. `wait-required-checks`; this Skill reacquires raw state and invokes
+   `inspect-pr-checks` exactly once per deterministic polling observation.
+
+When a terminal wait result contains failed, missing, or skipped required
+outcomes and a downstream rerun or fix plan needs check-run identities, obtain
+one fresh `inspect-pr-checks` handoff after the wait. That refresh is outside
+the synchronous polling loop and must not invoke the compatibility adapter.
 
 If `RequiredCheckWait` reports every required outcome as `pass` with known
 policy evidence, return `checks_green` without entering delivery.
@@ -89,7 +93,6 @@ success, the next action MUST NOT recommend merge or Ready-for-Review.
 
 - `plugin/skills/load-pull-request/SKILL.md`
 - `plugin/skills/inspect-pr-checks/SKILL.md`
-- `plugin/skills/check-required-status-checks/SKILL.md`
 - `plugin/skills/wait-required-checks/SKILL.md`
 - `plugin/skills/rerun-required-checks/SKILL.md`
 - `plugin/skills/build-ci-fix-plan/SKILL.md`

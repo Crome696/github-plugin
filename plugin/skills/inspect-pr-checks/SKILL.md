@@ -15,6 +15,11 @@ This Skill is diagnostic and read-only. It reports what GitHub exposes; it does
 not decide whether a pull request may merge. Waiting and rerunning checks
 belong to `wait-required-checks` and `rerun-required-checks`.
 
+This Skill is the sole normalization owner for required-check semantics. Every
+consumer, including deterministic polling, MUST use its normalized
+`PullRequestCheckInspection` exactly as returned. No downstream Skill may
+reclassify, project, deduplicate, or recalculate required-check outcomes.
+
 ## Boundaries
 
 - Read GitHub and supplied handoffs only. Never edit pull requests, issues,

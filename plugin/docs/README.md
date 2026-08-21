@@ -195,7 +195,7 @@ their explicit invocation boundary.
 | check-linked-issue-status | Assess linked-issue state, acceptance coverage, and relationship consistency. |
 | check-open-review-threads | Assess current open, resolved, outdated, and unknown review-thread states. |
 | check-required-approvals | Inspect explicit review requirements and current approval state. |
-| check-required-status-checks | Project one existing check inspection into required versus optional check evidence without another fetch. |
+| check-required-status-checks | Temporary compatibility adapter that returns one existing `inspect-pr-checks` inspection unchanged; new workflows do not invoke it. |
 | wait-required-checks | Wait after a verified PR-head push and report required-check outcomes without treating pending or unavailable policy as a pass. |
 | rerun-required-checks | Rerun only exactly authorized required check names and verify new live run identities. |
 | classify-changes | Classify inspected worktree paths by purpose, component, and task relationship. |

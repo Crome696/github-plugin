@@ -256,8 +256,6 @@ flowchart LR
   n17 -.->|capability| n89
 %% edge {"id":"edge:capability:ci-fix-agent:02","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:inspect-pr-checks","contract":null,"contract_version":null}
   n17 -.->|capability| n81
-%% edge {"id":"edge:capability:ci-fix-agent:03","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:check-required-status-checks","contract":null,"contract_version":null}
-  n17 -.->|capability| n47
 %% edge {"id":"edge:capability:ci-fix-agent:04","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:wait-required-checks","contract":null,"contract_version":null}
   n17 -.->|capability| n113
 %% edge {"id":"edge:capability:ci-fix-agent:05","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:rerun-required-checks","contract":null,"contract_version":null}
@@ -528,14 +526,12 @@ flowchart LR
   n106 -->|FeedbackResolutionSummary v1| n97
 %% edge {"id":"edge:handoff:feedback:09","type":"handoff","producer":"skill:reply-to-review-thread","consumer":"skill:resolve-review-thread","contract":"contract:ReviewThreadReply","contract_version":3}
   n97 -->|ReviewThreadReply v3| n101
-%% edge {"id":"edge:handoff:ci-fix:01","type":"handoff","producer":"skill:load-pull-request","consumer":"skill:inspect-pr-checks","contract":"contract:LoadedPullRequest","contract_version":1}
-  n89 -->|LoadedPullRequest v1| n81
-%% edge {"id":"edge:handoff:ci-fix:02","type":"handoff","producer":"skill:inspect-pr-checks","consumer":"skill:check-required-status-checks","contract":"contract:PullRequestCheckInspection","contract_version":1}
-  n81 -->|PullRequestCheckInspection v1| n47
-%% edge {"id":"edge:handoff:ci-fix:03","type":"handoff","producer":"skill:check-required-status-checks","consumer":"skill:wait-required-checks","contract":"contract:PullRequestCheckInspection","contract_version":1}
-  n47 -->|PullRequestCheckInspection v1| n113
-%% edge {"id":"edge:handoff:ci-fix:04","type":"handoff","producer":"skill:wait-required-checks","consumer":"skill:rerun-required-checks","contract":"contract:RequiredCheckWait","contract_version":1}
+%% edge {"id":"edge:handoff:ci-fix:01","type":"handoff","producer":"skill:load-pull-request","consumer":"skill:wait-required-checks","contract":"contract:LoadedPullRequest","contract_version":1}
+  n89 -->|LoadedPullRequest v1| n113
+%% edge {"id":"edge:handoff:ci-fix:02","type":"handoff","producer":"skill:wait-required-checks","consumer":"skill:rerun-required-checks","contract":"contract:RequiredCheckWait","contract_version":1}
   n113 -->|RequiredCheckWait v1| n98
+%% edge {"id":"edge:handoff:ci-fix:03","type":"handoff","producer":"skill:inspect-pr-checks","consumer":"skill:rerun-required-checks","contract":"contract:PullRequestCheckInspection","contract_version":1}
+  n81 -->|PullRequestCheckInspection v1| n98
 %% edge {"id":"edge:handoff:ci-fix:05","type":"handoff","producer":"skill:rerun-required-checks","consumer":"skill:build-ci-fix-plan","contract":"contract:RequiredCheckRerun","contract_version":1}
   n98 -->|RequiredCheckRerun v1| n38
 %% edge {"id":"edge:handoff:ci-fix:06","type":"handoff","producer":"skill:build-ci-fix-plan","consumer":"skill:resolve-feedback-capabilities","contract":"contract:CiFixPlan","contract_version":1}

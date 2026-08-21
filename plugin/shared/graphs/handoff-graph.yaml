@@ -2291,32 +2291,6 @@ edges:
     evidence:
       - "plugin/agents/ci-fix-agent.md"
       - "plugin/skills/inspect-pr-checks/SKILL.md"
-  - id: "edge:capability:ci-fix-agent:03"
-    type: "capability"
-    producer: "agent:ci-fix-agent"
-    consumer: "skill:check-required-status-checks"
-    contract: null
-    contract_version: null
-    owning_workflow: "ci-fix"
-    visibility: "internal"
-    optional: false
-    mode: null
-    condition: null
-    sequence: 3
-    identity_requirements:
-      - "repository identity"
-      - "owning workflow identity"
-      - "producer/consumer identity"
-    freshness_requirements:
-      - "current handoff state"
-      - "same issue/PR/head identity when applicable"
-    mutation_boundary: "read-only or composition-only"
-    terminal: false
-    terminal_rationale: null
-    audited_gap: null
-    evidence:
-      - "plugin/agents/ci-fix-agent.md"
-      - "plugin/skills/check-required-status-checks/SKILL.md"
   - id: "edge:capability:ci-fix-agent:04"
     type: "capability"
     producer: "agent:ci-fix-agent"
@@ -5830,7 +5804,7 @@ edges:
   - id: "edge:handoff:ci-fix:01"
     type: "handoff"
     producer: "skill:load-pull-request"
-    consumer: "skill:inspect-pr-checks"
+    consumer: "skill:wait-required-checks"
     contract: "contract:LoadedPullRequest"
     contract_version: 1
     owning_workflow: "ci-fix"
@@ -5852,18 +5826,18 @@ edges:
     audited_gap: null
     evidence:
       - "plugin/skills/load-pull-request/SKILL.md"
-      - "plugin/skills/inspect-pr-checks/SKILL.md"
+      - "plugin/skills/wait-required-checks/SKILL.md"
   - id: "edge:handoff:ci-fix:02"
     type: "handoff"
-    producer: "skill:inspect-pr-checks"
-    consumer: "skill:check-required-status-checks"
-    contract: "contract:PullRequestCheckInspection"
+    producer: "skill:wait-required-checks"
+    consumer: "skill:rerun-required-checks"
+    contract: "contract:RequiredCheckWait"
     contract_version: 1
     owning_workflow: "ci-fix"
     visibility: "internal"
-    optional: false
+    optional: true
     mode: null
-    condition: null
+    condition: "Only when the explicitly documented mode, authorization, or current-state condition is satisfied."
     sequence: 2
     identity_requirements:
       - "repository identity"
@@ -5877,19 +5851,19 @@ edges:
     terminal_rationale: null
     audited_gap: null
     evidence:
-      - "plugin/skills/inspect-pr-checks/SKILL.md"
-      - "plugin/skills/check-required-status-checks/SKILL.md"
+      - "plugin/skills/wait-required-checks/SKILL.md"
+      - "plugin/skills/rerun-required-checks/SKILL.md"
   - id: "edge:handoff:ci-fix:03"
     type: "handoff"
-    producer: "skill:check-required-status-checks"
-    consumer: "skill:wait-required-checks"
+    producer: "skill:inspect-pr-checks"
+    consumer: "skill:rerun-required-checks"
     contract: "contract:PullRequestCheckInspection"
     contract_version: 1
     owning_workflow: "ci-fix"
     visibility: "internal"
-    optional: false
-    mode: null
-    condition: null
+    optional: true
+    mode: "terminal-refresh"
+    condition: "Only after wait-required-checks returns failed, missing, or skipped required outcomes and exact check-run identity evidence is needed."
     sequence: 3
     identity_requirements:
       - "repository identity"
@@ -5903,33 +5877,7 @@ edges:
     terminal_rationale: null
     audited_gap: null
     evidence:
-      - "plugin/skills/check-required-status-checks/SKILL.md"
-      - "plugin/skills/wait-required-checks/SKILL.md"
-  - id: "edge:handoff:ci-fix:04"
-    type: "handoff"
-    producer: "skill:wait-required-checks"
-    consumer: "skill:rerun-required-checks"
-    contract: "contract:RequiredCheckWait"
-    contract_version: 1
-    owning_workflow: "ci-fix"
-    visibility: "internal"
-    optional: true
-    mode: null
-    condition: "Only when the explicitly documented mode, authorization, or current-state condition is satisfied."
-    sequence: 4
-    identity_requirements:
-      - "repository identity"
-      - "owning workflow identity"
-      - "producer/consumer identity"
-    freshness_requirements:
-      - "current handoff state"
-      - "same issue/PR/head identity when applicable"
-    mutation_boundary: "read-only handoff"
-    terminal: false
-    terminal_rationale: null
-    audited_gap: null
-    evidence:
-      - "plugin/skills/wait-required-checks/SKILL.md"
+      - "plugin/skills/inspect-pr-checks/SKILL.md"
       - "plugin/skills/rerun-required-checks/SKILL.md"
   - id: "edge:handoff:ci-fix:05"
     type: "handoff"
@@ -9443,10 +9391,9 @@ contract_classifications:
     classification: "consumed"
     produced_by:
       - "skill:inspect-pr-checks"
-      - "skill:check-required-status-checks"
     consumed_by:
-      - "skill:check-required-status-checks"
       - "skill:wait-required-checks"
+      - "skill:rerun-required-checks"
       - "skill:analyze-pr-diff"
       - "skill:check-required-approvals"
       - "skill:propose-pr-reviewers"

@@ -1,43 +1,37 @@
 ---
 name: check-required-status-checks
-description: Determine the status checks actually required for one GitHub pull request, distinguish required checks from optional checks, and report failed, pending, skipped, or missing requirements with evidence. Use automatically when a workflow needs a focused, read-only required-status-check assessment; never rerun CI, modify GitHub, or change local files.
+description: Temporary compatibility adapter for the former required-status projection; preserve one existing PullRequestCheckInspection without reading GitHub or changing any normalized semantics. Do not invoke for new workflows.
+disable-model-invocation: true
 ---
 
-# Check Required Status Checks
+# Check Required Status Checks (Compatibility Adapter)
 
-Project one supplied version-1
+This Skill name is retained for one documented migration interval so existing
+host references do not break. It accepts one supplied version-1
 [`PullRequestCheckInspection`](../../shared/schemas/PullRequestCheckInspection.yaml)
-handoff into its focused required-check view. `inspect-pr-checks` owns the
-single live GitHub fetch; this Skill performs no second network read and
-returns the same stable contract with the required and optional outcomes
-preserved.
+handoff and returns that same normalized handoff unchanged. The sole
+normalization owner is
+[`inspect-pr-checks`](../inspect-pr-checks/SKILL.md). New callers MUST consume
+that Skill directly; `wait-required-checks` no longer invokes this adapter.
 
-This Skill is diagnostic and read-only. It reports policy evidence already
-retrieved by `inspect-pr-checks`; it does not decide whether a pull request may
-merge.
+This Skill has no independent required-check semantics. It does not fetch,
+classify, project, deduplicate, recalculate summaries, or decide whether a
+pull request may merge.
 
 ## Boundaries
 
 - Read exactly one supplied `PullRequestCheckInspection` handoff only. Never
   read GitHub, edit pull requests, branches, rulesets, branch protection,
   comments, or local files.
-- Never rerun workflows, dispatch CI, cancel jobs, request reviews, merge, or
-  mark a pull request ready.
-- A check is required only when an exact entry is returned by branch-protection
-  or an applicable active ruleset. Never infer requirements from workflow files,
-  check frequency, branch names, pull-request text, repository conventions, or
-  similar display names.
+- Never read GitHub or local files, rerun workflows, dispatch CI, cancel jobs,
+  request reviews, merge, or mark a pull request ready.
+- Never infer, match, deduplicate, classify, or reclassify a requirement or
+  check. Preserve exact names, contexts, results, raw values, flags, summary
+  counts, policy evidence, timestamps, and failure summaries.
 - Preserve the exact repository, pull-request number, base branch, and head
-  SHA. Do not substitute another pull request or a different commit.
-- Keep policy evidence unavailable or partial separate from an empty policy
-  result. Record an empty successfully retrieved source as
-  `requirement_sources[].status: empty`; do not report a requirement as missing
-  when the requirement source could not be retrieved.
-- Match a requirement to a check by exact context or name equality. Do not use
-  aliases, case folding, substring matching, or workflow-name matching.
-- Preserve raw GitHub status and conclusion values. Sanitize failure summaries;
-  never return secrets, credentials, environment values, complete logs, or
-  unrelated CLI output.
+  SHA. Do not substitute another pull request or commit.
+- Keep structured fields in English and never return secrets, credentials,
+  environment values, complete logs, or unrelated output.
 
 ## Input
 
@@ -47,29 +41,18 @@ branch, and non-null head SHA. Reject a raw repository/number, URL, or
 `LoadedPullRequest` as the primary input; those belong to
 `inspect-pr-checks`.
 
-## Projection workflow
+## Compatibility workflow
 
-1. Validate the input contract and preserve its exact repository, pull-request
-   identity, base branch, head SHA, source statuses, and inspection timestamp.
-
-2. Preserve the required-check set. Deduplicate only exact name/context matches
-   and retain every source reference. Set `checks[].required` to `true` for an
-   exact required match, `false` only when all requirement sources are known and
-   the check matches none, and `null` when policy evidence is partial or
-   unavailable.
-
-3. Preserve all check results, raw status and conclusion values, failure
-   summaries, URLs, timestamps, and unavailable fields. Do not reclassify a
-   check in this projection.
-4. Verify the summary counts from the preserved `checks` list without changing
-   any result. If the input is incomplete or contradictory, return `partial` or
-   `blocked` with structured failure evidence rather than fabricating a result.
+1. Validate the input contract and exact identity.
+2. Return the supplied `PullRequestCheckInspection` with every field and value
+   preserved verbatim.
+3. If the handoff is malformed or contradictory, return `partial` or `blocked`
+   with structured failure evidence; do not repair it by recalculating fields.
 
 ## Output
 
-Return exactly one version-1 `PullRequestCheckInspection` handoff. The focused
-projection may be passed to `assess-merge-readiness` or
-`collect-review-feedback`, but it never reruns CI, reads GitHub, changes GitHub
-or Git state, grants merge authorization, or invokes `inspect-pr-checks`
-automatically. To obtain current live evidence, callers must run
-`inspect-pr-checks` first.
+Return exactly the supplied version-1 `PullRequestCheckInspection` handoff.
+The adapter never creates a second semantic owner, invokes another Skill,
+changes GitHub or Git state, grants merge authorization, or recommends a
+workflow. Remove this adapter after the documented migration interval once
+all host references consume `inspect-pr-checks` directly.
