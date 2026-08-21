@@ -1,5 +1,5 @@
 schema: ProductPlannerRun
-version: 1
+version: 2
 status: drafts_ready
 repository: octo-org/widgets
 parent_issue:
@@ -7,6 +7,13 @@ parent_issue:
   url: https://github.com/octo-org/widgets/issues/123
   title: Export invoices from the billing dashboard
   state: open
+canonical_set:
+  schema: ProductSubIssueDrafts
+  version: 2
+  canonicalization_version: 1
+  algorithm: sha256
+  digest: 14fe4d3066e06f84403b046657fbd932a067317bd283adb11d7e784963c0bf75
+  unit_ids: [unit-invoice-csv-export]
 phases:
   - name: load
     status: completed
@@ -19,8 +26,7 @@ phases:
     evidence: [handoff:IssueAssessment]
     blockers: []
 drafts:
-  - unit_id: unit-export-csv
-    title: Export the current month's invoices as CSV
+  - unit_id: unit-invoice-csv-export
     parent_issue_number: 123
     parent_capability_id: capability-invoice-export
     traceability:
@@ -38,13 +44,15 @@ graph:
 prioritization:
   status: prioritized
   handoff_schema: ProductIssuePrioritization
-  selected_unit_ids: [unit-export-csv]
+  selected_unit_ids: [unit-invoice-csv-export]
 authorization:
   source: task_intent
   task_scope: octo-org/widgets issue 123 product planning
   orchestration_authorized: true
   publication_authorized: false
-  exact_payload: true
+  exact_payload: false
+  exact_set: false
+  canonical_set_digest: null
   evidence:
     - The verified product-planner-agent invocation authorizes orchestration for this parent issue.
 blockers: []
@@ -52,7 +60,7 @@ next_user_action: Approve the exact sub-issue draft set before publication, or r
 evidence:
   - source: handoff
     reference: ProductIssuePrioritization
-    observed: The user confirmed must for unit-export-csv.
+    observed: The user confirmed must for unit-invoice-csv-export.
 failure: null
 metadata:
   started_at: '2026-01-01T00:00:00.000Z'

@@ -302,7 +302,7 @@ export const skillHandoffs: SkillHandoff[] = [
       optionalContract("ProductInterview", 1),
       optionalContract("LoadedIssue", 1),
     ],
-    produces: [contract("ProductSubIssueDrafts", 1)],
+    produces: [contract("ProductSubIssueDrafts", 2)],
   },
   {
     name: "conduct-product-interview",
@@ -347,10 +347,10 @@ export const skillHandoffs: SkillHandoff[] = [
   {
     name: "create-product-sub-issues",
     consumes: [
-      contract("ProductPlannerRun", 1),
-      contract("IssueDraft", 2),
+      contract("ProductPlannerRun", 2),
+      contract("ProductSubIssueDrafts", 2),
     ],
-    produces: [contract("ProductSubIssuePublication", 1)],
+    produces: [contract("ProductSubIssuePublication", 2)],
   },
   {
     name: "decompose-product-capabilities",
@@ -894,8 +894,11 @@ export const agentHandoffs: AgentHandoff[] = [
   },
   {
     name: "product-planner-agent",
-    consumes: [contract("LoadedIssue", 1)],
-    produces: [contract("ProductPlannerRun", 1)],
+    consumes: [
+      contract("LoadedIssue", 1),
+      contract("ProductSubIssueDrafts", 2),
+    ],
+    produces: [contract("ProductPlannerRun", 2)],
     skills: [
       "load-github-issue",
       "analyze-product-issue",
@@ -905,11 +908,9 @@ export const agentHandoffs: AgentHandoff[] = [
       "assess-issue-atomicity",
       "build-product-dependency-graph",
       "prioritize-product-issues",
-      "structure-issue",
-      "define-acceptance-criteria",
+      "compose-product-sub-issues",
       "assess-issue-quality",
       "create-product-sub-issues",
-      "create-github-issue",
     ],
   },
   {
@@ -1031,7 +1032,10 @@ export const commandHandoffs: CommandHandoff[] = [
   {
     name: "plan-product",
     agent: "product-planner-agent",
-    contracts: [contract("ProductPlannerRun", 1)],
+    contracts: [
+      contract("ProductSubIssueDrafts", 2),
+      contract("ProductPlannerRun", 2),
+    ],
   },
   {
     name: "reprioritize-issues",

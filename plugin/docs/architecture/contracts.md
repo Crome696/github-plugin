@@ -28,7 +28,7 @@ The plugin currently defines 85 versioned contracts.
 | `IssueAtomicityAssessment` | Read-only atomicity classification of each proposed sub-issue candidate as too-large, atomic-enough, or over-fragmented, without creating sub-issues. |
 | `ProductDependencyGraph` | Read-only directed dependency graph of classified sub-issue candidates, distinguishing evidenced product and mandatory technical relations without ranking slices by technical order or creating sub-issues. |
 | `ProductIssuePrioritization` | Read-only MoSCoW ranking of classified sub-issue candidates with recommended versus confirmed classes, six-dimension rationales, explicit user decisions, and divergences between product priority and required implementation order, without creating sub-issues. |
-| `ProductSubIssueDrafts` | Read-only complete English sub-issue drafts from confirmed atomic units, preserving parent, capability, requirement, dependency, priority, and constraint traceability without creating or publishing sub-issues. |
+| `ProductSubIssueDrafts` | Version-2 read-only canonical English sub-issue draft set from confirmed atomic units, carrying exact title, body, add/remove/preserve labels, parent, hard dependencies, priority, traceability, and a deterministic SHA-256 identity without authorizing publication. |
 | `IssueAssessment` | Clarification state, locked requirements, non-goals, assumptions, and readiness. |
 | `IssueDraft` | Task-authorized create or edit payload, labels, publication mode, and verification evidence. |
 | `IssueUpdate` | Task-authorized partial field update with live baseline, preview, applied effects, and verification. |
@@ -115,8 +115,8 @@ The plugin currently defines 85 versioned contracts.
 | `PullRequestMerge` | Version-2 exact authorized merge intent, snapshot-backed version-3 readiness, preflight, selected strategy, and result. |
 | `PullRequestIntegration` | Lifecycle record for readiness, target refresh, rebase, validation, push, merge, closure verification, and cleanup decisions. |
 | `LifecycleRun` | Autonomous issue-to-draft-PR record through create or existing-issue refine, then preparation, external implementation, and Draft PR delivery. |
-| `ProductPlannerRun` | Interactive parent-issue product-planning record through analysis, interview, mapping, decomposition, atomicity, dependencies, prioritization, sub-issue drafting, and publication handoff only after exact user approval. |
-| `ProductSubIssuePublication` | Exact-set publication result mapping approved product-plan unit IDs to GitHub issue numbers and URLs, with parent and hard-dependency relationship outcomes and failed operations. |
+| `ProductPlannerRun` | Version-2 interactive parent-issue product-planning lifecycle record that consumes one canonical ProductSubIssueDrafts v2 identity and binds exact-set approval to its digest without carrying an independent publishable title/body set. |
+| `ProductSubIssuePublication` | Version-2 exact-set publication result recording the approved canonical identity, exact unit set, lossless IssueDraft v2 adapter verification, GitHub mappings, parent and hard-dependency outcomes, retry evidence, and failed operations. |
 | `CleanupResult` | Authorized branch/worktree cleanup results, preserved unsafe targets, and local/remote outcomes. |
 | `GateLifecycle` | Version-1 host-neutral lifecycle authority or non-authorizing receipt with operation-specific nonce, five-minute expiry, bounded future skew, consumption, and receipt-expiry semantics. |
 | `PreCommitGate` | Version-4 local snapshot binding one exact canonical commit to validated scope, worktree identity, authorization, exact message bytes, cached staged-index contents, and one-shot lifecycle authority. |

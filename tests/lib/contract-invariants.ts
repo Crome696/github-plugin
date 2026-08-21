@@ -1,3 +1,8 @@
+import {
+  canonicalUnitIds,
+  productSubIssueDigest,
+} from "./product-sub-issue-digest.js";
+
 export interface InvariantIssue {
   code: string;
   path: string;
@@ -22,6 +27,142 @@ const objectAt = (
 ): Record<string, unknown> | null => {
   if (isRecord(value)) return value;
   return null;
+};
+
+const isSha256Digest = (value: unknown): value is string =>
+  typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+
+const sortedStrings = (values: unknown): string[] =>
+  (Array.isArray(values) ? values : [])
+    .filter((value): value is string => typeof value === "string")
+    .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+
+const sameStringSet = (left: unknown, right: unknown): boolean => {
+  const a = sortedStrings(left);
+  const b = sortedStrings(right);
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+};
+
+const validateCanonicalIdentity = (
+  identity: Record<string, unknown> | null,
+  path: string,
+  expectedUnitIds: string[] | null = null,
+): InvariantIssue[] => {
+  const issues: InvariantIssue[] = [];
+  if (!identity) {
+    issues.push(issue("canonical_identity_required", path, "A v2 canonical payload must carry its canonical identity."));
+    return issues;
+  }
+  if (identity.schema !== "ProductSubIssueDrafts" || identity.version !== 2) {
+    issues.push(issue("canonical_schema_mismatch", path, "The canonical identity must reference ProductSubIssueDrafts version 2."));
+  }
+  if (identity.canonicalization_version !== 1 || identity.algorithm !== "sha256") {
+    issues.push(issue("canonicalization_metadata_invalid", path, "Canonical identity requires canonicalization version 1 and SHA-256."));
+  }
+  if (!isSha256Digest(identity.digest)) {
+    issues.push(issue("canonical_digest_format_invalid", `${path}.digest`, "The canonical digest must be 64 lowercase hexadecimal characters."));
+  }
+  const unitIds = sortedStrings(identity.unit_ids);
+  if (!sameStringSet(identity.unit_ids, unitIds)) {
+    issues.push(issue("canonical_unit_ids_invalid", `${path}.unit_ids`, "Canonical unit IDs must be strings."));
+  }
+  if (
+    Array.isArray(identity.unit_ids) &&
+    identity.unit_ids.some((value, index) => value !== unitIds[index])
+  ) {
+    issues.push(issue("canonical_unit_ids_unsorted", `${path}.unit_ids`, "Canonical unit IDs must be sorted ascending."));
+  }
+  if (new Set(unitIds).size !== unitIds.length) {
+    issues.push(issue("duplicate_unit_id", `${path}.unit_ids`, "Canonical unit IDs must be unique."));
+  }
+  if (expectedUnitIds && !sameStringSet(unitIds, expectedUnitIds)) {
+    issues.push(issue("canonical_unit_set_mismatch", `${path}.unit_ids`, "The canonical unit set does not match the supplied eligible drafts."));
+  }
+  return issues;
+};
+
+const validateProductSubIssueDrafts = (
+  payload: Record<string, unknown>,
+): InvariantIssue[] => {
+  const issues: InvariantIssue[] = [];
+  const drafts = arrayAt(payload.drafts, "$.drafts").filter(isRecord);
+  const unitIds = canonicalUnitIds(payload);
+  if (new Set(unitIds).size !== unitIds.length) {
+    issues.push(issue("duplicate_unit_id", "$.drafts", "ProductSubIssueDrafts v2 requires unique unit_id values."));
+  }
+  const identity = objectAt(payload.canonical_identity, "$.canonical_identity");
+  issues.push(...validateCanonicalIdentity(identity, "$.canonical_identity", unitIds));
+  if (identity && isSha256Digest(identity.digest)) {
+    let digest: string;
+    try {
+      digest = productSubIssueDigest(payload);
+    } catch {
+      digest = "";
+    }
+    if (digest !== identity.digest) {
+      issues.push(issue("canonical_digest_mismatch", "$.canonical_identity.digest", "The stored canonical digest does not match the supplied ProductSubIssueDrafts publishable fields."));
+    }
+  }
+  for (const [index, draft] of drafts.entries()) {
+    const labels = objectAt(draft.labels, `$.drafts[${index}].labels`);
+    for (const name of ["add", "remove", "preserve"]) {
+      if (!Array.isArray(labels?.[name]) || (labels?.[name] as unknown[]).some((value) => typeof value !== "string")) {
+        issues.push(issue("label_operations_required", `$.drafts[${index}].labels.${name}`, "Every canonical draft requires exact add, remove, and preserve label lists."));
+      }
+    }
+  }
+  if (payload.status === "composed" && (identity === null || payload.failure !== null)) {
+    issues.push(issue("composed_canonical_set_incomplete", "$.canonical_identity", "A composed ProductSubIssueDrafts v2 result requires a valid canonical identity and no failure."));
+  }
+  return issues;
+};
+
+const validateProductPlannerRun = (
+  payload: Record<string, unknown>,
+): InvariantIssue[] => {
+  const issues: InvariantIssue[] = [];
+  const canonicalSet = objectAt(payload.canonical_set, "$.canonical_set");
+  const drafts = arrayAt(payload.drafts, "$.drafts").filter(isRecord);
+  const unitIds = drafts
+    .map((draft) => draft.unit_id)
+    .filter((value): value is string => typeof value === "string");
+  issues.push(...validateCanonicalIdentity(canonicalSet, "$.canonical_set", unitIds));
+  if (new Set(unitIds).size !== drafts.length) {
+    issues.push(issue("duplicate_unit_id", "$.drafts", "ProductPlannerRun v2 requires unique canonical unit IDs."));
+  }
+  for (const [index, draft] of drafts.entries()) {
+    if (Object.prototype.hasOwnProperty.call(draft, "title") || Object.prototype.hasOwnProperty.call(draft, "body")) {
+      issues.push(issue("independent_publishable_payload_forbidden", `$.drafts[${index}]`, "ProductPlannerRun must not carry an independently authored publishable title or body."));
+    }
+  }
+  const authorization = objectAt(payload.authorization, "$.authorization");
+  const digest = canonicalSet?.digest;
+  const approvalDigest = authorization?.canonical_set_digest;
+  if (payload.status === "drafts_ready") {
+    for (const [name, value] of [
+      ["exact_payload", authorization?.exact_payload],
+      ["exact_set", authorization?.exact_set],
+      ["publication_authorized", authorization?.publication_authorized],
+    ] as const) {
+      if (value !== false) issues.push(issue("drafts_ready_must_not_authorize", `$.authorization.${name}`, "drafts_ready must keep exact payload, exact set, and publication authorization false."));
+    }
+    if (approvalDigest !== null) {
+      issues.push(issue("drafts_ready_digest_forbidden", "$.authorization.canonical_set_digest", "drafts_ready must not store an approval digest."));
+    }
+  }
+  if (payload.status === "publication_handed_off") {
+    if (
+      authorization?.exact_payload !== true ||
+      authorization.exact_set !== true ||
+      authorization.publication_authorized !== true
+    ) {
+      issues.push(issue("exact_set_approval_required", "$.authorization", "Publication handoff requires exact_payload, exact_set, and publication_authorized all true."));
+    }
+    if (!isSha256Digest(approvalDigest) || approvalDigest !== digest) {
+      issues.push(issue("canonical_set_mismatch", "$.authorization.canonical_set_digest", "Planner approval must match the canonical-set digest exactly."));
+    }
+  }
+  return issues;
 };
 
 const evidenceSourceKinds = new Set([
@@ -1147,6 +1288,23 @@ const validateProductSubIssuePublication = (
   const parent = objectAt(payload.parent_issue, "$.parent_issue");
   const parentNumber =
     typeof parent?.number === "number" ? parent.number : null;
+  const canonicalSet = objectAt(payload.canonical_set, "$.canonical_set");
+  const canonicalUnitIds = sortedStrings(canonicalSet?.unit_ids);
+  issues.push(...validateCanonicalIdentity(canonicalSet, "$.canonical_set"));
+  const authorization = objectAt(payload.authorization, "$.authorization");
+  if (
+    canonicalSet &&
+    (!isSha256Digest(authorization?.canonical_set_digest) ||
+      authorization.canonical_set_digest !== canonicalSet.digest)
+  ) {
+    issues.push(
+      issue(
+        "canonical_set_mismatch",
+        "$.authorization.canonical_set_digest",
+        "Publication authorization must match the stored canonical-set digest.",
+      ),
+    );
+  }
   const mapping = arrayAt(payload.mapping, "$.mapping").filter(isRecord);
   const failedOperations = arrayAt(
     payload.failed_operations,
@@ -1161,6 +1319,27 @@ const validateProductSubIssuePublication = (
     relationships?.dependencies,
     "$.relationships.dependencies",
   ).filter(isRecord);
+  const mappingUnitIds = mapping.map((entry) => entry.unit_id);
+  if (new Set(mappingUnitIds.filter((value): value is string => typeof value === "string")).size !== mappingUnitIds.length) {
+    issues.push(issue("duplicate_unit_id", "$.mapping", "Publication mappings must contain each unit ID at most once."));
+  }
+  const adapter = objectAt(payload.adapter, "$.adapter");
+  if (payload.status === "published") {
+    if (adapter?.status !== "verified") {
+      issues.push(issue("adapter_verification_required", "$.adapter.status", "A published result requires a verified lossless adapter."));
+    }
+    if (!sameStringSet(adapter?.verified_units, canonicalUnitIds)) {
+      issues.push(issue("adapter_unit_set_mismatch", "$.adapter.verified_units", "Adapter verification must cover the exact canonical unit set."));
+    }
+    if (!sameStringSet(mappingUnitIds, canonicalUnitIds)) {
+      issues.push(issue("published_unit_set_mismatch", "$.mapping", "Published mappings must cover the exact approved canonical unit set."));
+    }
+    for (const [index, entry] of mapping.entries()) {
+      if (entry.adapter_verified !== true) {
+        issues.push(issue("adapter_mismatch", `$.mapping[${index}].adapter_verified`, "Every published mapping requires verified adapter equivalence."));
+      }
+    }
+  }
 
   for (const [index, entry] of mapping.entries()) {
     if (
@@ -1315,6 +1494,10 @@ export const validateContractInvariants = (
       return validatePullRequestReady(payload);
     case "CleanupResult":
       return validateCleanupResult(payload);
+    case "ProductSubIssueDrafts":
+      return validateProductSubIssueDrafts(payload);
+    case "ProductPlannerRun":
+      return validateProductPlannerRun(payload);
     case "ProductSubIssuePublication":
       return validateProductSubIssuePublication(payload);
     default:

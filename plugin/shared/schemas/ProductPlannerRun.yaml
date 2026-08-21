@@ -1,16 +1,17 @@
 schema: ProductPlannerRun
-version: 1
+version: 2
 description: >-
   Task-authorized record of one interactive parent-issue product-planning
   run. The product-planner-agent sequences product analysis, interview,
   capability mapping, iterative decomposition, atomicity review, dependency
-  analysis, prioritization, sub-issue drafting, and overall review, then
-  hands approved create drafts to publication only after explicit user
-  approval of the exact draft set.
+  analysis, prioritization, canonical sub-issue composition, and overall
+  review, then hands the exact approved canonical set to publication only
+  after explicit user approval of its immutable digest and unit set.
 required:
   - status
   - repository
   - parent_issue
+  - canonical_set
   - phases
   - drafts
   - graph
@@ -43,6 +44,34 @@ fields:
       state:
         type: enum
         values: [open, closed, unknown]
+  canonical_set:
+    type: object | null
+    required:
+      - schema
+      - version
+      - canonicalization_version
+      - algorithm
+      - digest
+      - unit_ids
+    fields:
+      schema:
+        type: string
+        const: ProductSubIssueDrafts
+      version:
+        type: integer
+        const: 2
+      canonicalization_version:
+        type: integer
+        const: 1
+      algorithm:
+        type: enum
+        values: [sha256]
+      digest:
+        type: string
+        format: sha256-lowercase-hex
+      unit_ids:
+        type: list
+        items: string
   phases:
     type: list
     items:
@@ -80,15 +109,12 @@ fields:
       type: object
       required:
         - unit_id
-        - title
         - parent_issue_number
         - traceability
         - confirmed_class
         - publication_status
       fields:
         unit_id:
-          type: string
-        title:
           type: string
         parent_issue_number:
           type: integer
@@ -148,6 +174,8 @@ fields:
       - orchestration_authorized
       - publication_authorized
       - exact_payload
+      - exact_set
+      - canonical_set_digest
       - evidence
     fields:
       source:
@@ -161,6 +189,11 @@ fields:
         type: boolean
       exact_payload:
         type: boolean
+      exact_set:
+        type: boolean
+      canonical_set_digest:
+        type: string | null
+        format: sha256-lowercase-hex
       evidence:
         type: list
         items: string
@@ -215,6 +248,9 @@ fields:
           - prioritization_blocked
           - review_blocked
           - approval_missing
+          - unsupported_draft_set
+          - canonical_set_mismatch
+          - approval_invalid
           - publication_blocked
           - verification_failure
       message:
@@ -241,8 +277,9 @@ fields:
 invariants:
   - The run identifies exactly one repository and one parent issue.
   - The parent issue is never reported as overwritten, closed, or replaced.
-  - drafts_ready requires a reviewed draft set and publication_authorized equal to false.
-  - publication_handed_off requires explicit user approval of the exact draft set and verified create results for every approved draft.
+  - canonical_set records exactly one ProductSubIssueDrafts version-2 identity, including its canonicalization version, algorithm, digest, and eligible unit IDs; the run never authors an independent publishable title or body set.
+  - drafts_ready requires a reviewed canonical draft set, exact_payload false, exact_set false, publication_authorized false, and canonical_set_digest null.
+  - publication_handed_off requires explicit user approval bound to the matching canonical-set identity, exact_payload true, exact_set true, publication_authorized true, and a non-null matching canonical_set_digest.
   - Orchestration authorization never implies publication authorization.
   - too-large and over-fragmented units never appear as published drafts.
   - Missing, stale, unavailable, or ambiguous evidence is preserved and never converted into success.

@@ -1,17 +1,25 @@
 schema: ProductSubIssuePublication
-version: 1
+version: 2
 status: published
 repository: octo-org/widgets
 parent_issue:
   number: 123
   url: https://github.com/octo-org/widgets/issues/123
   title: Export invoices from the billing dashboard
+canonical_set:
+  schema: ProductSubIssueDrafts
+  version: 2
+  canonicalization_version: 1
+  algorithm: sha256
+  digest: 14fe4d3066e06f84403b046657fbd932a067317bd283adb11d7e784963c0bf75
+  unit_ids: [unit-export-csv, unit-saved-payment-methods]
 authorization:
   source: user_approval
   task_scope: octo-org/widgets issue 123 product planning
   publication_authorized: true
   exact_payload: true
   exact_set: true
+  canonical_set_digest: 14fe4d3066e06f84403b046657fbd932a067317bd283adb11d7e784963c0bf75
   evidence:
     - The user approved the exact current draft set for octo-org/widgets#123.
 mapping:
@@ -19,12 +27,14 @@ mapping:
     issue_number: 201
     issue_url: https://github.com/octo-org/widgets/issues/201
     operation: created
+    adapter_verified: true
     title: Export the current month's invoices as CSV
     confirmed_class: must
   - unit_id: unit-saved-payment-methods
     issue_number: 202
     issue_url: https://github.com/octo-org/widgets/issues/202
     operation: reused
+    adapter_verified: true
     title: Save a payment method for later invoices
     confirmed_class: should
 relationships:
@@ -59,3 +69,12 @@ evidence:
     reference: issues/202
     observed: Reused existing sub-issue 202 after an exact title match.
 failure: null
+adapter:
+  status: verified
+  source_schema: ProductSubIssueDrafts
+  source_version: 2
+  target_schema: IssueDraft
+  target_version: 2
+  verified_units: [unit-export-csv, unit-saved-payment-methods]
+  evidence:
+    - The lossless IssueDraft v2 adapter preserved title, body, and label operations for every approved unit.

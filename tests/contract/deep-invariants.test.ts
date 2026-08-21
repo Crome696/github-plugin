@@ -722,5 +722,84 @@ describe("deep shared-contract invariants", () => {
       partialWithoutFailure,
       "failure_required",
     );
+
+    const adapterMismatch = clone(valid);
+    (adapterMismatch.adapter as Record<string, unknown>).status = "partial";
+    expectStructurallyValid("ProductSubIssuePublication", adapterMismatch);
+    expectInvariant(
+      "ProductSubIssuePublication",
+      adapterMismatch,
+      "adapter_verification_required",
+    );
+
+    const mappingAdapterMismatch = clone(valid);
+    (
+      (mappingAdapterMismatch.mapping as Array<Record<string, unknown>>)[0]!
+    ).adapter_verified = false;
+    expectStructurallyValid("ProductSubIssuePublication", mappingAdapterMismatch);
+    expectInvariant(
+      "ProductSubIssuePublication",
+      mappingAdapterMismatch,
+      "adapter_mismatch",
+    );
+
+    const canonicalSetMismatch = clone(valid);
+    (canonicalSetMismatch.canonical_set as Record<string, unknown>).digest =
+      "0000000000000000000000000000000000000000000000000000000000000000";
+    expectStructurallyValid("ProductSubIssuePublication", canonicalSetMismatch);
+    expectInvariant(
+      "ProductSubIssuePublication",
+      canonicalSetMismatch,
+      "canonical_set_mismatch",
+    );
+  });
+
+  it("binds ProductSubIssueDrafts and ProductPlannerRun to one exact v2 digest", () => {
+    const drafts = fixture<Record<string, unknown>>("ProductSubIssueDrafts");
+    expectStructurallyValid("ProductSubIssueDrafts", drafts);
+    expect(validateContractInvariants("ProductSubIssueDrafts", drafts)).toEqual(
+      [],
+    );
+
+    const changedDraft = clone(drafts);
+    (changedDraft.drafts as Array<Record<string, unknown>>)[0]!.title =
+      "A changed canonical title";
+    expectStructurallyValid("ProductSubIssueDrafts", changedDraft);
+    expectInvariant(
+      "ProductSubIssueDrafts",
+      changedDraft,
+      "canonical_digest_mismatch",
+    );
+
+    const planner = fixture<Record<string, unknown>>("ProductPlannerRun");
+    expectStructurallyValid("ProductPlannerRun", planner);
+    expect(validateContractInvariants("ProductPlannerRun", planner)).toEqual(
+      [],
+    );
+
+    const unauthorizedDraftsReady = clone(planner);
+    (
+      unauthorizedDraftsReady.authorization as Record<string, unknown>
+    ).exact_set = true;
+    expectStructurallyValid("ProductPlannerRun", unauthorizedDraftsReady);
+    expectInvariant(
+      "ProductPlannerRun",
+      unauthorizedDraftsReady,
+      "drafts_ready_must_not_authorize",
+    );
+
+    const approved = clone(planner);
+    approved.status = "publication_handed_off";
+    const authorization = approved.authorization as Record<string, unknown>;
+    authorization.exact_payload = true;
+    authorization.exact_set = true;
+    authorization.publication_authorized = true;
+    authorization.canonical_set_digest = (
+      approved.canonical_set as Record<string, unknown>
+    ).digest;
+    expectStructurallyValid("ProductPlannerRun", approved);
+    expect(validateContractInvariants("ProductPlannerRun", approved)).toEqual(
+      [],
+    );
   });
 });

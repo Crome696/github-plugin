@@ -1,10 +1,10 @@
 schema: ProductSubIssueDrafts
-version: 1
+version: 2
 status: composed
 source:
   repository: octo-org/widgets
-  number: 42
-  url: https://github.com/octo-org/widgets/issues/42
+  number: 123
+  url: https://github.com/octo-org/widgets/issues/123
   loaded_issue_version: 1
   loaded_issue_status: loaded
   product_capability_decomposition_version: 1
@@ -16,12 +16,19 @@ source:
   product_interview_version: 1
   product_interview_status: complete
   unavailable_fields: []
+canonical_identity:
+  schema: ProductSubIssueDrafts
+  version: 2
+  canonicalization_version: 1
+  algorithm: sha256
+  digest: 14fe4d3066e06f84403b046657fbd932a067317bd283adb11d7e784963c0bf75
+  unit_ids: [unit-invoice-csv-export]
 drafts:
   - unit_id: unit-invoice-csv-export
     title: Export current-month invoices as CSV
     body: |
       ## Parent reference
-      This issue is a sub-issue of octo-org/widgets#42.
+      This issue is a sub-issue of octo-org/widgets#123.
 
       ## Problem and outcome
       Billing users manually collect invoice rows at month end. A billing user
@@ -61,8 +68,8 @@ drafts:
     sections:
       parent_reference:
         repository: octo-org/widgets
-        number: 42
-        url: https://github.com/octo-org/widgets/issues/42
+        number: 123
+        url: https://github.com/octo-org/widgets/issues/123
         relationship: sub_issue_of
       problem_outcome:
         problem: Billing users manually collect invoice rows at month end.
@@ -98,8 +105,8 @@ drafts:
       traceability:
         parent_issue:
           repository: octo-org/widgets
-          number: 42
-          url: https://github.com/octo-org/widgets/issues/42
+          number: 123
+          url: https://github.com/octo-org/widgets/issues/123
         parent_capability:
           id: cap-billing-self-service
           name: Billing self-service
@@ -109,6 +116,10 @@ drafts:
         evidence:
           - units[unit-invoice-csv-export]
           - map.requirements[req-csv-export]
+    labels:
+      add: []
+      remove: []
+      preserve: []
     evidence: "units[unit-invoice-csv-export], candidates[unit-invoice-csv-export].decision"
 omitted_units: []
 recommended_next_skill: none

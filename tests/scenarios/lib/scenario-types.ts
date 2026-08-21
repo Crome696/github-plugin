@@ -31,6 +31,12 @@ export interface ScenarioFacts {
   wait_timeout?: boolean;
   pending_as_pass?: boolean;
   optional_check_as_required?: boolean;
+  ambiguous_live_match?: boolean;
+  legacy_input?: boolean;
+  mutation_after_approval?: boolean;
+  parent_overwrite?: boolean;
+  retry_matching_digest?: boolean;
+  retry_digest_changed?: boolean;
   api_errors?: string[];
 }
 

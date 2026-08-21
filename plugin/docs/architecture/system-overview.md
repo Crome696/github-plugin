@@ -120,7 +120,7 @@ not contain Skill chains, perform a second write, or invoke another Agent.
 | `auto-review-fix-pr` | `review-fix-agent` | One `ReviewFixRun` that confirms mandatory fixes, commits and non-force pushes on the existing pull-request head branch, and re-reviews until complete or blocked. |
 | `auto-ci-fix-pr` | `ci-fix-agent` | One `CiFixRun` that waits for required checks, reruns only authorized required names, and coordinates a bounded external fix on the existing head without merge or review publication. |
 | `ready-pr` | `pr-ready-agent` | One `PullRequestReady` result that marks an exact Draft Ready-for-Review after unique-issue and reviewer-set authorization. |
-| `plan-product` | `product-planner-agent` | One `ProductPlannerRun` for a verified parent issue through product analysis, interview, mapping, decomposition, graphing, prioritization, overall-plan review, and approved sub-issue publication. |
+| `plan-product` | `product-planner-agent` | One ProductSubIssueDrafts v2 canonical set composed before one ProductPlannerRun v2 review and digest-bound approval; publication remains delegated to create-product-sub-issues. |
 | `reprioritize-issues` | `issue-reprioritize-agent` | One `IssueReprioritization` for a verified repository after unique consecutive P-number ranking and exact ranked-set title application. |
 | `close-issue` | `issue-close-agent` | One `IssueClosure` that closes a verified issue without a merged pull request after exact close-reason authorization. |
 
@@ -146,7 +146,7 @@ do not implement project code.
 | [`review-fix-agent`](../../agents/review-fix-agent.md) | Review one verified pull request, confirm mandatory fixes in a host-neutral plan, coordinate external implementation on the existing head branch, and repeat verified commit/push iterations. |
 | [`ci-fix-agent`](../../agents/ci-fix-agent.md) | Wait for required checks, rerun only authorized required names, confirm remaining CI failures, and repeat verified commit/push iterations on the existing head. |
 | [`pr-ready-agent`](../../agents/pr-ready-agent.md) | Verify one Draft PR, unique linked issue, and optional reviewer set, then mark it Ready-for-Review after exact authorization. |
-| [`product-planner-agent`](../../agents/product-planner-agent.md) | Turn one verified parent issue into a prioritized graph of nearly atomic product sub-issues and hand the approved create set to `create-product-sub-issues` only after exact user approval. |
+| [`product-planner-agent`](../../agents/product-planner-agent.md) | Turn one verified parent issue into a prioritized graph, consume the canonical ProductSubIssueDrafts v2 set, bind approval to its digest, and hand that unchanged set to `create-product-sub-issues`. |
 | [`issue-reprioritize-agent`](../../agents/issue-reprioritize-agent.md) | Inventory currently open issues, rank unique consecutive P-number titles with the user, and apply them only after exact ranked-set authorization. |
 | [`issue-close-agent`](../../agents/issue-close-agent.md) | Load one verified issue, require an exact close reason, and close it without a merged pull request after exact authorization. |
 

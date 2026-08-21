@@ -1,15 +1,18 @@
 schema: ProductSubIssuePublication
-version: 1
+version: 2
 description: >-
-  Exact-set publication result for one approved product plan. Records the
-  unit-id to GitHub issue mapping, parent and hard-dependency relationship
-  outcomes, omitted units, and failed operations after creating every
-  confirmed sub-issue before finalizing relationships.
+  Exact-set publication result for one approved ProductSubIssueDrafts version-2
+  payload. Records the canonical identity, exact approved unit set, lossless
+  IssueDraft adapter verification, unit-to-GitHub issue mapping, parent and
+  hard-dependency relationship outcomes, omitted units, and failed operations
+  after attempting every approved create before finalizing relationships.
 required:
   - status
   - repository
   - parent_issue
+  - canonical_set
   - authorization
+  - adapter
   - mapping
   - relationships
   - failed_operations
@@ -35,6 +38,34 @@ fields:
         format: uri
       title:
         type: string | null
+  canonical_set:
+    type: object | null
+    required:
+      - schema
+      - version
+      - canonicalization_version
+      - algorithm
+      - digest
+      - unit_ids
+    fields:
+      schema:
+        type: string
+        const: ProductSubIssueDrafts
+      version:
+        type: integer
+        const: 2
+      canonicalization_version:
+        type: integer
+        const: 1
+      algorithm:
+        type: enum
+        values: [sha256]
+      digest:
+        type: string
+        format: sha256-lowercase-hex
+      unit_ids:
+        type: list
+        items: string
   authorization:
     type: object
     required:
@@ -43,6 +74,7 @@ fields:
       - publication_authorized
       - exact_payload
       - exact_set
+      - canonical_set_digest
       - evidence
     fields:
       source:
@@ -56,6 +88,9 @@ fields:
         type: boolean
       exact_set:
         type: boolean
+      canonical_set_digest:
+        type: string | null
+        format: sha256-lowercase-hex
       evidence:
         type: list
         items: string
@@ -68,6 +103,7 @@ fields:
         - issue_number
         - issue_url
         - operation
+        - adapter_verified
       fields:
         unit_id:
           type: string
@@ -80,6 +116,8 @@ fields:
         operation:
           type: enum
           values: [created, reused]
+        adapter_verified:
+          type: boolean
         title:
           type: string | null
         confirmed_class:
@@ -144,6 +182,10 @@ fields:
           type: enum
           values:
             - duplicate_ambiguous
+            - canonical_set_mismatch
+            - set_mismatch
+            - adapter_mismatch
+            - legacy_input
             - create_failure
             - parent_link_failure
             - dependency_failure
@@ -198,6 +240,10 @@ fields:
           - unconfirmed_unit
           - parent_overwrite_forbidden
           - duplicate_ambiguous
+          - canonical_set_mismatch
+          - set_mismatch
+          - adapter_mismatch
+          - legacy_input
           - create_failure
           - parent_link_failure
           - dependency_failure
@@ -213,19 +259,53 @@ fields:
       evidence:
         type: list
         items: string
+  adapter:
+    type: object | null
+    required:
+      - status
+      - source_schema
+      - source_version
+      - target_schema
+      - target_version
+      - verified_units
+      - evidence
+    fields:
+      status:
+        type: enum
+        values: [verified, partial, blocked]
+      source_schema:
+        type: string
+        const: ProductSubIssueDrafts
+      source_version:
+        type: integer
+        const: 2
+      target_schema:
+        type: string
+        const: IssueDraft
+      target_version:
+        type: integer
+        const: 2
+      verified_units:
+        type: list
+        items: string
+      evidence:
+        type: list
+        items: string
 invariants:
   - The result identifies exactly one repository and one parent issue.
   - The parent issue is never created, overwritten, closed, or replaced as a
     sub-issue.
   - mapping issue numbers never equal parent_issue.number.
-  - published requires every approved confirmed unit in mapping with a verified
+  - published requires the canonical-set identity to match the approved digest, every approved confirmed unit in mapping with a verified
     issue number and URL, every parent link linked or reused, every hard
-    dependency linked or reused, empty failed_operations, and failure null.
+    dependency linked or reused, a verified lossless IssueDraft v2 adapter for
+    every approved unit, empty failed_operations, and failure null.
   - partial means at least one external create or relationship write occurred
     and a later create, relationship, or verification did not complete.
   - blocked means no external write occurred.
-  - Titles, bodies, and labels of created issues match the exact approved
-    IssueDraft payloads and are never silently rewritten.
+  - Titles, bodies, and exact add/remove/preserve label operations of every
+    adapter payload match the canonical ProductSubIssueDrafts fields
+    value-for-value and are never silently rewritten.
   - Relationship writes begin only after the create phase has attempted every
     approved unit.
   - Hard dependency kinds are only blocks and requires.

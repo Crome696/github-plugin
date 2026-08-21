@@ -141,10 +141,15 @@ publication contract must not be renamed to `refine`.
 
 For a complete product-split draft set, invoke
 `compose-product-sub-issues` after the confirmed decomposition and
-prioritization. It returns one standalone `ProductSubIssueDrafts` result for
-all eligible confirmed units and performs no GitHub write. This draft-only
-workflow does not change `issue-agent`'s one-issue refine sequence; a later
-publication workflow must select and publish issues separately.
+prioritization. It returns one version-2 canonical `ProductSubIssueDrafts`
+result for all eligible confirmed units, including exact label operations and
+a deterministic SHA-256 identity, and performs no GitHub write. The
+`product-planner-agent` reviews that unchanged payload and records its
+identity and digest in `ProductPlannerRun v2`. After exact digest-bound
+approval, `create-product-sub-issues` consumes both handoffs, verifies a
+lossless `IssueDraft v2` adapter per unit, delegates the issue writes to
+`create-github-issue`, and records `ProductSubIssuePublication v2`. No
+independently authored IssueDraft set can bypass the canonical path.
 
 ## Phase 2: preparation
 
