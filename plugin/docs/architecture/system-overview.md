@@ -100,6 +100,13 @@ flowchart TD
   external -.->|"completed implementation evidence"| skills
 ```
 
+### Canonical typed workflow graph
+
+The layered diagram above is a conceptual architecture view. The precise current topology is the canonical [`../../shared/graphs/handoff-graph.yaml`](../../shared/graphs/handoff-graph.yaml), validated against [`../../shared/schemas/HandoffGraph.yaml`](../../shared/schemas/HandoffGraph.yaml) and projected to [`../../shared/graphs/handoff-graph.mmd`](../../shared/graphs/handoff-graph.mmd).
+
+The graph is derived only from the installable `plugin/` component sources and directly linked architecture/workflow documents. It binds every current Command to one Agent entry edge, preserves the declared Agent-to-Skill order, and uses exact Shared Contract versions for payload-bearing handoffs and terminal results. Identity, freshness, visibility, optionality, mode conditions, mutation boundaries, and audited gaps remain explicit.
+
+Product Planning, Feedback, CI-Fix, Review, Delivery, and Integration each have a traversable entry-to-terminal path. The external implementation and validation boundaries remain capabilities outside this plugin. The removed root `tests/` workspace and package metadata are not architecture sources and are not reintroduced. `plugin/assets/architecture.mmd` remains a high-level asset rather than a second full graph.
 ### Commands
 
 Commands are thin, explicitly invoked entry points. A Command resolves one

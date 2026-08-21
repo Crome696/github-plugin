@@ -96,6 +96,7 @@ The following files are the sources of truth for the corresponding concerns:
 | Policy and safety boundaries | [`../rules/`](../rules/) |
 | Host Hook projections and checkers | [`../hooks/`](../hooks/) |
 | Structured handoffs and contract inventory | [`../shared/schemas/README.md`](../shared/schemas/README.md) |
+| Canonical typed workflow graph | [`../shared/schemas/HandoffGraph.yaml`](../shared/schemas/HandoffGraph.yaml), [`../shared/graphs/handoff-graph.yaml`](../shared/graphs/handoff-graph.yaml), and its [`handoff-graph.mmd`](../shared/graphs/handoff-graph.mmd) projection |
 | Repository-owned configurable hook preferences | [`repository-policy.md`](repository-policy.md) |
 | Explicit evidence migration for `0.3.112` | [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md) |
 | Canonical head-bound feedback lifecycle contracts, independent effect authorization, immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, and transactional ownership-safe project-hook generation for `0.3.118` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
@@ -324,6 +325,20 @@ documentation; breaking changes require a version change. Workflow ownership
 and forbidden operations remain documented by the owning components.
 Repository validation and synchronization rules belong to the root
 [AGENTS.md](../../AGENTS.md).
+
+## Canonical typed workflow graph
+
+The standalone plugin's effective workflow topology is described by one canonical, versioned graph:
+
+- [`../shared/schemas/HandoffGraph.yaml`](../shared/schemas/HandoffGraph.yaml) defines the structural `HandoffGraph v1` meta-schema.
+- [`../shared/graphs/handoff-graph.yaml`](../shared/graphs/handoff-graph.yaml) is the YAML source of truth for current Commands, Agents, Skills, Shared Contracts, external capability boundaries, terminal results, and typed edges.
+- [`../shared/graphs/handoff-graph.mmd`](../shared/graphs/handoff-graph.mmd) is a checked projection of that YAML source. It is not a second graph definition.
+
+The graph contains one explicit Command-to-Agent entry edge per current Command, ordered Agent-internal Skill capability edges, contract/version-bound handoff edges, and terminal edges. It records identity, freshness, visibility, optionality, mode/condition, and mutation-boundary metadata. `audited_gap` records use existing `AUD-*` or `S*` keys, are never terminal, and preserve unresolved ownership without inventing a runtime consumer.
+
+The six required traversals are Product Planning, Feedback, CI-Fix, Review, Delivery, and Integration. Their evidence is limited to current `plugin/commands/`, `plugin/agents/`, `plugin/skills/`, `plugin/shared/schemas/`, and directly linked architecture/workflow documentation. The `HandoffGraph` meta-schema is excluded from workflow-output orphan classification.
+
+The former root `tests/` workspace and Node/Vitest metadata are outside this graph and are not restored by the documentation or the implementation. The unreferenced [`../assets/architecture.mmd`](../assets/architecture.mmd) and its SVG remain high-level architecture assets; they are not a second full handoff-graph source. Graph validation is external and non-checked-in. A Mermaid renderer was not used unless separately reported; this repository does not claim visual render validation from source parity alone.
 
 ## Scope boundary
 
