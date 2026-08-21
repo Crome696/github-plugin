@@ -34,8 +34,9 @@ Before any write require:
 
 1. A version-1 `LoadedPullRequest` whose repository, number, URL, and head
    SHA match the selected pull request.
-2. A version-1 `PullRequestCheckInspection` for that same head, projected by
-   `check-required-status-checks`, with `requirements.status: known`.
+2. A version-1 `PullRequestCheckInspection` for that same head, produced
+   directly by `inspect-pr-checks` (or one explicit post-wait refresh), with
+   `requirements.status: known`.
 3. An optional current `RequiredCheckWait` for the same head showing failed
    required outcomes. If absent, the inspection's failed required checks are
    the candidate set.
