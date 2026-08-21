@@ -124,8 +124,8 @@ not contain Skill chains, perform a second write, or invoke another Agent.
 | `reprioritize-issues` | `issue-reprioritize-agent` | One `IssueReprioritization` for a verified repository after unique consecutive P-number ranking and exact ranked-set title application. |
 | `close-issue` | `issue-close-agent` | One `IssueClosure` that closes a verified issue without a merged pull request after exact close-reason authorization. |
 
-The registered Command graphs, including forbidden operations, are tested in
-[`workflow-graphs.ts`](../../../tests/scenarios/lib/workflow-graphs.ts).
+The registered Command relationships and forbidden operations are maintained
+in the owning Command, Agent, and Skill sources.
 
 ### Agents
 

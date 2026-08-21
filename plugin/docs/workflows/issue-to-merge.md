@@ -440,9 +440,9 @@ open unless a separately authorized manual closure is requested.
 
 ## Typical command sequences
 
-The scenario graph in
-[`tests/scenarios/lib/workflow-graphs.ts`](../../../tests/scenarios/lib/workflow-graphs.ts)
-is the executable summary of Command sequencing and forbidden operations.
+The command-sequence table below is the maintained summary of Command
+sequencing and forbidden operations. Executable scenario evidence, when
+required, is provided by the applicable external testing capability.
 
 | Entry point | Read-only or diagnostic steps | Mutating step(s) | Explicitly excluded |
 | --- | --- | --- | --- |

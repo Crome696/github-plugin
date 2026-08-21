@@ -99,7 +99,7 @@ The following files are the sources of truth for the corresponding concerns:
 | Repository-owned configurable hook preferences | [`repository-policy.md`](repository-policy.md) |
 | Explicit evidence migration for `0.3.112` | [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md) |
 | Canonical head-bound feedback lifecycle contracts, independent effect authorization, immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, and transactional ownership-safe project-hook generation for `0.3.118` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
-| Contract producers, consumers, and workflow graph | [`../../tests/lib/handoff-graph.ts`](../../tests/lib/handoff-graph.ts), [`../../tests/scenarios/lib/workflow-graphs.ts`](../../tests/scenarios/lib/workflow-graphs.ts) |
+| Contract inventory and workflow ownership | [`../shared/schemas/README.md`](../shared/schemas/README.md) and the owning Agent, Command, and Skill sources listed below |
 | Host compatibility assumptions and limitations | [`../../README.md`](../../README.md) and the host manifests |
 
 This document keeps the concise technical inventory and routing map for the
@@ -313,15 +313,17 @@ evidence and missing or mismatched snapshots fail closed.
 ### Shared Contracts
 
 [shared/schemas/README.md](../shared/schemas/README.md) is the contract inventory
-and handoff-graph source of truth. Its versioned YAML contracts cover issue
+source of truth. Its versioned YAML contracts cover issue
 snapshots and drafts, repository and planning handoffs, worktree and delivery
 handoffs, review and feedback handoffs, integration and cleanup handoffs, host
 gate snapshots, lifecycle and product-planning records, Ready-for-Review
 records, open-issue reprioritization records, triage-close records, and CI
 wait/rerun/fix records. Contract field names, versions, status values, and
-approval semantics remain synchronized with Skills, Agents, Commands, and
-fixtures; breaking changes require a version change. Repository validation and
-synchronization rules belong to the root [AGENTS.md](../../AGENTS.md).
+approval semantics remain synchronized with Skills, Agents, Commands, and their
+documentation; breaking changes require a version change. Workflow ownership
+and forbidden operations remain documented by the owning components.
+Repository validation and synchronization rules belong to the root
+[AGENTS.md](../../AGENTS.md).
 
 ## Scope boundary
 

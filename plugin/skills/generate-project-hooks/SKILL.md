@@ -36,7 +36,7 @@ Codex, invoke this Skill directly.
 3. Invoke the bundled deterministic generator from the GitHub plugin root:
 
    ```text
-   npm run generate-project-hooks -- --target <verified-repository-root> --hosts <selected-hosts>
+   node plugin/hooks/generate-project-hooks.mjs --target <verified-repository-root> --hosts <selected-hosts>
    ```
 
    Pass `cursor`, `codex`, or `cursor,codex` only after the interactive

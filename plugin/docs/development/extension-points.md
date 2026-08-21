@@ -23,7 +23,8 @@ Answer these questions from repository evidence:
    adjacent responsibility?
 5. Does the change add a write or a hard operation requiring a new gate?
 6. Is the host mapping documented and supported for every target host?
-7. Which inventory, fixture, handoff graph, and test updates are required?
+7. Which inventory, source-of-truth documentation, external validation, and
+   host-projection updates are required?
 
 Prefer enhancing an existing component when its responsibility remains
 coherent. Split a component when its procedure, authorization, or contract
@@ -42,10 +43,10 @@ A Skill is the smallest reusable procedure or mutation boundary.
    operation is bounded and safe. Explicit mutation Skills must document their
    invocation boundary.
 5. Add or update a versioned Shared Contract when the handoff is structured.
-6. Add valid fixtures and register the producer/consumer edges in
-   [`tests/lib/handoff-graph.ts`](../../../tests/lib/handoff-graph.ts).
-7. Add or update contract, invariant, and scenario tests where the Skill
-   changes a workflow graph or safety boundary.
+6. Register the producer/consumer relationship in the Shared Contract
+   inventory and the affected source-of-truth documentation.
+7. Request or update external contract, invariant, and scenario validation when
+   the Skill changes a workflow or safety boundary.
 8. Add the Skill to the component inventory in [README.md](../README.md), and
    update [AGENTS.md](../../../AGENTS.md) only when repository policy or
    synchronization requirements change.
@@ -70,13 +71,13 @@ To add one:
 1. Create one Markdown file under [`agents/`](../../agents/).
 2. Define the activation boundary, mission, source-of-truth Skills, consumed
    and produced Contracts, forbidden operations, and final handoff.
-3. Add its handoff declaration to
-   [`tests/lib/handoff-graph.ts`](../../../tests/lib/handoff-graph.ts).
+3. Document its consumed and produced Contracts in the affected source-of-
+   truth documentation.
 4. Add the Agent to the component inventory in [README.md](../README.md) and
    any applicable Command documentation; update the root [AGENTS.md](../../../AGENTS.md)
    only when repository policy or synchronization requirements change.
-5. Add scenario coverage for happy paths and the Agent's forbidden
-   operations.
+5. Document happy paths and forbidden operations for the applicable external
+   validation capability.
 
 Agents must not become hidden implementation agents or invoke another Agent,
 except `lifecycle-agent`, which may start `issue-agent`, `preparation-agent`,
@@ -103,12 +104,12 @@ pull request, perform a GitHub write directly, or invoke another Agent.
 To add one:
 
 1. Add the host-supported Command file under [`commands/`](../../commands/).
-2. Register the Command-to-Agent relationship in
-   [`tests/lib/handoff-graph.ts`](../../../tests/lib/handoff-graph.ts).
-3. Add a workflow graph with read/write steps and forbidden operations in
-   [`tests/scenarios/lib/workflow-graphs.ts`](../../../tests/scenarios/lib/workflow-graphs.ts).
-4. Add deterministic scenario coverage for identity failures, write gates,
-   and forbidden operations.
+2. Document the Command-to-Agent relationship in the affected source-of-truth
+   documentation.
+3. Document the workflow's read/write steps and forbidden operations in the
+   relevant Command and Agent sources.
+4. Request deterministic external scenario coverage for identity failures,
+   write gates, and forbidden operations.
 5. Update the component inventory in [README.md](../README.md).
 
 Do not add a portable manifest field for a Command unless the authoritative
@@ -131,13 +132,11 @@ another component.
 3. Classify the change under `plugin-versioning`. Breaking changes require a
    version increment; do not reinterpret an existing field under the same
    version.
-4. Add a minimal valid fixture under
-   [`tests/fixtures/valid/`](../../../tests/fixtures/valid/).
-5. Register the Contract in
+4. Register the Contract in
    [`shared/schemas/README.md`](../../shared/schemas/README.md).
-6. Update producer and consumer edges, contract invariants, payload
-   validation, and scenario tests.
-7. Preserve unavailable and uncertain evidence instead of adding a permissive
+5. Update producer and consumer references, payload validation requirements,
+   and the applicable external validation plan.
+6. Preserve unavailable and uncertain evidence instead of adding a permissive
    fallback that turns missing data into success.
 
 Contracts do not grant permission. If a new operation writes GitHub, Git, a
@@ -154,7 +153,8 @@ Rules define policy, not workflow sequencing. A Rule change must:
 - avoid duplicating another Rule's authority;
 - preserve the secret prohibition and explicit hard-operation boundaries;
 - update the component inventory in [README.md](../README.md);
-- update affected Skills, Hooks, fixtures, and tests.
+- update affected Skills, Hooks, and documentation, and request external
+  validation where executable evidence is required.
 
 If a new policy is host-neutral, keep its durable semantics in the plugin's
 applicable Rule source. If a host requires an envelope, keep the host-native
@@ -213,8 +213,9 @@ complete desired state before writing, validate every path and ownership proof,
 and block rather than overwrite an unrecognized or locally changed file. The
 version-1 manifest is a generator-owned target artifact, not a Shared Contract;
 its exact-byte and managed-block hash rules are validated in the generator and
-contract tests. Same-filesystem staging, journaled backups, controlled rename,
-rollback, final verification, and next-run recovery are required. Host
+through applicable external contract validation. Same-filesystem staging,
+journaled backups, controlled rename, rollback, final verification, and
+next-run recovery are required. Host
 deselection may remove only unchanged artifacts explicitly owned by the prior
 manifest; unknown files and user content remain untouched. It must never create
 a gate snapshot: runtime gate JSON is evidence written by the owning operation
@@ -266,10 +267,13 @@ Before considering an extension complete:
 - identity, input, output, status, and failure paths are explicit;
 - exact authorization and secret checks exist for every write;
 - host projections use documented events and fields;
-- schemas, fixtures, handoff graph, inventories, and tests are synchronized;
+- schemas, inventories, workflow documentation, and source-of-truth references
+  are synchronized;
 - the extension does not invoke another Agent or external capability
   implicitly;
 - documentation links to the new source of truth without duplicating its
   entire procedure;
-- `npm test` passes from the repository root, and
-  `npm run typecheck` passes when TypeScript helpers or handoff data changed.
+- static repository validation passes, including `git diff --check` and syntax
+  checks for affected scripts;
+- required executable evidence is obtained from the applicable external testing
+  capability rather than inferred from the absence of local tests.
