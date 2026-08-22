@@ -1,0 +1,8 @@
+interface:
+  display_name: "GitHub README"
+  short_description: "Evidence-based GitHub README drafts"
+  default_prompt: "Use $github-readme to draft or improve this repository README with verified architecture and Mermaid."
+  brand_color: "#1F6FEB"
+
+policy:
+  allow_implicit_invocation: true
