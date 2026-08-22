@@ -1,0 +1,316 @@
+schema: RepositoryMetadataUpdate
+version: 1
+description: Evidence-backed, exact-authorized GitHub repository description and Topics proposal, mutation result, and verification for one repository.
+required:
+  - status
+  - repository
+  - current_metadata
+  - proposed_metadata
+  - evidence
+  - preview
+  - authorization
+  - operation
+  - verification
+  - failure
+fields:
+  status:
+    type: enum
+    values: [draft, approved, no-op, updated, partial, blocked]
+  repository:
+    type: object
+    required: [owner, name, full_name, url, default_branch, visibility]
+    fields:
+      owner:
+        type: string
+      name:
+        type: string
+      full_name:
+        type: string
+        format: owner/repository
+      url:
+        type: string
+        format: uri
+      default_branch:
+        type: string
+      visibility:
+        type: enum
+        values: [public, private, internal]
+    constraints:
+      - owner and name must normalize to full_name.
+      - url must identify the same repository as full_name.
+      - The returned repository must match the exact verified target.
+  current_metadata:
+    type: object
+    required: [description, topics, protected_fields, observed_at]
+    fields:
+      description:
+        type: string | null
+      topics:
+        type: list
+        items: string
+      protected_fields:
+        type: object
+        fields:
+          homepage:
+            type: string | null
+          visibility:
+            type: string | null
+          default_branch:
+            type: string | null
+          primary_language:
+            type: string | null
+          license:
+            type: string | null
+      observed_at:
+        type: string
+        format: iso-8601
+    constraints:
+      - description and topics come from a live read of the exact repository.
+      - topics contain the complete current list, not only newly proposed values.
+      - protected_fields are observed for preservation and never become mutation payload fields.
+  proposed_metadata:
+    type: object
+    required: [description, topics, topic_additions, topic_removals, evidence]
+    fields:
+      description:
+        type: string | null
+      topics:
+        type: list
+        items: string
+      topic_additions:
+        type: list
+        items: string
+      topic_removals:
+        type: list
+        items: string
+      evidence:
+        type: list
+        items: string
+    constraints:
+      - description is the exact proposed final value.
+      - topics are unique, lower-case, hyphenated, normalized, and complete.
+      - topic_additions and topic_removals are computed from current_metadata.topics.
+      - Removing a current Topic requires exact authorization and evidence that it is stale or irrelevant.
+      - A proposal must not use a fixed repository-specific preset.
+  evidence:
+    type: list
+    items:
+      type: object
+      required: [id, source, kind, claim, certainty, availability]
+      fields:
+        id:
+          type: string
+        source:
+          type: string
+        kind:
+          type: enum
+          values: [readme, manifest, runtime, tool, repository_metadata, repository_context, documentation, rule, issue, other]
+        claim:
+          type: string
+        certainty:
+          type: enum
+          values: [direct, inferred, uncertain]
+        availability:
+          type: enum
+          values: [available, unavailable, conflicting, not_applicable]
+        location:
+          type: string | null
+    constraints:
+      - Direct, inferred, uncertain, unavailable, and conflicting evidence remain distinguishable.
+      - Directory names alone, generic assumptions, unsupported framework guesses, and unrelated issue text cannot support a Topic.
+      - Insufficient or conflicting authoritative evidence prevents a successful update.
+  preview:
+    type: object
+    required: [baseline, fields, preserved_fields]
+    fields:
+      baseline:
+        type: object
+        required: [repository, description, topics, observed_at]
+        fields:
+          repository:
+            type: string
+            format: owner/repository
+          description:
+            type: string | null
+          topics:
+            type: list
+            items: string
+          observed_at:
+            type: string
+            format: iso-8601
+      fields:
+        type: list
+        items:
+          type: object
+          required: [field, before, after, evidence]
+          fields:
+            field:
+              type: enum
+              values: [description, topics]
+            before:
+              type: scalar | list | null
+            after:
+              type: scalar | list | null
+            evidence:
+              type: list
+              items: string
+      preserved_fields:
+        type: list
+        items: string
+    constraints:
+      - The preview contains exact Before/After values for only description and topics.
+      - A no-op preview does not authorize or perform a write.
+      - The immediate pre-write read must match the repository, description, and topics baseline.
+  authorization:
+    type: object
+    required: [exact_payload, update_authorized, source, task_scope, approved_payload]
+    fields:
+      exact_payload:
+        type: boolean
+      update_authorized:
+        type: boolean
+      source:
+        type: enum
+        values: [explicit_user, task_intent, release_workflow, repository_policy, session_continuity, null]
+      task_scope:
+        type: string | null
+      approved_by:
+        type: string | null
+      approved_at:
+        type: string | null
+        format: iso-8601
+      evidence:
+        type: list
+        items: string
+      approved_payload:
+        type: object
+        required: [description, topics]
+        fields:
+          description:
+            type: string | null
+          topics:
+            type: list
+            items: string
+    constraints:
+      - Both boolean gates must be true before an external write.
+      - Authorization must bind the exact repository, description, complete Topics list, and task scope.
+      - approved_payload contains only description and topics.
+      - Existing issue, commit, pull-request, merge, or routine delivery authorization is insufficient unless it explicitly carries this exact payload.
+  operation:
+    type: object
+    required: [status, transport, requested_fields, dispatched_fields, external_write, applied_changes]
+    fields:
+      status:
+        type: enum
+        values: [not_started, no_op, updated, partial]
+      transport:
+        type: string | null
+      requested_fields:
+        type: list
+        items:
+          type: enum
+          values: [description, topics]
+      dispatched_fields:
+        type: list
+        items:
+          type: enum
+          values: [description, topics]
+      external_write:
+        type: enum
+        values: [true, false, unknown]
+      applied_changes:
+        type: list
+        items:
+          type: object
+          required: [field, before, after, effect]
+          fields:
+            field:
+              type: enum
+              values: [description, topics]
+            before:
+              type: scalar | list | null
+            after:
+              type: scalar | list | null
+            effect:
+              type: string
+    constraints:
+      - The logical operation requests only description and topics.
+      - dispatched_fields records only the fields actually sent to the one high-level edit invocation.
+      - A no-op has external_write false and no applied changes.
+      - An uncertain external effect is not reported as a successful block.
+      - No retry or automatic rollback is allowed.
+  verification:
+    type: object
+    required: [target_identity, requested_fields, protected_fields, final_metadata, evidence]
+    fields:
+      target_identity:
+        type: enum
+        values: [pass, fail, unknown]
+      requested_fields:
+        type: enum
+        values: [pass, fail, unknown]
+      protected_fields:
+        type: enum
+        values: [pass, fail, unknown]
+      final_metadata:
+        type: object
+        required: [description, topics, protected_fields]
+        fields:
+          description:
+            type: string | null
+          topics:
+            type: list
+            items: string
+          protected_fields:
+            type: object
+            fields:
+              homepage:
+                type: string | null
+              visibility:
+                type: string | null
+              default_branch:
+                type: string | null
+              primary_language:
+                type: string | null
+              license:
+                type: string | null
+      evidence:
+        type: list
+        items: string
+    constraints:
+      - updated requires pass for target_identity, requested_fields, and protected_fields.
+      - Final description and topics must exactly equal the approved payload after supported normalization.
+      - Verification must use a fresh read of the exact repository after every dispatched write.
+  failure:
+    type: object | null
+    fields:
+      code:
+        type: enum
+        values: [missing_identity, ambiguous_identity, repository_not_found, auth_unavailable, permission_denied, evidence_insufficient, evidence_conflict, invalid_payload, approval_missing, edit_conflict, api_failure, verification_incomplete]
+      phase:
+        type: enum
+        values: [input, identity, authentication, evidence, read, preview, authorization, conflict_check, write, verification]
+      message:
+        type: string
+      external_write:
+        type: enum
+        values: [true, false, unknown]
+      retryable:
+        type: boolean
+      evidence:
+        type: list
+        items: string
+    constraints:
+      - Null means no failure was recorded.
+      - A partial result must state whether an external write occurred or may have occurred.
+invariants:
+  - Exactly one verified GitHub repository is targeted.
+  - Only description and topics may appear in the authorized mutation payload.
+  - The logical mutation is one high-level gh repo edit invocation with only description and Topic operations; this does not claim HTTP-level atomicity.
+  - Homepage, visibility, default branch, settings, issues, pull requests, labels, milestones, branches, and source files remain outside the mutation boundary.
+  - Existing relevant Topics are preserved unless exact removal is approved and evidence-backed.
+  - A metadata change between preview and immediate pre-write read produces edit_conflict and no write.
+  - An aligned repository produces a verified no-op and no write.
+  - updated requires a confirmed write and exact post-write verification of requested and protected fields.
+  - blocked means no external write occurred; partial means a write occurred or may have occurred but later effects or verification are incomplete or contradictory.
+  - No retry with a changed payload and no automatic rollback is permitted.

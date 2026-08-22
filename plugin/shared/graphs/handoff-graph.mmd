@@ -224,6 +224,8 @@ flowchart LR
   n220["skill: resolve-external-capabilities"]
   n221["contract: ExternalCapabilityResolution"]
   n222["contract: PullRequestFixPlan"]
+  n223["skill: update-repository-metadata"]
+  n224["contract: RepositoryMetadataUpdate"]
 %% edge {"id":"edge:entry:address-pr-feedback","type":"entry","producer":"command:address-pr-feedback","consumer":"agent:feedback-agent","contract":null,"contract_version":null}
   n1 -->|entry| n19
 %% edge {"id":"edge:entry:auto-ci-fix-pr","type":"entry","producer":"command:auto-ci-fix-pr","consumer":"agent:ci-fix-agent","contract":null,"contract_version":null}
@@ -746,3 +748,5 @@ flowchart LR
   n100 -.->|capability| n220
 %% edge {"id":"edge:terminal:issue-close-agent:14","type":"terminal","producer":"agent:issue-close-agent","consumer":"terminal:issue-closure","contract":"contract:IssueClosure","contract_version":1}
   n23 ==>|IssueClosure v1| n218
+%% edge {"id":"edge:handoff:repository-metadata:01","type":"handoff","producer":"skill:update-repository-metadata","consumer":"capability:host-runtime","contract":"contract:RepositoryMetadataUpdate","contract_version":1}
+  n223 -->|RepositoryMetadataUpdate v1| n205
