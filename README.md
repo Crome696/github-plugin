@@ -4,6 +4,8 @@
 
 # CromeSDK GitHub Plugin
 
+[![License: MIT](https://img.shields.io/github/license/Crome696/github-plugin)](LICENSE)
+
 This repository publishes the standalone CromeSDK `github` plugin for
 evidence-backed GitHub issue and pull-request collaboration. The installable
 plugin lives in [`plugin/`](plugin/). Repository-local Node/Vitest test tooling
@@ -44,7 +46,52 @@ The plugin does not implement product or project source code, framework
 architecture, domain behavior, or project-specific test design. Those remain
 external capabilities resolved by the host session.
 
-## Package boundary
+## Key features
+
+- Evidence-first issue, repository, pull-request, review, branch, and check
+  analysis.
+- Task-authorized branches, worktrees, commits, non-force pushes, and
+  issue-linked Draft pull requests.
+- Review-fix and CI-fix loops that stay bound to the verified pull-request
+  head.
+- Ready-for-Review, target refresh, rebase, merge, issue-closure, and cleanup
+  workflows with explicit safety gates.
+- Evidence-backed repository About description and Topics reconciliation with
+  concurrency protection and post-write verification.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  user[User] --> commands[Commands]
+  commands --> agents[Workflow Agents]
+  agents --> skills[GitHub Skills]
+  skills --> contracts[Shared Contracts]
+  skills --> rules[Rules]
+  skills --> hooks[Host Hooks]
+  agents -.-> external[External project capabilities]
+```
+
+Commands are thin entry points, Agents coordinate the workflow, and Skills
+own bounded analysis or GitHub operations. Shared Contracts carry typed
+handoffs, Rules define policy, and Hooks enforce local safety gates. The dotted
+edge marks capabilities resolved by the host session; they are not packaged
+inside this repository.
+
+## Getting started
+
+Install the `github` plugin through the marketplace flow for your host. The
+repository marketplace manifests resolve the installable source to
+[`./plugin`](plugin/).
+
+For technical orientation, start with
+[`plugin/docs/README.md`](plugin/docs/README.md). It provides separate reading
+paths for developers extending the plugin and AI agents operating the
+workflow. For command-oriented navigation, browse
+[`plugin/commands/`](plugin/commands/) and select the entry point for issue
+preparation, delivery, review, feedback, integration, or hook generation.
+
+## Project structure and package boundary
 
 Marketplace manifests at the repository root all point to `./plugin`:
 
@@ -90,7 +137,7 @@ session.
 
 Run the static repository validation from the repository root:
 
-```text
+```console
 git diff --check
 node --check plugin/hooks/generate-project-hooks.mjs
 node plugin/hooks/generate-project-hooks.mjs --help
@@ -109,7 +156,7 @@ root package scripts.
 
 The project-hook generator can be invoked directly from the repository root:
 
-```text
+```console
 node plugin/hooks/generate-project-hooks.mjs --hosts <cursor|codex|both|cursor,codex> --target <verified-repository-root>
 ```
 
@@ -134,6 +181,13 @@ requirements remain in [`AGENTS.md`](AGENTS.md).
   ownership of project-specific source code and tests.
 - Secrets, tokens, credentials, and confidential values must not be copied into
   plugin artifacts, GitHub content, commits, pull requests, or logs.
+
+## Contributing and support
+
+Read [`AGENTS.md`](AGENTS.md) for repository ownership, packaging,
+version-synchronization, and validation rules. The technical component
+inventory and extension guidance live in
+[`plugin/docs/README.md`](plugin/docs/README.md).
 
 ## License
 
