@@ -692,6 +692,13 @@ nodes:
     evidence:
       - "plugin/skills/fetch-target-branch/SKILL.md"
       - "plugin/docs/architecture/system-overview.md"
+  - id: "skill:github-readme"
+    type: "skill"
+    name: "github-readme"
+    source: "plugin/skills/github-readme/SKILL.md"
+    evidence:
+      - "plugin/skills/github-readme/SKILL.md"
+      - "plugin/docs/architecture/system-overview.md"
   - id: "skill:generate-project-hooks"
     type: "skill"
     name: "generate-project-hooks"

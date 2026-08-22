@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.121
+
+- Add the plugin-owned `github-readme` Skill for evidence-backed, draft-first
+  README architecture, fixed-spine content planning, Mermaid guidance, and
+  dependency-free local validation.
+- Synchronize the installable plugin manifests, Marketplace metadata,
+  documentation inventory, and canonical handoff-graph projection for the new
+  published capability.
+- No Shared Contract migration is required; the Skill is standalone and has no
+  new cross-component typed handoff.
+
 ## 0.3.120
 
 - Introduce the shared `PullRequestFixPlan v1` contract with a top-level

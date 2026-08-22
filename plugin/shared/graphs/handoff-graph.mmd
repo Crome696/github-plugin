@@ -78,152 +78,153 @@ flowchart LR
   n74["skill: detect-unrelated-changes"]
   n75["skill: evaluate-implementation"]
   n76["skill: fetch-target-branch"]
-  n77["skill: generate-project-hooks"]
-  n78["skill: identify-affected-areas"]
-  n79["skill: identify-product-capabilities"]
-  n80["skill: identify-resolved-feedback"]
-  n81["skill: inspect-pr-checks"]
-  n82["skill: inspect-repository"]
-  n83["skill: inspect-working-tree"]
-  n84["skill: link-pr-to-issue"]
-  n85["skill: list-open-issues"]
-  n86["skill: load-github-issue"]
-  n87["skill: load-linked-issue"]
-  n88["skill: load-pr-discussions"]
-  n89["skill: load-pull-request"]
-  n90["skill: mark-pr-ready"]
-  n91["skill: merge-pull-request"]
-  n92["skill: prioritize-product-issues"]
-  n93["skill: propose-pr-reviewers"]
-  n94["skill: push-branch"]
-  n95["skill: rank-open-issues"]
-  n96["skill: rebase-branch"]
-  n97["skill: reply-to-review-thread"]
-  n98["skill: rerun-required-checks"]
-  n99["skill: resolve-context-capabilities"]
-  n100["skill: resolve-feedback-capabilities"]
-  n101["skill: resolve-review-thread"]
-  n102["skill: rewrite-github-issue"]
-  n103["skill: rewrite-issue"]
-  n104["skill: structure-issue"]
-  n105["skill: submit-pr-review"]
-  n106["skill: summarize-feedback-resolution"]
-  n107["skill: update-github-issue"]
-  n108["skill: validate-feedback-resolution"]
-  n109["skill: validate-implementation-result"]
-  n110["skill: validate-rebased-branch"]
-  n111["skill: verify-linked-issue-closure"]
-  n112["skill: verify-worktree"]
-  n113["skill: wait-required-checks"]
-  n114["contract: HandoffGraph"]
-  n115["contract: AffectedAreas"]
-  n116["contract: BranchNameProposal"]
-  n117["contract: BranchPush"]
-  n118["contract: BranchRebase"]
-  n119["contract: BranchWorkspace"]
-  n120["contract: ChangeClassification"]
-  n121["contract: CiFixPlan"]
-  n122["contract: CiFixRun"]
-  n123["contract: ClassifiedReviewFeedback"]
-  n124["contract: ClassifiedReviewFindings"]
-  n125["contract: CleanupResult"]
-  n126["contract: CollectedReviewFeedback"]
-  n127["contract: CommitProposal"]
-  n128["contract: ContextCapabilities"]
-  n129["contract: DeduplicatedReviewFindings"]
-  n130["contract: DetectedReviewFindings"]
-  n131["contract: FeedbackLifecyclePlan"]
-  n132["contract: FeedbackLifecycleRun"]
-  n133["contract: FeedbackResolutionCapabilities"]
-  n134["contract: FeedbackResolutionPlan"]
-  n135["contract: FeedbackResolutionSummary"]
-  n136["contract: FeedbackResolutionValidation"]
-  n137["contract: GateLifecycle"]
-  n138["contract: ImplementationEvaluation"]
-  n139["contract: ImplementationPlan"]
-  n140["contract: IssueAnalysis"]
-  n141["contract: IssueAssessment"]
-  n142["contract: IssueAtomicityAssessment"]
-  n143["contract: IssueClosure"]
-  n144["contract: IssueDraft"]
-  n145["contract: IssueReprioritization"]
-  n146["contract: IssueRevisionComparison"]
-  n147["contract: IssueUpdate"]
-  n148["contract: LifecycleRun"]
-  n149["contract: LinkedIssue"]
-  n150["contract: LinkedIssueClosure"]
-  n151["contract: LinkedIssueClosureVerification"]
-  n152["contract: LinkedIssueStatusAssessment"]
-  n153["contract: LoadedIssue"]
-  n154["contract: LoadedPullRequest"]
-  n155["contract: LoadedPullRequestDiscussions"]
-  n156["contract: MergeReadiness"]
-  n157["contract: OpenIssueInventory"]
-  n158["contract: OpenIssueRanking"]
-  n159["contract: OpenReviewThreadAssessment"]
-  n160["contract: PostMergeStatus"]
-  n161["contract: PreCommitGate"]
-  n162["contract: PreMergeGate"]
-  n163["contract: PrePrCreateGate"]
-  n164["contract: PrePrReadyGate"]
-  n165["contract: PreRebaseGate"]
-  n166["contract: PreReviewSubmitGate"]
-  n167["contract: ProductAssessment"]
-  n168["contract: ProductCapabilityDecomposition"]
-  n169["contract: ProductCapabilityMap"]
-  n170["contract: ProductDependencyGraph"]
-  n171["contract: ProductInterview"]
-  n172["contract: ProductIssuePrioritization"]
-  n173["contract: ProductPlannerRun"]
-  n174["contract: ProductSubIssueDrafts"]
-  n175["contract: ProductSubIssuePublication"]
-  n176["contract: PullRequestCheckInspection"]
-  n177["contract: PullRequestDiffAnalysis"]
-  n178["contract: PullRequestDraft"]
-  n179["contract: PullRequestIntegration"]
-  n180["contract: PullRequestIssueLink"]
-  n181["contract: PullRequestMerge"]
-  n182["contract: PullRequestReadinessEvidence"]
-  n183["contract: PullRequestReady"]
-  n184["contract: RebaseConflictAnalysis"]
-  n185["contract: RepositoryContext"]
-  n186["contract: RepositoryConventions"]
-  n187["contract: RepositoryPolicy"]
-  n188["contract: RequiredApprovalInspection"]
-  n189["contract: RequiredCheckRerun"]
-  n190["contract: RequiredCheckWait"]
-  n191["contract: ResolvedReviewFeedback"]
-  n192["contract: ReviewDecision"]
-  n193["contract: ReviewFinding"]
-  n194["contract: ReviewFixPlan"]
-  n195["contract: ReviewFixRun"]
-  n196["contract: ReviewThreadReply"]
-  n197["contract: ReviewThreadResolution"]
-  n198["contract: TargetBranchFetch"]
-  n199["contract: UnrelatedChangeDetection"]
-  n200["contract: ValidationResult"]
-  n201["contract: WorkingTreeInspection"]
-  n202["capability: GitHub and Git"]
-  n203["capability: External implementation capability"]
-  n204["capability: External validation capability"]
-  n205["capability: Host session and user"]
-  n206["capability: Generated host-hook projection"]
-  n207["terminal: Product planning result"]
-  n208["terminal: Feedback lifecycle result"]
-  n209["terminal: CI-fix result"]
-  n210["terminal: Review result"]
-  n211["terminal: Draft delivery result"]
-  n212["terminal: Integration result"]
-  n213["terminal: Issue publication/refinement result"]
-  n214["terminal: Preparation result"]
-  n215["terminal: Issue-to-Draft lifecycle result"]
-  n216["terminal: Ready-for-Review result"]
-  n217["terminal: Issue reprioritization result"]
-  n218["terminal: Triage issue-closure result"]
-  n219["contract: ProductInterviewPrerequisite"]
-  n220["skill: resolve-external-capabilities"]
-  n221["contract: ExternalCapabilityResolution"]
-  n222["contract: PullRequestFixPlan"]
+  n77["skill: github-readme"]
+  n78["skill: generate-project-hooks"]
+  n79["skill: identify-affected-areas"]
+  n80["skill: identify-product-capabilities"]
+  n81["skill: identify-resolved-feedback"]
+  n82["skill: inspect-pr-checks"]
+  n83["skill: inspect-repository"]
+  n84["skill: inspect-working-tree"]
+  n85["skill: link-pr-to-issue"]
+  n86["skill: list-open-issues"]
+  n87["skill: load-github-issue"]
+  n88["skill: load-linked-issue"]
+  n89["skill: load-pr-discussions"]
+  n90["skill: load-pull-request"]
+  n91["skill: mark-pr-ready"]
+  n92["skill: merge-pull-request"]
+  n93["skill: prioritize-product-issues"]
+  n94["skill: propose-pr-reviewers"]
+  n95["skill: push-branch"]
+  n96["skill: rank-open-issues"]
+  n97["skill: rebase-branch"]
+  n98["skill: reply-to-review-thread"]
+  n99["skill: rerun-required-checks"]
+  n100["skill: resolve-context-capabilities"]
+  n101["skill: resolve-feedback-capabilities"]
+  n102["skill: resolve-review-thread"]
+  n103["skill: rewrite-github-issue"]
+  n104["skill: rewrite-issue"]
+  n105["skill: structure-issue"]
+  n106["skill: submit-pr-review"]
+  n107["skill: summarize-feedback-resolution"]
+  n108["skill: update-github-issue"]
+  n109["skill: validate-feedback-resolution"]
+  n110["skill: validate-implementation-result"]
+  n111["skill: validate-rebased-branch"]
+  n112["skill: verify-linked-issue-closure"]
+  n113["skill: verify-worktree"]
+  n114["skill: wait-required-checks"]
+  n115["contract: HandoffGraph"]
+  n116["contract: AffectedAreas"]
+  n117["contract: BranchNameProposal"]
+  n118["contract: BranchPush"]
+  n119["contract: BranchRebase"]
+  n120["contract: BranchWorkspace"]
+  n121["contract: ChangeClassification"]
+  n122["contract: CiFixPlan"]
+  n123["contract: CiFixRun"]
+  n124["contract: ClassifiedReviewFeedback"]
+  n125["contract: ClassifiedReviewFindings"]
+  n126["contract: CleanupResult"]
+  n127["contract: CollectedReviewFeedback"]
+  n128["contract: CommitProposal"]
+  n129["contract: ContextCapabilities"]
+  n130["contract: DeduplicatedReviewFindings"]
+  n131["contract: DetectedReviewFindings"]
+  n132["contract: FeedbackLifecyclePlan"]
+  n133["contract: FeedbackLifecycleRun"]
+  n134["contract: FeedbackResolutionCapabilities"]
+  n135["contract: FeedbackResolutionPlan"]
+  n136["contract: FeedbackResolutionSummary"]
+  n137["contract: FeedbackResolutionValidation"]
+  n138["contract: GateLifecycle"]
+  n139["contract: ImplementationEvaluation"]
+  n140["contract: ImplementationPlan"]
+  n141["contract: IssueAnalysis"]
+  n142["contract: IssueAssessment"]
+  n143["contract: IssueAtomicityAssessment"]
+  n144["contract: IssueClosure"]
+  n145["contract: IssueDraft"]
+  n146["contract: IssueReprioritization"]
+  n147["contract: IssueRevisionComparison"]
+  n148["contract: IssueUpdate"]
+  n149["contract: LifecycleRun"]
+  n150["contract: LinkedIssue"]
+  n151["contract: LinkedIssueClosure"]
+  n152["contract: LinkedIssueClosureVerification"]
+  n153["contract: LinkedIssueStatusAssessment"]
+  n154["contract: LoadedIssue"]
+  n155["contract: LoadedPullRequest"]
+  n156["contract: LoadedPullRequestDiscussions"]
+  n157["contract: MergeReadiness"]
+  n158["contract: OpenIssueInventory"]
+  n159["contract: OpenIssueRanking"]
+  n160["contract: OpenReviewThreadAssessment"]
+  n161["contract: PostMergeStatus"]
+  n162["contract: PreCommitGate"]
+  n163["contract: PreMergeGate"]
+  n164["contract: PrePrCreateGate"]
+  n165["contract: PrePrReadyGate"]
+  n166["contract: PreRebaseGate"]
+  n167["contract: PreReviewSubmitGate"]
+  n168["contract: ProductAssessment"]
+  n169["contract: ProductCapabilityDecomposition"]
+  n170["contract: ProductCapabilityMap"]
+  n171["contract: ProductDependencyGraph"]
+  n172["contract: ProductInterview"]
+  n173["contract: ProductIssuePrioritization"]
+  n174["contract: ProductPlannerRun"]
+  n175["contract: ProductSubIssueDrafts"]
+  n176["contract: ProductSubIssuePublication"]
+  n177["contract: PullRequestCheckInspection"]
+  n178["contract: PullRequestDiffAnalysis"]
+  n179["contract: PullRequestDraft"]
+  n180["contract: PullRequestIntegration"]
+  n181["contract: PullRequestIssueLink"]
+  n182["contract: PullRequestMerge"]
+  n183["contract: PullRequestReadinessEvidence"]
+  n184["contract: PullRequestReady"]
+  n185["contract: RebaseConflictAnalysis"]
+  n186["contract: RepositoryContext"]
+  n187["contract: RepositoryConventions"]
+  n188["contract: RepositoryPolicy"]
+  n189["contract: RequiredApprovalInspection"]
+  n190["contract: RequiredCheckRerun"]
+  n191["contract: RequiredCheckWait"]
+  n192["contract: ResolvedReviewFeedback"]
+  n193["contract: ReviewDecision"]
+  n194["contract: ReviewFinding"]
+  n195["contract: ReviewFixPlan"]
+  n196["contract: ReviewFixRun"]
+  n197["contract: ReviewThreadReply"]
+  n198["contract: ReviewThreadResolution"]
+  n199["contract: TargetBranchFetch"]
+  n200["contract: UnrelatedChangeDetection"]
+  n201["contract: ValidationResult"]
+  n202["contract: WorkingTreeInspection"]
+  n203["capability: GitHub and Git"]
+  n204["capability: External implementation capability"]
+  n205["capability: External validation capability"]
+  n206["capability: Host session and user"]
+  n207["capability: Generated host-hook projection"]
+  n208["terminal: Product planning result"]
+  n209["terminal: Feedback lifecycle result"]
+  n210["terminal: CI-fix result"]
+  n211["terminal: Review result"]
+  n212["terminal: Draft delivery result"]
+  n213["terminal: Integration result"]
+  n214["terminal: Issue publication/refinement result"]
+  n215["terminal: Preparation result"]
+  n216["terminal: Issue-to-Draft lifecycle result"]
+  n217["terminal: Ready-for-Review result"]
+  n218["terminal: Issue reprioritization result"]
+  n219["terminal: Triage issue-closure result"]
+  n220["contract: ProductInterviewPrerequisite"]
+  n221["skill: resolve-external-capabilities"]
+  n222["contract: ExternalCapabilityResolution"]
+  n223["contract: PullRequestFixPlan"]
 %% edge {"id":"edge:entry:address-pr-feedback","type":"entry","producer":"command:address-pr-feedback","consumer":"agent:feedback-agent","contract":null,"contract_version":null}
   n1 -->|entry| n19
 %% edge {"id":"edge:entry:auto-ci-fix-pr","type":"entry","producer":"command:auto-ci-fix-pr","consumer":"agent:ci-fix-agent","contract":null,"contract_version":null}
@@ -257,93 +258,93 @@ flowchart LR
 %% edge {"id":"edge:entry:review-pr","type":"entry","producer":"command:review-pr","consumer":"agent:review-agent","contract":null,"contract_version":null}
   n16 -->|entry| n29
 %% edge {"id":"edge:capability:ci-fix-agent:01","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:load-pull-request","contract":null,"contract_version":null}
-  n17 -.->|capability| n89
+  n17 -.->|capability| n90
 %% edge {"id":"edge:capability:ci-fix-agent:02","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:inspect-pr-checks","contract":null,"contract_version":null}
-  n17 -.->|capability| n81
+  n17 -.->|capability| n82
 %% edge {"id":"edge:capability:ci-fix-agent:04","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:wait-required-checks","contract":null,"contract_version":null}
-  n17 -.->|capability| n113
+  n17 -.->|capability| n114
 %% edge {"id":"edge:capability:ci-fix-agent:05","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:rerun-required-checks","contract":null,"contract_version":null}
-  n17 -.->|capability| n98
+  n17 -.->|capability| n99
 %% edge {"id":"edge:capability:ci-fix-agent:06","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:build-ci-fix-plan","contract":null,"contract_version":null}
   n17 -.->|capability| n38
 %% edge {"id":"edge:capability:ci-fix-agent:07","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:resolve-feedback-capabilities","contract":null,"contract_version":null}
-  n17 -.->|capability| n100
+  n17 -.->|capability| n101
 %% edge {"id":"edge:capability:ci-fix-agent:08","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:create-worktree","contract":null,"contract_version":null}
   n17 -.->|capability| n65
 %% edge {"id":"edge:capability:ci-fix-agent:09","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:verify-worktree","contract":null,"contract_version":null}
-  n17 -.->|capability| n112
+  n17 -.->|capability| n113
 %% edge {"id":"edge:capability:ci-fix-agent:10","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:inspect-working-tree","contract":null,"contract_version":null}
-  n17 -.->|capability| n83
+  n17 -.->|capability| n84
 %% edge {"id":"edge:capability:ci-fix-agent:11","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:classify-changes","contract":null,"contract_version":null}
   n17 -.->|capability| n48
 %% edge {"id":"edge:capability:ci-fix-agent:12","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:detect-unrelated-changes","contract":null,"contract_version":null}
   n17 -.->|capability| n74
 %% edge {"id":"edge:capability:ci-fix-agent:13","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:validate-implementation-result","contract":null,"contract_version":null}
-  n17 -.->|capability| n109
+  n17 -.->|capability| n110
 %% edge {"id":"edge:capability:ci-fix-agent:14","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:compose-commit-message","contract":null,"contract_version":null}
   n17 -.->|capability| n56
 %% edge {"id":"edge:capability:ci-fix-agent:15","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:create-commit","contract":null,"contract_version":null}
   n17 -.->|capability| n61
 %% edge {"id":"edge:capability:ci-fix-agent:16","type":"capability","producer":"agent:ci-fix-agent","consumer":"skill:push-branch","contract":null,"contract_version":null}
-  n17 -.->|capability| n94
+  n17 -.->|capability| n95
 %% edge {"id":"edge:capability:delivery-agent:01","type":"capability","producer":"agent:delivery-agent","consumer":"skill:inspect-working-tree","contract":null,"contract_version":null}
-  n18 -.->|capability| n83
+  n18 -.->|capability| n84
 %% edge {"id":"edge:capability:delivery-agent:02","type":"capability","producer":"agent:delivery-agent","consumer":"skill:classify-changes","contract":null,"contract_version":null}
   n18 -.->|capability| n48
 %% edge {"id":"edge:capability:delivery-agent:03","type":"capability","producer":"agent:delivery-agent","consumer":"skill:detect-unrelated-changes","contract":null,"contract_version":null}
   n18 -.->|capability| n74
 %% edge {"id":"edge:capability:delivery-agent:04","type":"capability","producer":"agent:delivery-agent","consumer":"skill:validate-implementation-result","contract":null,"contract_version":null}
-  n18 -.->|capability| n109
+  n18 -.->|capability| n110
 %% edge {"id":"edge:capability:delivery-agent:05","type":"capability","producer":"agent:delivery-agent","consumer":"skill:compose-commit-message","contract":null,"contract_version":null}
   n18 -.->|capability| n56
 %% edge {"id":"edge:capability:delivery-agent:06","type":"capability","producer":"agent:delivery-agent","consumer":"skill:create-commit","contract":null,"contract_version":null}
   n18 -.->|capability| n61
 %% edge {"id":"edge:capability:delivery-agent:07","type":"capability","producer":"agent:delivery-agent","consumer":"skill:push-branch","contract":null,"contract_version":null}
-  n18 -.->|capability| n94
+  n18 -.->|capability| n95
 %% edge {"id":"edge:capability:delivery-agent:08","type":"capability","producer":"agent:delivery-agent","consumer":"skill:compose-pr-description","contract":null,"contract_version":null}
   n18 -.->|capability| n57
 %% edge {"id":"edge:capability:delivery-agent:09","type":"capability","producer":"agent:delivery-agent","consumer":"skill:link-pr-to-issue","contract":null,"contract_version":null}
-  n18 -.->|capability| n84
+  n18 -.->|capability| n85
 %% edge {"id":"edge:capability:delivery-agent:10","type":"capability","producer":"agent:delivery-agent","consumer":"skill:create-draft-pr","contract":null,"contract_version":null}
   n18 -.->|capability| n62
 %% edge {"id":"edge:capability:delivery-agent:11","type":"capability","producer":"agent:delivery-agent","consumer":"skill:resolve-context-capabilities","contract":null,"contract_version":null}
-  n18 -.->|capability| n99
+  n18 -.->|capability| n100
 %% edge {"id":"edge:capability:delivery-agent:12","type":"capability","producer":"agent:delivery-agent","consumer":"skill:load-github-issue","contract":null,"contract_version":null}
-  n18 -.->|capability| n86
+  n18 -.->|capability| n87
 %% edge {"id":"edge:capability:feedback-agent:01","type":"capability","producer":"agent:feedback-agent","consumer":"skill:load-pull-request","contract":null,"contract_version":null}
-  n19 -.->|capability| n89
+  n19 -.->|capability| n90
 %% edge {"id":"edge:capability:feedback-agent:02","type":"capability","producer":"agent:feedback-agent","consumer":"skill:collect-review-feedback","contract":null,"contract_version":null}
   n19 -.->|capability| n54
 %% edge {"id":"edge:capability:feedback-agent:03","type":"capability","producer":"agent:feedback-agent","consumer":"skill:identify-resolved-feedback","contract":null,"contract_version":null}
-  n19 -.->|capability| n80
+  n19 -.->|capability| n81
 %% edge {"id":"edge:capability:feedback-agent:04","type":"capability","producer":"agent:feedback-agent","consumer":"skill:classify-review-feedback","contract":null,"contract_version":null}
   n19 -.->|capability| n49
 %% edge {"id":"edge:capability:feedback-agent:05","type":"capability","producer":"agent:feedback-agent","consumer":"skill:resolve-feedback-capabilities","contract":null,"contract_version":null}
-  n19 -.->|capability| n100
+  n19 -.->|capability| n101
 %% edge {"id":"edge:capability:feedback-agent:06","type":"capability","producer":"agent:feedback-agent","consumer":"skill:build-feedback-resolution-plan","contract":null,"contract_version":null}
   n19 -.->|capability| n39
 %% edge {"id":"edge:capability:feedback-agent:07","type":"capability","producer":"agent:feedback-agent","consumer":"skill:validate-feedback-resolution","contract":null,"contract_version":null}
-  n19 -.->|capability| n108
+  n19 -.->|capability| n109
 %% edge {"id":"edge:capability:feedback-agent:08","type":"capability","producer":"agent:feedback-agent","consumer":"skill:summarize-feedback-resolution","contract":null,"contract_version":null}
-  n19 -.->|capability| n106
+  n19 -.->|capability| n107
 %% edge {"id":"edge:capability:feedback-agent:09","type":"capability","producer":"agent:feedback-agent","consumer":"skill:reply-to-review-thread","contract":null,"contract_version":null}
-  n19 -.->|capability| n97
+  n19 -.->|capability| n98
 %% edge {"id":"edge:capability:feedback-agent:10","type":"capability","producer":"agent:feedback-agent","consumer":"skill:resolve-review-thread","contract":null,"contract_version":null}
-  n19 -.->|capability| n101
+  n19 -.->|capability| n102
 %% edge {"id":"edge:capability:host-hooks-agent:01","type":"capability","producer":"agent:host-hooks-agent","consumer":"skill:generate-project-hooks","contract":null,"contract_version":null}
-  n20 -.->|capability| n77
+  n20 -.->|capability| n78
 %% edge {"id":"edge:capability:integration-agent:01","type":"capability","producer":"agent:integration-agent","consumer":"skill:load-pull-request","contract":null,"contract_version":null}
-  n21 -.->|capability| n89
+  n21 -.->|capability| n90
 %% edge {"id":"edge:capability:integration-agent:02","type":"capability","producer":"agent:integration-agent","consumer":"skill:load-pr-discussions","contract":null,"contract_version":null}
-  n21 -.->|capability| n88
+  n21 -.->|capability| n89
 %% edge {"id":"edge:capability:integration-agent:03","type":"capability","producer":"agent:integration-agent","consumer":"skill:inspect-pr-checks","contract":null,"contract_version":null}
-  n21 -.->|capability| n81
+  n21 -.->|capability| n82
 %% edge {"id":"edge:capability:integration-agent:04","type":"capability","producer":"agent:integration-agent","consumer":"skill:check-required-approvals","contract":null,"contract_version":null}
   n21 -.->|capability| n46
 %% edge {"id":"edge:capability:integration-agent:05","type":"capability","producer":"agent:integration-agent","consumer":"skill:check-open-review-threads","contract":null,"contract_version":null}
   n21 -.->|capability| n45
 %% edge {"id":"edge:capability:integration-agent:06","type":"capability","producer":"agent:integration-agent","consumer":"skill:load-linked-issue","contract":null,"contract_version":null}
-  n21 -.->|capability| n87
+  n21 -.->|capability| n88
 %% edge {"id":"edge:capability:integration-agent:07","type":"capability","producer":"agent:integration-agent","consumer":"skill:check-linked-issue-status","contract":null,"contract_version":null}
   n21 -.->|capability| n44
 %% edge {"id":"edge:capability:integration-agent:08","type":"capability","producer":"agent:integration-agent","consumer":"skill:build-pr-readiness-evidence","contract":null,"contract_version":null}
@@ -355,15 +356,15 @@ flowchart LR
 %% edge {"id":"edge:capability:integration-agent:11","type":"capability","producer":"agent:integration-agent","consumer":"skill:detect-rebase-conflicts","contract":null,"contract_version":null}
   n21 -.->|capability| n71
 %% edge {"id":"edge:capability:integration-agent:12","type":"capability","producer":"agent:integration-agent","consumer":"skill:rebase-branch","contract":null,"contract_version":null}
-  n21 -.->|capability| n96
+  n21 -.->|capability| n97
 %% edge {"id":"edge:capability:integration-agent:13","type":"capability","producer":"agent:integration-agent","consumer":"skill:validate-rebased-branch","contract":null,"contract_version":null}
-  n21 -.->|capability| n110
-%% edge {"id":"edge:capability:integration-agent:14","type":"capability","producer":"agent:integration-agent","consumer":"skill:push-branch","contract":null,"contract_version":null}
-  n21 -.->|capability| n94
-%% edge {"id":"edge:capability:integration-agent:15","type":"capability","producer":"agent:integration-agent","consumer":"skill:merge-pull-request","contract":null,"contract_version":null}
-  n21 -.->|capability| n91
-%% edge {"id":"edge:capability:integration-agent:16","type":"capability","producer":"agent:integration-agent","consumer":"skill:verify-linked-issue-closure","contract":null,"contract_version":null}
   n21 -.->|capability| n111
+%% edge {"id":"edge:capability:integration-agent:14","type":"capability","producer":"agent:integration-agent","consumer":"skill:push-branch","contract":null,"contract_version":null}
+  n21 -.->|capability| n95
+%% edge {"id":"edge:capability:integration-agent:15","type":"capability","producer":"agent:integration-agent","consumer":"skill:merge-pull-request","contract":null,"contract_version":null}
+  n21 -.->|capability| n92
+%% edge {"id":"edge:capability:integration-agent:16","type":"capability","producer":"agent:integration-agent","consumer":"skill:verify-linked-issue-closure","contract":null,"contract_version":null}
+  n21 -.->|capability| n112
 %% edge {"id":"edge:capability:integration-agent:17","type":"capability","producer":"agent:integration-agent","consumer":"skill:close-linked-issue","contract":null,"contract_version":null}
   n21 -.->|capability| n53
 %% edge {"id":"edge:capability:integration-agent:18","type":"capability","producer":"agent:integration-agent","consumer":"skill:delete-merged-branch","contract":null,"contract_version":null}
@@ -371,19 +372,19 @@ flowchart LR
 %% edge {"id":"edge:capability:integration-agent:19","type":"capability","producer":"agent:integration-agent","consumer":"skill:cleanup-worktree","contract":null,"contract_version":null}
   n21 -.->|capability| n51
 %% edge {"id":"edge:capability:issue-agent:01","type":"capability","producer":"agent:issue-agent","consumer":"skill:structure-issue","contract":null,"contract_version":null}
-  n22 -.->|capability| n104
+  n22 -.->|capability| n105
 %% edge {"id":"edge:capability:issue-agent:02","type":"capability","producer":"agent:issue-agent","consumer":"skill:define-acceptance-criteria","contract":null,"contract_version":null}
   n22 -.->|capability| n68
 %% edge {"id":"edge:capability:issue-agent:03","type":"capability","producer":"agent:issue-agent","consumer":"skill:assess-issue-quality","contract":null,"contract_version":null}
   n22 -.->|capability| n36
 %% edge {"id":"edge:capability:issue-agent:04","type":"capability","producer":"agent:issue-agent","consumer":"skill:load-github-issue","contract":null,"contract_version":null}
-  n22 -.->|capability| n86
+  n22 -.->|capability| n87
 %% edge {"id":"edge:capability:issue-agent:05","type":"capability","producer":"agent:issue-agent","consumer":"skill:analyze-product-issue","contract":null,"contract_version":null}
   n22 -.->|capability| n33
 %% edge {"id":"edge:capability:issue-agent:06","type":"capability","producer":"agent:issue-agent","consumer":"skill:conduct-product-interview","contract":null,"contract_version":null}
   n22 -.->|capability| n60
 %% edge {"id":"edge:capability:issue-agent:07","type":"capability","producer":"agent:issue-agent","consumer":"skill:identify-product-capabilities","contract":null,"contract_version":null}
-  n22 -.->|capability| n79
+  n22 -.->|capability| n80
 %% edge {"id":"edge:capability:issue-agent:08","type":"capability","producer":"agent:issue-agent","consumer":"skill:decompose-product-capabilities","contract":null,"contract_version":null}
   n22 -.->|capability| n66
 %% edge {"id":"edge:capability:issue-agent:09","type":"capability","producer":"agent:issue-agent","consumer":"skill:assess-issue-atomicity","contract":null,"contract_version":null}
@@ -391,51 +392,51 @@ flowchart LR
 %% edge {"id":"edge:capability:issue-agent:10","type":"capability","producer":"agent:issue-agent","consumer":"skill:build-product-dependency-graph","contract":null,"contract_version":null}
   n22 -.->|capability| n42
 %% edge {"id":"edge:capability:issue-agent:11","type":"capability","producer":"agent:issue-agent","consumer":"skill:prioritize-product-issues","contract":null,"contract_version":null}
-  n22 -.->|capability| n92
+  n22 -.->|capability| n93
 %% edge {"id":"edge:capability:issue-agent:12","type":"capability","producer":"agent:issue-agent","consumer":"skill:compose-product-sub-issues","contract":null,"contract_version":null}
   n22 -.->|capability| n58
 %% edge {"id":"edge:capability:issue-agent:13","type":"capability","producer":"agent:issue-agent","consumer":"skill:rewrite-github-issue","contract":null,"contract_version":null}
-  n22 -.->|capability| n102
+  n22 -.->|capability| n103
 %% edge {"id":"edge:capability:issue-agent:14","type":"capability","producer":"agent:issue-agent","consumer":"skill:compare-issue-revision","contract":null,"contract_version":null}
   n22 -.->|capability| n55
 %% edge {"id":"edge:capability:issue-agent:15","type":"capability","producer":"agent:issue-agent","consumer":"skill:create-github-issue","contract":null,"contract_version":null}
   n22 -.->|capability| n63
 %% edge {"id":"edge:capability:issue-close-agent:01","type":"capability","producer":"agent:issue-close-agent","consumer":"skill:load-github-issue","contract":null,"contract_version":null}
-  n23 -.->|capability| n86
+  n23 -.->|capability| n87
 %% edge {"id":"edge:capability:issue-close-agent:02","type":"capability","producer":"agent:issue-close-agent","consumer":"skill:close-github-issue","contract":null,"contract_version":null}
   n23 -.->|capability| n52
 %% edge {"id":"edge:capability:issue-reprioritize-agent:01","type":"capability","producer":"agent:issue-reprioritize-agent","consumer":"skill:list-open-issues","contract":null,"contract_version":null}
-  n24 -.->|capability| n85
+  n24 -.->|capability| n86
 %% edge {"id":"edge:capability:issue-reprioritize-agent:02","type":"capability","producer":"agent:issue-reprioritize-agent","consumer":"skill:rank-open-issues","contract":null,"contract_version":null}
-  n24 -.->|capability| n95
+  n24 -.->|capability| n96
 %% edge {"id":"edge:capability:issue-reprioritize-agent:03","type":"capability","producer":"agent:issue-reprioritize-agent","consumer":"skill:apply-issue-priority-titles","contract":null,"contract_version":null}
   n24 -.->|capability| n34
 %% edge {"id":"edge:capability:issue-reprioritize-agent:04","type":"capability","producer":"agent:issue-reprioritize-agent","consumer":"skill:update-github-issue","contract":null,"contract_version":null}
-  n24 -.->|capability| n107
+  n24 -.->|capability| n108
 %% edge {"id":"edge:capability:pr-ready-agent:01","type":"capability","producer":"agent:pr-ready-agent","consumer":"skill:load-pull-request","contract":null,"contract_version":null}
-  n26 -.->|capability| n89
-%% edge {"id":"edge:capability:pr-ready-agent:02","type":"capability","producer":"agent:pr-ready-agent","consumer":"skill:load-linked-issue","contract":null,"contract_version":null}
-  n26 -.->|capability| n87
-%% edge {"id":"edge:capability:pr-ready-agent:03","type":"capability","producer":"agent:pr-ready-agent","consumer":"skill:inspect-pr-checks","contract":null,"contract_version":null}
-  n26 -.->|capability| n81
-%% edge {"id":"edge:capability:pr-ready-agent:04","type":"capability","producer":"agent:pr-ready-agent","consumer":"skill:propose-pr-reviewers","contract":null,"contract_version":null}
-  n26 -.->|capability| n93
-%% edge {"id":"edge:capability:pr-ready-agent:05","type":"capability","producer":"agent:pr-ready-agent","consumer":"skill:mark-pr-ready","contract":null,"contract_version":null}
   n26 -.->|capability| n90
+%% edge {"id":"edge:capability:pr-ready-agent:02","type":"capability","producer":"agent:pr-ready-agent","consumer":"skill:load-linked-issue","contract":null,"contract_version":null}
+  n26 -.->|capability| n88
+%% edge {"id":"edge:capability:pr-ready-agent:03","type":"capability","producer":"agent:pr-ready-agent","consumer":"skill:inspect-pr-checks","contract":null,"contract_version":null}
+  n26 -.->|capability| n82
+%% edge {"id":"edge:capability:pr-ready-agent:04","type":"capability","producer":"agent:pr-ready-agent","consumer":"skill:propose-pr-reviewers","contract":null,"contract_version":null}
+  n26 -.->|capability| n94
+%% edge {"id":"edge:capability:pr-ready-agent:05","type":"capability","producer":"agent:pr-ready-agent","consumer":"skill:mark-pr-ready","contract":null,"contract_version":null}
+  n26 -.->|capability| n91
 %% edge {"id":"edge:capability:preparation-agent:01","type":"capability","producer":"agent:preparation-agent","consumer":"skill:load-github-issue","contract":null,"contract_version":null}
-  n27 -.->|capability| n86
+  n27 -.->|capability| n87
 %% edge {"id":"edge:capability:preparation-agent:02","type":"capability","producer":"agent:preparation-agent","consumer":"skill:analyze-issue","contract":null,"contract_version":null}
   n27 -.->|capability| n31
 %% edge {"id":"edge:capability:preparation-agent:03","type":"capability","producer":"agent:preparation-agent","consumer":"skill:inspect-repository","contract":null,"contract_version":null}
-  n27 -.->|capability| n82
+  n27 -.->|capability| n83
 %% edge {"id":"edge:capability:preparation-agent:04","type":"capability","producer":"agent:preparation-agent","consumer":"skill:detect-repository-conventions","contract":null,"contract_version":null}
   n27 -.->|capability| n72
 %% edge {"id":"edge:capability:preparation-agent:05","type":"capability","producer":"agent:preparation-agent","consumer":"skill:identify-affected-areas","contract":null,"contract_version":null}
-  n27 -.->|capability| n78
+  n27 -.->|capability| n79
 %% edge {"id":"edge:capability:preparation-agent:06","type":"capability","producer":"agent:preparation-agent","consumer":"skill:evaluate-implementation","contract":null,"contract_version":null}
   n27 -.->|capability| n75
 %% edge {"id":"edge:capability:preparation-agent:07","type":"capability","producer":"agent:preparation-agent","consumer":"skill:resolve-context-capabilities","contract":null,"contract_version":null}
-  n27 -.->|capability| n99
+  n27 -.->|capability| n100
 %% edge {"id":"edge:capability:preparation-agent:08","type":"capability","producer":"agent:preparation-agent","consumer":"skill:derive-branch-name","contract":null,"contract_version":null}
   n27 -.->|capability| n70
 %% edge {"id":"edge:capability:preparation-agent:09","type":"capability","producer":"agent:preparation-agent","consumer":"skill:fetch-target-branch","contract":null,"contract_version":null}
@@ -445,15 +446,15 @@ flowchart LR
 %% edge {"id":"edge:capability:preparation-agent:11","type":"capability","producer":"agent:preparation-agent","consumer":"skill:create-worktree","contract":null,"contract_version":null}
   n27 -.->|capability| n65
 %% edge {"id":"edge:capability:preparation-agent:12","type":"capability","producer":"agent:preparation-agent","consumer":"skill:verify-worktree","contract":null,"contract_version":null}
-  n27 -.->|capability| n112
+  n27 -.->|capability| n113
 %% edge {"id":"edge:capability:product-planner-agent:01","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:load-github-issue","contract":null,"contract_version":null}
-  n28 -.->|capability| n86
+  n28 -.->|capability| n87
 %% edge {"id":"edge:capability:product-planner-agent:02","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:analyze-product-issue","contract":null,"contract_version":null}
   n28 -.->|capability| n33
 %% edge {"id":"edge:capability:product-planner-agent:03","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:conduct-product-interview","contract":null,"contract_version":null}
   n28 -.->|capability| n60
 %% edge {"id":"edge:capability:product-planner-agent:04","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:identify-product-capabilities","contract":null,"contract_version":null}
-  n28 -.->|capability| n79
+  n28 -.->|capability| n80
 %% edge {"id":"edge:capability:product-planner-agent:05","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:decompose-product-capabilities","contract":null,"contract_version":null}
   n28 -.->|capability| n66
 %% edge {"id":"edge:capability:product-planner-agent:06","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:assess-issue-atomicity","contract":null,"contract_version":null}
@@ -461,7 +462,7 @@ flowchart LR
 %% edge {"id":"edge:capability:product-planner-agent:07","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:build-product-dependency-graph","contract":null,"contract_version":null}
   n28 -.->|capability| n42
 %% edge {"id":"edge:capability:product-planner-agent:08","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:prioritize-product-issues","contract":null,"contract_version":null}
-  n28 -.->|capability| n92
+  n28 -.->|capability| n93
 %% edge {"id":"edge:capability:product-planner-agent:09","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:compose-product-sub-issues","contract":null,"contract_version":null}
   n28 -.->|capability| n58
 %% edge {"id":"edge:capability:product-planner-agent:10","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:assess-issue-quality","contract":null,"contract_version":null}
@@ -471,13 +472,13 @@ flowchart LR
 %% edge {"id":"edge:capability:product-planner-agent:12","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:create-github-issue","contract":null,"contract_version":null}
   n28 -.->|capability| n63
 %% edge {"id":"edge:capability:review-agent:01","type":"capability","producer":"agent:review-agent","consumer":"skill:load-pull-request","contract":null,"contract_version":null}
-  n29 -.->|capability| n89
+  n29 -.->|capability| n90
 %% edge {"id":"edge:capability:review-agent:02","type":"capability","producer":"agent:review-agent","consumer":"skill:load-linked-issue","contract":null,"contract_version":null}
-  n29 -.->|capability| n87
-%% edge {"id":"edge:capability:review-agent:03","type":"capability","producer":"agent:review-agent","consumer":"skill:load-pr-discussions","contract":null,"contract_version":null}
   n29 -.->|capability| n88
+%% edge {"id":"edge:capability:review-agent:03","type":"capability","producer":"agent:review-agent","consumer":"skill:load-pr-discussions","contract":null,"contract_version":null}
+  n29 -.->|capability| n89
 %% edge {"id":"edge:capability:review-agent:04","type":"capability","producer":"agent:review-agent","consumer":"skill:inspect-pr-checks","contract":null,"contract_version":null}
-  n29 -.->|capability| n81
+  n29 -.->|capability| n82
 %% edge {"id":"edge:capability:review-agent:05","type":"capability","producer":"agent:review-agent","consumer":"skill:analyze-pr-diff","contract":null,"contract_version":null}
   n29 -.->|capability| n32
 %% edge {"id":"edge:capability:review-agent:06","type":"capability","producer":"agent:review-agent","consumer":"skill:detect-review-findings","contract":null,"contract_version":null}
@@ -489,23 +490,23 @@ flowchart LR
 %% edge {"id":"edge:capability:review-agent:09","type":"capability","producer":"agent:review-agent","consumer":"skill:compose-review","contract":null,"contract_version":null}
   n29 -.->|capability| n59
 %% edge {"id":"edge:capability:review-agent:10","type":"capability","producer":"agent:review-agent","consumer":"skill:submit-pr-review","contract":null,"contract_version":null}
-  n29 -.->|capability| n105
+  n29 -.->|capability| n106
 %% edge {"id":"edge:handoff:product-planning:01","type":"handoff","producer":"skill:load-github-issue","consumer":"skill:analyze-product-issue","contract":"contract:LoadedIssue","contract_version":1}
-  n86 -->|LoadedIssue v1| n33
+  n87 -->|LoadedIssue v1| n33
 %% edge {"id":"edge:handoff:product-planning:02","type":"handoff","producer":"skill:analyze-product-issue","consumer":"skill:conduct-product-interview","contract":"contract:ProductAssessment","contract_version":1}
   n33 -->|ProductAssessment v1| n60
 %% edge {"id":"edge:handoff:product-planning:03","type":"handoff","producer":"skill:conduct-product-interview","consumer":"skill:identify-product-capabilities","contract":"contract:ProductInterview","contract_version":2}
-  n60 -->|ProductInterview v2| n79
+  n60 -->|ProductInterview v2| n80
 %% edge {"id":"edge:handoff:product-planning:04","type":"handoff","producer":"skill:identify-product-capabilities","consumer":"skill:decompose-product-capabilities","contract":"contract:ProductCapabilityMap","contract_version":1}
-  n79 -->|ProductCapabilityMap v1| n66
+  n80 -->|ProductCapabilityMap v1| n66
 %% edge {"id":"edge:handoff:product-planning:05","type":"handoff","producer":"skill:decompose-product-capabilities","consumer":"skill:assess-issue-atomicity","contract":"contract:ProductCapabilityDecomposition","contract_version":1}
   n66 -->|ProductCapabilityDecomposition v1| n35
 %% edge {"id":"edge:handoff:product-planning:06","type":"handoff","producer":"skill:assess-issue-atomicity","consumer":"skill:build-product-dependency-graph","contract":"contract:IssueAtomicityAssessment","contract_version":1}
   n35 -->|IssueAtomicityAssessment v1| n42
 %% edge {"id":"edge:handoff:product-planning:07","type":"handoff","producer":"skill:build-product-dependency-graph","consumer":"skill:prioritize-product-issues","contract":"contract:ProductDependencyGraph","contract_version":1}
-  n42 -->|ProductDependencyGraph v1| n92
+  n42 -->|ProductDependencyGraph v1| n93
 %% edge {"id":"edge:handoff:product-planning:08","type":"handoff","producer":"skill:prioritize-product-issues","consumer":"skill:compose-product-sub-issues","contract":"contract:ProductIssuePrioritization","contract_version":1}
-  n92 -->|ProductIssuePrioritization v1| n58
+  n93 -->|ProductIssuePrioritization v1| n58
 %% edge {"id":"edge:handoff:product-planning:09","type":"handoff","producer":"skill:compose-product-sub-issues","consumer":"skill:assess-issue-quality","contract":"contract:ProductSubIssueDrafts","contract_version":2}
   n58 -->|ProductSubIssueDrafts v2| n36
 %% edge {"id":"edge:handoff:product-planning:10","type":"handoff","producer":"skill:assess-issue-quality","consumer":"skill:create-product-sub-issues","contract":"contract:ProductSubIssueDrafts","contract_version":2}
@@ -513,11 +514,11 @@ flowchart LR
 %% edge {"id":"edge:handoff:product-planning:11","type":"handoff","producer":"skill:create-product-sub-issues","consumer":"skill:create-github-issue","contract":"contract:IssueDraft","contract_version":2}
   n64 -->|IssueDraft v2| n63
 %% edge {"id":"edge:handoff:feedback:01","type":"handoff","producer":"skill:load-pull-request","consumer":"skill:collect-review-feedback","contract":"contract:LoadedPullRequest","contract_version":1}
-  n89 -->|LoadedPullRequest v1| n54
+  n90 -->|LoadedPullRequest v1| n54
 %% edge {"id":"edge:handoff:feedback:02","type":"handoff","producer":"skill:collect-review-feedback","consumer":"skill:identify-resolved-feedback","contract":"contract:CollectedReviewFeedback","contract_version":1}
-  n54 -->|CollectedReviewFeedback v1| n80
+  n54 -->|CollectedReviewFeedback v1| n81
 %% edge {"id":"edge:handoff:feedback:03","type":"handoff","producer":"skill:identify-resolved-feedback","consumer":"skill:classify-review-feedback","contract":"contract:ResolvedReviewFeedback","contract_version":1}
-  n80 -->|ResolvedReviewFeedback v1| n49
+  n81 -->|ResolvedReviewFeedback v1| n49
 %% edge {"id":"edge:handoff:feedback:04","type":"handoff","producer":"skill:classify-review-feedback","consumer":"skill:build-feedback-resolution-plan","contract":"contract:ClassifiedReviewFeedback","contract_version":1}
   n49 -->|ClassifiedReviewFeedback v1| n39
 %% edge {"id":"edge:handoff:feedback:05","type":"handoff","producer":"skill:build-feedback-resolution-plan","consumer":"skill:create-worktree","contract":"contract:PullRequestFixPlan","contract_version":1}
@@ -527,49 +528,49 @@ flowchart LR
 %% edge {"id":"edge:handoff:review-fix-agent:feedback","type":"handoff","producer":"agent:review-fix-agent","consumer":"agent:feedback-agent","contract":"contract:ReviewFixRun","contract_version":2}
   n30 -->|ReviewFixRun v2| n19
 %% edge {"id":"edge:handoff:feedback:06","type":"handoff","producer":"skill:resolve-feedback-capabilities","consumer":"skill:validate-feedback-resolution","contract":"contract:ExternalCapabilityResolution","contract_version":1}
-  n100 -->|ExternalCapabilityResolution v1| n108
+  n101 -->|ExternalCapabilityResolution v1| n109
 %% edge {"id":"edge:handoff:feedback:07","type":"handoff","producer":"skill:validate-feedback-resolution","consumer":"skill:summarize-feedback-resolution","contract":"contract:FeedbackResolutionValidation","contract_version":1}
-  n108 -->|FeedbackResolutionValidation v1| n106
+  n109 -->|FeedbackResolutionValidation v1| n107
 %% edge {"id":"edge:handoff:feedback:08","type":"handoff","producer":"skill:summarize-feedback-resolution","consumer":"skill:reply-to-review-thread","contract":"contract:FeedbackResolutionSummary","contract_version":1}
-  n106 -->|FeedbackResolutionSummary v1| n97
+  n107 -->|FeedbackResolutionSummary v1| n98
 %% edge {"id":"edge:handoff:feedback:09","type":"handoff","producer":"skill:reply-to-review-thread","consumer":"skill:resolve-review-thread","contract":"contract:ReviewThreadReply","contract_version":3}
-  n97 -->|ReviewThreadReply v3| n101
+  n98 -->|ReviewThreadReply v3| n102
 %% edge {"id":"edge:handoff:ci-fix:01","type":"handoff","producer":"skill:load-pull-request","consumer":"skill:wait-required-checks","contract":"contract:LoadedPullRequest","contract_version":1}
-  n89 -->|LoadedPullRequest v1| n113
+  n90 -->|LoadedPullRequest v1| n114
 %% edge {"id":"edge:handoff:ci-fix:02","type":"handoff","producer":"skill:wait-required-checks","consumer":"skill:rerun-required-checks","contract":"contract:RequiredCheckWait","contract_version":1}
-  n113 -->|RequiredCheckWait v1| n98
+  n114 -->|RequiredCheckWait v1| n99
 %% edge {"id":"edge:handoff:ci-fix:03","type":"handoff","producer":"skill:inspect-pr-checks","consumer":"skill:rerun-required-checks","contract":"contract:PullRequestCheckInspection","contract_version":1}
-  n81 -->|PullRequestCheckInspection v1| n98
+  n82 -->|PullRequestCheckInspection v1| n99
 %% edge {"id":"edge:handoff:ci-fix:05","type":"handoff","producer":"skill:rerun-required-checks","consumer":"skill:build-ci-fix-plan","contract":"contract:RequiredCheckRerun","contract_version":1}
-  n98 -->|RequiredCheckRerun v1| n38
+  n99 -->|RequiredCheckRerun v1| n38
 %% edge {"id":"edge:handoff:ci-fix:06","type":"handoff","producer":"skill:build-ci-fix-plan","consumer":"skill:create-worktree","contract":"contract:PullRequestFixPlan","contract_version":1}
   n38 -->|PullRequestFixPlan v1| n65
 %% edge {"id":"edge:handoff:ci-fix:07","type":"handoff","producer":"skill:resolve-feedback-capabilities","consumer":"skill:create-worktree","contract":"contract:ExternalCapabilityResolution","contract_version":1}
-  n100 -->|ExternalCapabilityResolution v1| n65
+  n101 -->|ExternalCapabilityResolution v1| n65
 %% edge {"id":"edge:handoff:ci-fix:08","type":"handoff","producer":"skill:create-worktree","consumer":"skill:verify-worktree","contract":"contract:BranchWorkspace","contract_version":1}
-  n65 -->|BranchWorkspace v1| n112
+  n65 -->|BranchWorkspace v1| n113
 %% edge {"id":"edge:handoff:ci-fix:09","type":"handoff","producer":"skill:verify-worktree","consumer":"skill:inspect-working-tree","contract":"contract:BranchWorkspace","contract_version":1}
-  n112 -->|BranchWorkspace v1| n83
+  n113 -->|BranchWorkspace v1| n84
 %% edge {"id":"edge:handoff:ci-fix:10","type":"handoff","producer":"skill:inspect-working-tree","consumer":"skill:classify-changes","contract":"contract:WorkingTreeInspection","contract_version":1}
-  n83 -->|WorkingTreeInspection v1| n48
+  n84 -->|WorkingTreeInspection v1| n48
 %% edge {"id":"edge:handoff:ci-fix:11","type":"handoff","producer":"skill:classify-changes","consumer":"skill:detect-unrelated-changes","contract":"contract:ChangeClassification","contract_version":1}
   n48 -->|ChangeClassification v1| n74
 %% edge {"id":"edge:handoff:ci-fix:12","type":"handoff","producer":"skill:detect-unrelated-changes","consumer":"skill:validate-implementation-result","contract":"contract:UnrelatedChangeDetection","contract_version":1}
-  n74 -->|UnrelatedChangeDetection v1| n109
+  n74 -->|UnrelatedChangeDetection v1| n110
 %% edge {"id":"edge:handoff:ci-fix:13","type":"handoff","producer":"skill:validate-implementation-result","consumer":"skill:compose-commit-message","contract":"contract:ValidationResult","contract_version":2}
-  n109 -->|ValidationResult v2| n56
+  n110 -->|ValidationResult v2| n56
 %% edge {"id":"edge:handoff:ci-fix:14","type":"handoff","producer":"skill:compose-commit-message","consumer":"skill:create-commit","contract":"contract:CommitProposal","contract_version":1}
   n56 -->|CommitProposal v1| n61
 %% edge {"id":"edge:handoff:ci-fix:15","type":"handoff","producer":"skill:create-commit","consumer":"skill:push-branch","contract":"contract:CommitProposal","contract_version":1}
-  n61 -->|CommitProposal v1| n94
+  n61 -->|CommitProposal v1| n95
 %% edge {"id":"edge:handoff:review:01","type":"handoff","producer":"skill:load-pull-request","consumer":"skill:load-linked-issue","contract":"contract:LoadedPullRequest","contract_version":1}
-  n89 -->|LoadedPullRequest v1| n87
+  n90 -->|LoadedPullRequest v1| n88
 %% edge {"id":"edge:handoff:review:02","type":"handoff","producer":"skill:load-linked-issue","consumer":"skill:load-pr-discussions","contract":"contract:LinkedIssue","contract_version":1}
-  n87 -->|LinkedIssue v1| n88
+  n88 -->|LinkedIssue v1| n89
 %% edge {"id":"edge:handoff:review:03","type":"handoff","producer":"skill:load-pr-discussions","consumer":"skill:inspect-pr-checks","contract":"contract:LoadedPullRequestDiscussions","contract_version":2}
-  n88 -->|LoadedPullRequestDiscussions v2| n81
+  n89 -->|LoadedPullRequestDiscussions v2| n82
 %% edge {"id":"edge:handoff:review:04","type":"handoff","producer":"skill:inspect-pr-checks","consumer":"skill:analyze-pr-diff","contract":"contract:PullRequestCheckInspection","contract_version":1}
-  n81 -->|PullRequestCheckInspection v1| n32
+  n82 -->|PullRequestCheckInspection v1| n32
 %% edge {"id":"edge:handoff:review:05","type":"handoff","producer":"skill:analyze-pr-diff","consumer":"skill:detect-review-findings","contract":"contract:PullRequestDiffAnalysis","contract_version":1}
   n32 -->|PullRequestDiffAnalysis v1| n73
 %% edge {"id":"edge:handoff:review:06","type":"handoff","producer":"skill:detect-review-findings","consumer":"skill:deduplicate-review-findings","contract":"contract:DetectedReviewFindings","contract_version":1}
@@ -579,47 +580,47 @@ flowchart LR
 %% edge {"id":"edge:handoff:review:08","type":"handoff","producer":"skill:classify-review-findings","consumer":"skill:compose-review","contract":"contract:ClassifiedReviewFindings","contract_version":1}
   n50 -->|ClassifiedReviewFindings v1| n59
 %% edge {"id":"edge:handoff:review:09","type":"handoff","producer":"skill:compose-review","consumer":"skill:submit-pr-review","contract":"contract:ReviewDecision","contract_version":1}
-  n59 -->|ReviewDecision v1| n105
+  n59 -->|ReviewDecision v1| n106
 %% edge {"id":"edge:handoff:delivery:01","type":"handoff","producer":"skill:inspect-working-tree","consumer":"skill:classify-changes","contract":"contract:WorkingTreeInspection","contract_version":1}
-  n83 -->|WorkingTreeInspection v1| n48
+  n84 -->|WorkingTreeInspection v1| n48
 %% edge {"id":"edge:handoff:delivery:02","type":"handoff","producer":"skill:classify-changes","consumer":"skill:detect-unrelated-changes","contract":"contract:ChangeClassification","contract_version":1}
   n48 -->|ChangeClassification v1| n74
 %% edge {"id":"edge:handoff:delivery:03","type":"handoff","producer":"skill:detect-unrelated-changes","consumer":"skill:validate-implementation-result","contract":"contract:UnrelatedChangeDetection","contract_version":1}
-  n74 -->|UnrelatedChangeDetection v1| n109
+  n74 -->|UnrelatedChangeDetection v1| n110
 %% edge {"id":"edge:handoff:delivery:04","type":"handoff","producer":"skill:validate-implementation-result","consumer":"skill:compose-commit-message","contract":"contract:ValidationResult","contract_version":2}
-  n109 -->|ValidationResult v2| n56
+  n110 -->|ValidationResult v2| n56
 %% edge {"id":"edge:handoff:delivery:05","type":"handoff","producer":"skill:compose-commit-message","consumer":"skill:create-commit","contract":"contract:CommitProposal","contract_version":1}
   n56 -->|CommitProposal v1| n61
 %% edge {"id":"edge:handoff:delivery:06","type":"handoff","producer":"skill:create-commit","consumer":"skill:push-branch","contract":"contract:CommitProposal","contract_version":1}
-  n61 -->|CommitProposal v1| n94
+  n61 -->|CommitProposal v1| n95
 %% edge {"id":"edge:handoff:fix-plan:delivery:inspect-working-tree","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:inspect-working-tree","contract":"contract:PullRequestFixPlan","contract_version":1}
-  n18 -->|PullRequestFixPlan v1| n83
+  n18 -->|PullRequestFixPlan v1| n84
 %% edge {"id":"edge:handoff:fix-plan:delivery:classify-changes","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:classify-changes","contract":"contract:PullRequestFixPlan","contract_version":1}
   n18 -->|PullRequestFixPlan v1| n48
 %% edge {"id":"edge:handoff:fix-plan:delivery:detect-unrelated-changes","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:detect-unrelated-changes","contract":"contract:PullRequestFixPlan","contract_version":1}
   n18 -->|PullRequestFixPlan v1| n74
 %% edge {"id":"edge:handoff:fix-plan:delivery:validate-implementation-result","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:validate-implementation-result","contract":"contract:PullRequestFixPlan","contract_version":1}
-  n18 -->|PullRequestFixPlan v1| n109
+  n18 -->|PullRequestFixPlan v1| n110
 %% edge {"id":"edge:handoff:fix-plan:delivery:compose-commit-message","type":"handoff","producer":"agent:delivery-agent","consumer":"skill:compose-commit-message","contract":"contract:PullRequestFixPlan","contract_version":1}
   n18 -->|PullRequestFixPlan v1| n56
 %% edge {"id":"edge:handoff:delivery:07","type":"handoff","producer":"skill:push-branch","consumer":"skill:compose-pr-description","contract":"contract:BranchPush","contract_version":1}
-  n94 -->|BranchPush v1| n57
+  n95 -->|BranchPush v1| n57
 %% edge {"id":"edge:handoff:delivery:08","type":"handoff","producer":"skill:compose-pr-description","consumer":"skill:link-pr-to-issue","contract":"contract:PullRequestDraft","contract_version":1}
-  n57 -->|PullRequestDraft v1| n84
+  n57 -->|PullRequestDraft v1| n85
 %% edge {"id":"edge:handoff:delivery:09","type":"handoff","producer":"skill:link-pr-to-issue","consumer":"skill:create-draft-pr","contract":"contract:PullRequestIssueLink","contract_version":1}
-  n84 -->|PullRequestIssueLink v1| n62
+  n85 -->|PullRequestIssueLink v1| n62
 %% edge {"id":"edge:handoff:integration:01","type":"handoff","producer":"skill:load-pull-request","consumer":"skill:load-pr-discussions","contract":"contract:LoadedPullRequest","contract_version":1}
-  n89 -->|LoadedPullRequest v1| n88
+  n90 -->|LoadedPullRequest v1| n89
 %% edge {"id":"edge:handoff:integration:02","type":"handoff","producer":"skill:load-pr-discussions","consumer":"skill:inspect-pr-checks","contract":"contract:LoadedPullRequestDiscussions","contract_version":2}
-  n88 -->|LoadedPullRequestDiscussions v2| n81
+  n89 -->|LoadedPullRequestDiscussions v2| n82
 %% edge {"id":"edge:handoff:integration:03","type":"handoff","producer":"skill:inspect-pr-checks","consumer":"skill:check-required-approvals","contract":"contract:PullRequestCheckInspection","contract_version":1}
-  n81 -->|PullRequestCheckInspection v1| n46
+  n82 -->|PullRequestCheckInspection v1| n46
 %% edge {"id":"edge:handoff:integration:04","type":"handoff","producer":"skill:check-required-approvals","consumer":"skill:check-open-review-threads","contract":"contract:RequiredApprovalInspection","contract_version":1}
   n46 -->|RequiredApprovalInspection v1| n45
 %% edge {"id":"edge:handoff:integration:05","type":"handoff","producer":"skill:check-open-review-threads","consumer":"skill:load-linked-issue","contract":"contract:OpenReviewThreadAssessment","contract_version":1}
-  n45 -->|OpenReviewThreadAssessment v1| n87
+  n45 -->|OpenReviewThreadAssessment v1| n88
 %% edge {"id":"edge:handoff:integration:06","type":"handoff","producer":"skill:load-linked-issue","consumer":"skill:check-linked-issue-status","contract":"contract:LinkedIssue","contract_version":1}
-  n87 -->|LinkedIssue v1| n44
+  n88 -->|LinkedIssue v1| n44
 %% edge {"id":"edge:handoff:integration:07","type":"handoff","producer":"skill:check-linked-issue-status","consumer":"skill:build-pr-readiness-evidence","contract":"contract:LinkedIssueStatusAssessment","contract_version":1}
   n44 -->|LinkedIssueStatusAssessment v1| n41
 %% edge {"id":"edge:handoff:integration:08","type":"handoff","producer":"skill:build-pr-readiness-evidence","consumer":"skill:assess-merge-readiness","contract":"contract:PullRequestReadinessEvidence","contract_version":1}
@@ -627,35 +628,35 @@ flowchart LR
 %% edge {"id":"edge:handoff:integration:09","type":"handoff","producer":"skill:fetch-target-branch","consumer":"skill:detect-rebase-conflicts","contract":"contract:TargetBranchFetch","contract_version":1}
   n76 -->|TargetBranchFetch v1| n71
 %% edge {"id":"edge:handoff:integration:10","type":"handoff","producer":"skill:detect-rebase-conflicts","consumer":"skill:rebase-branch","contract":"contract:RebaseConflictAnalysis","contract_version":1}
-  n71 -->|RebaseConflictAnalysis v1| n96
+  n71 -->|RebaseConflictAnalysis v1| n97
 %% edge {"id":"edge:handoff:integration:11","type":"handoff","producer":"skill:rebase-branch","consumer":"skill:validate-rebased-branch","contract":"contract:BranchRebase","contract_version":1}
-  n96 -->|BranchRebase v1| n110
+  n97 -->|BranchRebase v1| n111
 %% edge {"id":"edge:handoff:integration:12","type":"handoff","producer":"skill:validate-rebased-branch","consumer":"skill:push-branch","contract":"contract:BranchRebase","contract_version":1}
-  n110 -->|BranchRebase v1| n94
+  n111 -->|BranchRebase v1| n95
 %% edge {"id":"edge:handoff:integration:13","type":"handoff","producer":"skill:push-branch","consumer":"skill:merge-pull-request","contract":"contract:BranchPush","contract_version":1}
-  n94 -->|BranchPush v1| n91
+  n95 -->|BranchPush v1| n92
 %% edge {"id":"edge:handoff:integration:14","type":"handoff","producer":"skill:merge-pull-request","consumer":"skill:verify-linked-issue-closure","contract":"contract:PullRequestMerge","contract_version":2}
-  n91 -->|PullRequestMerge v2| n111
+  n92 -->|PullRequestMerge v2| n112
 %% edge {"id":"edge:handoff:integration:15","type":"handoff","producer":"skill:verify-linked-issue-closure","consumer":"skill:close-linked-issue","contract":"contract:LinkedIssueClosureVerification","contract_version":1}
-  n111 -->|LinkedIssueClosureVerification v1| n53
+  n112 -->|LinkedIssueClosureVerification v1| n53
 %% edge {"id":"edge:handoff:integration:16","type":"handoff","producer":"skill:verify-linked-issue-closure","consumer":"skill:delete-merged-branch","contract":"contract:LinkedIssueClosureVerification","contract_version":1}
-  n111 -->|LinkedIssueClosureVerification v1| n69
+  n112 -->|LinkedIssueClosureVerification v1| n69
 %% edge {"id":"edge:handoff:integration:17","type":"handoff","producer":"skill:delete-merged-branch","consumer":"skill:cleanup-worktree","contract":"contract:CleanupResult","contract_version":1}
   n69 -->|CleanupResult v1| n51
 %% edge {"id":"edge:handoff:preparation:01","type":"handoff","producer":"skill:load-github-issue","consumer":"skill:analyze-issue","contract":"contract:LoadedIssue","contract_version":1}
-  n86 -->|LoadedIssue v1| n31
+  n87 -->|LoadedIssue v1| n31
 %% edge {"id":"edge:handoff:preparation:02","type":"handoff","producer":"skill:analyze-issue","consumer":"skill:inspect-repository","contract":"contract:IssueAnalysis","contract_version":1}
-  n31 -->|IssueAnalysis v1| n82
+  n31 -->|IssueAnalysis v1| n83
 %% edge {"id":"edge:handoff:preparation:03","type":"handoff","producer":"skill:inspect-repository","consumer":"skill:detect-repository-conventions","contract":"contract:RepositoryContext","contract_version":1}
-  n82 -->|RepositoryContext v1| n72
+  n83 -->|RepositoryContext v1| n72
 %% edge {"id":"edge:handoff:preparation:04","type":"handoff","producer":"skill:detect-repository-conventions","consumer":"skill:identify-affected-areas","contract":"contract:RepositoryConventions","contract_version":1}
-  n72 -->|RepositoryConventions v1| n78
+  n72 -->|RepositoryConventions v1| n79
 %% edge {"id":"edge:handoff:preparation:05","type":"handoff","producer":"skill:identify-affected-areas","consumer":"skill:evaluate-implementation","contract":"contract:AffectedAreas","contract_version":1}
-  n78 -->|AffectedAreas v1| n75
+  n79 -->|AffectedAreas v1| n75
 %% edge {"id":"edge:handoff:preparation:06","type":"handoff","producer":"skill:evaluate-implementation","consumer":"skill:resolve-context-capabilities","contract":"contract:ImplementationEvaluation","contract_version":1}
-  n75 -->|ImplementationEvaluation v1| n99
+  n75 -->|ImplementationEvaluation v1| n100
 %% edge {"id":"edge:handoff:preparation:07","type":"handoff","producer":"skill:resolve-context-capabilities","consumer":"skill:build-implementation-plan","contract":"contract:ExternalCapabilityResolution","contract_version":1}
-  n99 -->|ExternalCapabilityResolution v1| n40
+  n100 -->|ExternalCapabilityResolution v1| n40
 %% edge {"id":"edge:handoff:preparation:08","type":"handoff","producer":"skill:derive-branch-name","consumer":"skill:fetch-target-branch","contract":"contract:BranchNameProposal","contract_version":1}
   n70 -->|BranchNameProposal v1| n76
 %% edge {"id":"edge:handoff:preparation:09","type":"handoff","producer":"skill:fetch-target-branch","consumer":"skill:build-implementation-plan","contract":"contract:TargetBranchFetch","contract_version":1}
@@ -663,86 +664,86 @@ flowchart LR
 %% edge {"id":"edge:handoff:preparation:10","type":"handoff","producer":"skill:build-implementation-plan","consumer":"skill:create-worktree","contract":"contract:ImplementationPlan","contract_version":1}
   n40 -->|ImplementationPlan v1| n65
 %% edge {"id":"edge:handoff:preparation:11","type":"handoff","producer":"skill:create-worktree","consumer":"skill:verify-worktree","contract":"contract:BranchWorkspace","contract_version":1}
-  n65 -->|BranchWorkspace v1| n112
+  n65 -->|BranchWorkspace v1| n113
 %% edge {"id":"edge:handoff:issue-publication:01","type":"handoff","producer":"skill:load-github-issue","consumer":"skill:rewrite-github-issue","contract":"contract:LoadedIssue","contract_version":1}
-  n86 -->|LoadedIssue v1| n102
+  n87 -->|LoadedIssue v1| n103
 %% edge {"id":"edge:handoff:issue-publication:02","type":"handoff","producer":"skill:rewrite-github-issue","consumer":"skill:compare-issue-revision","contract":"contract:IssueDraft","contract_version":2}
-  n102 -->|IssueDraft v2| n55
+  n103 -->|IssueDraft v2| n55
 %% edge {"id":"edge:handoff:issue-publication:03","type":"handoff","producer":"skill:conduct-product-interview","consumer":"skill:structure-issue","contract":"contract:ProductInterview","contract_version":2}
-  n60 -->|ProductInterview v2| n104
+  n60 -->|ProductInterview v2| n105
 %% edge {"id":"edge:handoff:issue-publication:04","type":"handoff","producer":"skill:conduct-product-interview","consumer":"skill:define-acceptance-criteria","contract":"contract:ProductInterview","contract_version":2}
   n60 -->|ProductInterview v2| n68
 %% edge {"id":"edge:handoff:issue-publication:05","type":"handoff","producer":"skill:conduct-product-interview","consumer":"skill:rewrite-github-issue","contract":"contract:ProductInterview","contract_version":2}
-  n60 -->|ProductInterview v2| n102
+  n60 -->|ProductInterview v2| n103
 %% edge {"id":"edge:handoff:issue-publication:06","type":"handoff","producer":"skill:structure-issue","consumer":"agent:issue-agent","contract":"contract:ProductInterviewPrerequisite","contract_version":1}
-  n104 -->|ProductInterviewPrerequisite v1| n22
+  n105 -->|ProductInterviewPrerequisite v1| n22
 %% edge {"id":"edge:handoff:issue-publication:07","type":"handoff","producer":"skill:define-acceptance-criteria","consumer":"agent:issue-agent","contract":"contract:ProductInterviewPrerequisite","contract_version":1}
   n68 -->|ProductInterviewPrerequisite v1| n22
 %% edge {"id":"edge:handoff:issue-publication:08","type":"handoff","producer":"skill:rewrite-github-issue","consumer":"agent:issue-agent","contract":"contract:ProductInterviewPrerequisite","contract_version":1}
-  n102 -->|ProductInterviewPrerequisite v1| n22
+  n103 -->|ProductInterviewPrerequisite v1| n22
 %% edge {"id":"edge:handoff:issue-reprioritization:01","type":"handoff","producer":"skill:list-open-issues","consumer":"skill:rank-open-issues","contract":"contract:OpenIssueInventory","contract_version":1}
-  n85 -->|OpenIssueInventory v1| n95
+  n86 -->|OpenIssueInventory v1| n96
 %% edge {"id":"edge:handoff:issue-reprioritization:02","type":"handoff","producer":"skill:rank-open-issues","consumer":"skill:apply-issue-priority-titles","contract":"contract:OpenIssueRanking","contract_version":1}
-  n95 -->|OpenIssueRanking v1| n34
+  n96 -->|OpenIssueRanking v1| n34
 %% edge {"id":"edge:handoff:issue-reprioritization:03","type":"handoff","producer":"skill:apply-issue-priority-titles","consumer":"skill:update-github-issue","contract":"contract:IssueUpdate","contract_version":1}
-  n34 -->|IssueUpdate v1| n107
+  n34 -->|IssueUpdate v1| n108
 %% edge {"id":"edge:handoff:issue-closure:01","type":"handoff","producer":"skill:load-github-issue","consumer":"skill:close-github-issue","contract":"contract:LoadedIssue","contract_version":1}
-  n86 -->|LoadedIssue v1| n52
+  n87 -->|LoadedIssue v1| n52
 %% edge {"id":"edge:handoff:ready-for-review:01","type":"handoff","producer":"skill:load-pull-request","consumer":"skill:load-linked-issue","contract":"contract:LoadedPullRequest","contract_version":1}
-  n89 -->|LoadedPullRequest v1| n87
+  n90 -->|LoadedPullRequest v1| n88
 %% edge {"id":"edge:handoff:ready-for-review:02","type":"handoff","producer":"skill:load-linked-issue","consumer":"skill:inspect-pr-checks","contract":"contract:LinkedIssue","contract_version":1}
-  n87 -->|LinkedIssue v1| n81
+  n88 -->|LinkedIssue v1| n82
 %% edge {"id":"edge:handoff:ready-for-review:03","type":"handoff","producer":"skill:inspect-pr-checks","consumer":"skill:propose-pr-reviewers","contract":"contract:PullRequestCheckInspection","contract_version":1}
-  n81 -->|PullRequestCheckInspection v1| n93
+  n82 -->|PullRequestCheckInspection v1| n94
 %% edge {"id":"edge:handoff:ready-for-review:04","type":"handoff","producer":"skill:propose-pr-reviewers","consumer":"skill:mark-pr-ready","contract":"contract:PullRequestReady","contract_version":1}
-  n93 -->|PullRequestReady v1| n90
+  n94 -->|PullRequestReady v1| n91
 %% edge {"id":"edge:handoff:lifecycle:01","type":"handoff","producer":"agent:lifecycle-agent","consumer":"agent:issue-agent","contract":"contract:IssueDraft","contract_version":2}
   n25 -->|IssueDraft v2| n22
 %% edge {"id":"edge:handoff:lifecycle:02","type":"handoff","producer":"agent:issue-agent","consumer":"agent:preparation-agent","contract":"contract:IssueDraft","contract_version":2}
   n22 -->|IssueDraft v2| n27
 %% edge {"id":"edge:handoff:lifecycle:03","type":"handoff","producer":"agent:preparation-agent","consumer":"capability:external-implementation","contract":"contract:ImplementationPlan","contract_version":1}
-  n27 -->|ImplementationPlan v1| n203
+  n27 -->|ImplementationPlan v1| n204
 %% edge {"id":"edge:handoff:lifecycle:04","type":"handoff","producer":"capability:external-implementation","consumer":"agent:delivery-agent","contract":"contract:BranchWorkspace","contract_version":1}
-  n203 -->|BranchWorkspace v1| n18
+  n204 -->|BranchWorkspace v1| n18
 %% edge {"id":"edge:handoff:feedback:10","type":"handoff","producer":"agent:feedback-agent","consumer":"capability:external-implementation","contract":"contract:PullRequestFixPlan","contract_version":1}
-  n19 -->|PullRequestFixPlan v1| n203
+  n19 -->|PullRequestFixPlan v1| n204
 %% edge {"id":"edge:handoff:ci-fix:16","type":"handoff","producer":"agent:ci-fix-agent","consumer":"capability:external-implementation","contract":"contract:PullRequestFixPlan","contract_version":1}
-  n17 -->|PullRequestFixPlan v1| n203
+  n17 -->|PullRequestFixPlan v1| n204
 %% edge {"id":"edge:capability:external-implementation:delivery-boundary","type":"capability","producer":"capability:external-implementation","consumer":"agent:delivery-agent","contract":null,"contract_version":null}
-  n203 -.->|capability| n18
+  n204 -.->|capability| n18
 %% edge {"id":"edge:capability:external-validation:graph-validator","type":"capability","producer":"capability:external-validation","consumer":"contract:HandoffGraph","contract":null,"contract_version":null}
-  n204 -.->|capability| n114
+  n205 -.->|capability| n115
 %% edge {"id":"edge:capability:host-hook-projection","type":"capability","producer":"agent:host-hooks-agent","consumer":"capability:host-hook-projection","contract":null,"contract_version":null}
-  n20 -.->|capability| n206
+  n20 -.->|capability| n207
 %% edge {"id":"edge:terminal:product-planner-agent:01","type":"terminal","producer":"agent:product-planner-agent","consumer":"terminal:product-planning","contract":"contract:ProductPlannerRun","contract_version":2}
-  n28 ==>|ProductPlannerRun v2| n207
+  n28 ==>|ProductPlannerRun v2| n208
 %% edge {"id":"edge:terminal:feedback-agent:02","type":"terminal","producer":"agent:feedback-agent","consumer":"terminal:feedback","contract":"contract:FeedbackLifecycleRun","contract_version":1}
-  n19 ==>|FeedbackLifecycleRun v1| n208
+  n19 ==>|FeedbackLifecycleRun v1| n209
 %% edge {"id":"edge:terminal:ci-fix-agent:03","type":"terminal","producer":"agent:ci-fix-agent","consumer":"terminal:ci-fix","contract":"contract:CiFixRun","contract_version":1}
-  n17 ==>|CiFixRun v1| n209
+  n17 ==>|CiFixRun v1| n210
 %% edge {"id":"edge:terminal:review-agent:04","type":"terminal","producer":"agent:review-agent","consumer":"terminal:review","contract":"contract:ReviewDecision","contract_version":1}
-  n29 ==>|ReviewDecision v1| n210
+  n29 ==>|ReviewDecision v1| n211
 %% edge {"id":"edge:terminal:delivery-agent:05","type":"terminal","producer":"agent:delivery-agent","consumer":"terminal:delivery","contract":"contract:PullRequestDraft","contract_version":1}
-  n18 ==>|PullRequestDraft v1| n211
+  n18 ==>|PullRequestDraft v1| n212
 %% edge {"id":"edge:terminal:integration-agent:06","type":"terminal","producer":"agent:integration-agent","consumer":"terminal:integration","contract":"contract:PullRequestIntegration","contract_version":1}
-  n21 ==>|PullRequestIntegration v1| n212
+  n21 ==>|PullRequestIntegration v1| n213
 %% edge {"id":"edge:terminal:issue-agent:07","type":"terminal","producer":"agent:issue-agent","consumer":"terminal:issue-publication","contract":"contract:IssueDraft","contract_version":2}
-  n22 ==>|IssueDraft v2| n213
+  n22 ==>|IssueDraft v2| n214
 %% edge {"id":"edge:terminal:preparation-agent:08","type":"terminal","producer":"agent:preparation-agent","consumer":"terminal:preparation","contract":"contract:ImplementationPlan","contract_version":1}
-  n27 ==>|ImplementationPlan v1| n214
+  n27 ==>|ImplementationPlan v1| n215
 %% edge {"id":"edge:terminal:preparation-agent:09","type":"terminal","producer":"agent:preparation-agent","consumer":"terminal:preparation","contract":"contract:BranchWorkspace","contract_version":1}
-  n27 ==>|BranchWorkspace v1| n214
+  n27 ==>|BranchWorkspace v1| n215
 %% edge {"id":"edge:terminal:lifecycle-agent:10","type":"terminal","producer":"agent:lifecycle-agent","consumer":"terminal:lifecycle","contract":"contract:LifecycleRun","contract_version":1}
-  n25 ==>|LifecycleRun v1| n215
+  n25 ==>|LifecycleRun v1| n216
 %% edge {"id":"edge:terminal:review-fix-agent:11","type":"terminal","producer":"agent:review-fix-agent","consumer":"terminal:feedback","contract":"contract:ReviewFixRun","contract_version":2}
-  n30 ==>|ReviewFixRun v2| n208
+  n30 ==>|ReviewFixRun v2| n209
 %% edge {"id":"edge:terminal:pr-ready-agent:12","type":"terminal","producer":"agent:pr-ready-agent","consumer":"terminal:ready-for-review","contract":"contract:PullRequestReady","contract_version":1}
-  n26 ==>|PullRequestReady v1| n216
+  n26 ==>|PullRequestReady v1| n217
 %% edge {"id":"edge:terminal:issue-reprioritize-agent:13","type":"terminal","producer":"agent:issue-reprioritize-agent","consumer":"terminal:issue-reprioritization","contract":"contract:IssueReprioritization","contract_version":1}
-  n24 ==>|IssueReprioritization v1| n217
+  n24 ==>|IssueReprioritization v1| n218
 %% edge {"id":"edge:capability:resolve-context-capabilities:core","type":"capability","producer":"skill:resolve-context-capabilities","consumer":"skill:resolve-external-capabilities","contract":null,"contract_version":null}
-  n99 -.->|capability| n220
+  n100 -.->|capability| n221
 %% edge {"id":"edge:capability:resolve-feedback-capabilities:core","type":"capability","producer":"skill:resolve-feedback-capabilities","consumer":"skill:resolve-external-capabilities","contract":null,"contract_version":null}
-  n100 -.->|capability| n220
+  n101 -.->|capability| n221
 %% edge {"id":"edge:terminal:issue-close-agent:14","type":"terminal","producer":"agent:issue-close-agent","consumer":"terminal:issue-closure","contract":"contract:IssueClosure","contract_version":1}
-  n23 ==>|IssueClosure v1| n218
+  n23 ==>|IssueClosure v1| n219

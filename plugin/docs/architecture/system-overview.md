@@ -191,6 +191,7 @@ The Skills are grouped by responsibility:
 | Pull-request evidence | Load PRs and discussions, analyze diffs, inspect checks, assess linked issues, and assess merge readiness. | [`analyze-pr-diff`](../../skills/analyze-pr-diff/SKILL.md), [`assess-merge-readiness`](../../skills/assess-merge-readiness/SKILL.md) |
 | Ready-for-Review | Propose optional reviewers as suggestions and mark one authorized open Draft ready. | [`propose-pr-reviewers`](../../skills/propose-pr-reviewers/SKILL.md), [`mark-pr-ready`](../../skills/mark-pr-ready/SKILL.md) |
 | Review and feedback | Detect, deduplicate, classify, collect, resolve, validate, summarize, compose, publish, reply to, and resolve review findings or threads. | [`detect-review-findings`](../../skills/detect-review-findings/SKILL.md), [`collect-review-feedback`](../../skills/collect-review-feedback/SKILL.md) |
+| Documentation | Draft or review evidence-backed repository READMEs with a fixed conditional spine, Mermaid entry-point checks, and local quality gates. | [`github-readme`](../../skills/github-readme/SKILL.md) |
 | Integration and cleanup | Fetch a target branch, analyze and perform an approved rebase, validate the result, merge, verify linked-issue closure, delete a merged branch, and clean a worktree. | [`rebase-branch`](../../skills/rebase-branch/SKILL.md), [`merge-pull-request`](../../skills/merge-pull-request/SKILL.md) |
 
 The concise Skill inventory and activation routing remain in the plugin
