@@ -19,12 +19,12 @@ intentionally not tracked and is not part of the installed plugin.
 
 - Plugin name: `github`
 - Marketplace name: `github-plugin`
-- Package version: `0.3.121`
+- Package version: `0.3.122`
 - License: MIT
 - Homepage: https://github.com/Crome696/github-plugin
 - Default branch: `master`
 
-Keep version `0.3.121` synchronized across:
+Keep version `0.3.122` synchronized across:
 
 - `plugin/plugin.json`
 - `plugin/.cursor-plugin/plugin.json`

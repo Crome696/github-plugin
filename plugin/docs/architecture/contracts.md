@@ -35,7 +35,7 @@ Graph schema changes follow the same producer/consumer review discipline as othe
 
 ## Contract families
 
-The plugin currently defines 92 versioned YAML schemas: 91 runtime handoff
+The plugin currently defines 93 versioned YAML schemas: 92 runtime handoff
 contracts plus the `HandoffGraph v1` architecture meta-schema.
 
 ### Issue and linkage contracts
@@ -146,6 +146,7 @@ contracts plus the `HandoffGraph v1` architecture meta-schema.
 | `LifecycleRun` | Autonomous issue-to-draft-PR record through create or existing-issue refine, then preparation, external implementation, and Draft PR delivery. |
 | `ProductPlannerRun` | Version-2 interactive parent-issue product-planning lifecycle record that consumes one canonical ProductSubIssueDrafts v2 identity and binds exact-set approval to its digest without carrying an independent publishable title/body set. |
 | `ProductSubIssuePublication` | Version-2 exact-set publication result recording the approved canonical identity, exact unit set, lossless IssueDraft v2 adapter verification, GitHub mappings, parent and hard-dependency outcomes, retry evidence, and failed operations. |
+| `ParentTrackerSynchronization` | Version-1 exact-evidence synchronization result for the parent issue's marker-owned child-status section, consuming only a complete ProductSubIssuePublication v2 and preserving body bytes, unrelated metadata, authorization, concurrency, and post-write evidence. |
 | `CleanupResult` | Authorized branch/worktree cleanup results, preserved unsafe targets, and local/remote outcomes. |
 | `GateLifecycle` | Version-1 host-neutral lifecycle authority or non-authorizing receipt with operation-specific nonce, five-minute expiry, bounded future skew, consumption, and receipt-expiry semantics. |
 | `PreCommitGate` | Version-4 local snapshot binding one exact canonical commit to validated scope, worktree identity, authorization, exact message bytes, cached staged-index contents, and one-shot lifecycle authority. |

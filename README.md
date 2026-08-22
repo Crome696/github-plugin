@@ -23,7 +23,7 @@ capability of the host session or target repository.
 | Snapshot | Value |
 | --- | --- |
 | Status | Standalone workflow plugin |
-| Version | `0.3.121` |
+| Version | `0.3.122` |
 | License | MIT |
 | Plugin name | `github` |
 | Marketplace name | `github-plugin` |
@@ -169,7 +169,7 @@ node plugin/hooks/generate-project-hooks.mjs --hosts <cursor|codex|both|cursor,c
 The command invokes the installable generator at
 `plugin/hooks/generate-project-hooks.mjs`.
 
-When changing plugin identity, keep version `0.3.121` synchronized across the
+When changing plugin identity, keep version `0.3.122` synchronized across the
 four manifests under `plugin/` and the three root Marketplace manifests. When
 changing a Skill, Agent, Command, Rule, Hook, or Shared Contract, update the
 technical component inventory in [`plugin/docs/README.md`](plugin/docs/README.md)

@@ -47,7 +47,7 @@ This Skill is an explicitly invoked, destructive local-Git workflow.
 
 Require all of the following before any write:
 
-1. A version-1 `PullRequestMerge` with `status: merged` and successful
+1. A version-2 `PullRequestMerge` with `status: merged` and successful
    verification, including the exact repository, pull-request number,
    head branch, head SHA, base branch, base SHA, and merge commit SHA.
 2. An explicit cleanup request identifying exactly one absolute worktree path
@@ -60,6 +60,11 @@ Require all of the following before any write:
   authorization only when it clearly names this exact cleanup operation,
   target, and any requested stale-metadata pruning, and preserve its source
   path and concise quote or paraphrase in the cleanup authorization evidence.
+
+Only `PullRequestMerge` version 2 is supported. A version-1, missing-version,
+or otherwise legacy merge handoff is an unsupported input: return `blocked`
+with the narrowest supported unsupported-version or legacy-input failure code
+and perform no write. Do not adapt a v1 merge result into v2.
 
 Reject missing, malformed, stale, cross-repository, contradictory, or
 multi-target input with `status: blocked`; do not infer identity or
@@ -184,6 +189,8 @@ Use the narrowest applicable code:
 | Code | Meaning |
 | --- | --- |
 | `missing_input` | Required merge, target, repository, or contract evidence is absent or malformed. |
+| `unsupported_version` | The supplied merge handoff is not the supported `PullRequestMerge v2`. |
+| `legacy_input` | A `PullRequestMerge v1` or other legacy merge handoff was supplied; no adapter is allowed. |
 | `merge_not_verified` | The exact pull request is not proven successfully merged. |
 | `worktree_not_registered` | The exact path is not registered as one worktree. |
 | `worktree_identity_mismatch` | Repository, path, branch, or worktree identity differs from approval. |

@@ -1,6 +1,6 @@
 %% Canonical projection of plugin/shared/graphs/handoff-graph.yaml.
 %% Edge comments are machine-readable parity records; this file defines no independent edge set.
-%% Base commit: 3849fd61ae41f8d7c4be5133292ee23806fb3a02.
+%% Base commit: 9f926cee06e514404423eb2c351f533505a5df23.
 flowchart LR
   n1["command: address-pr-feedback"]
   n2["command: auto-ci-fix-pr"]
@@ -227,6 +227,8 @@ flowchart LR
   n223["contract: PullRequestFixPlan"]
   n224["skill: update-repository-metadata"]
   n225["contract: RepositoryMetadataUpdate"]
+  n226["skill: sync-parent-tracker"]
+  n227["contract: ParentTrackerSynchronization"]
 %% edge {"id":"edge:entry:address-pr-feedback","type":"entry","producer":"command:address-pr-feedback","consumer":"agent:feedback-agent","contract":null,"contract_version":null}
   n1 -->|entry| n19
 %% edge {"id":"edge:entry:auto-ci-fix-pr","type":"entry","producer":"command:auto-ci-fix-pr","consumer":"agent:ci-fix-agent","contract":null,"contract_version":null}
@@ -369,10 +371,10 @@ flowchart LR
   n21 -.->|capability| n112
 %% edge {"id":"edge:capability:integration-agent:17","type":"capability","producer":"agent:integration-agent","consumer":"skill:close-linked-issue","contract":null,"contract_version":null}
   n21 -.->|capability| n53
-%% edge {"id":"edge:capability:integration-agent:18","type":"capability","producer":"agent:integration-agent","consumer":"skill:delete-merged-branch","contract":null,"contract_version":null}
-  n21 -.->|capability| n69
-%% edge {"id":"edge:capability:integration-agent:19","type":"capability","producer":"agent:integration-agent","consumer":"skill:cleanup-worktree","contract":null,"contract_version":null}
+%% edge {"id":"edge:capability:integration-agent:18","type":"capability","producer":"agent:integration-agent","consumer":"skill:cleanup-worktree","contract":null,"contract_version":null}
   n21 -.->|capability| n51
+%% edge {"id":"edge:capability:integration-agent:19","type":"capability","producer":"agent:integration-agent","consumer":"skill:delete-merged-branch","contract":null,"contract_version":null}
+  n21 -.->|capability| n69
 %% edge {"id":"edge:capability:issue-agent:01","type":"capability","producer":"agent:issue-agent","consumer":"skill:structure-issue","contract":null,"contract_version":null}
   n22 -.->|capability| n105
 %% edge {"id":"edge:capability:issue-agent:02","type":"capability","producer":"agent:issue-agent","consumer":"skill:define-acceptance-criteria","contract":null,"contract_version":null}
@@ -473,6 +475,8 @@ flowchart LR
   n28 -.->|capability| n64
 %% edge {"id":"edge:capability:product-planner-agent:12","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:create-github-issue","contract":null,"contract_version":null}
   n28 -.->|capability| n63
+%% edge {"id":"edge:capability:product-planner-agent:13","type":"capability","producer":"agent:product-planner-agent","consumer":"skill:sync-parent-tracker","contract":null,"contract_version":null}
+  n28 -.->|capability| n226
 %% edge {"id":"edge:capability:review-agent:01","type":"capability","producer":"agent:review-agent","consumer":"skill:load-pull-request","contract":null,"contract_version":null}
   n29 -.->|capability| n90
 %% edge {"id":"edge:capability:review-agent:02","type":"capability","producer":"agent:review-agent","consumer":"skill:load-linked-issue","contract":null,"contract_version":null}
@@ -515,6 +519,12 @@ flowchart LR
   n36 -->|ProductSubIssueDrafts v2| n64
 %% edge {"id":"edge:handoff:product-planning:11","type":"handoff","producer":"skill:create-product-sub-issues","consumer":"skill:create-github-issue","contract":"contract:IssueDraft","contract_version":2}
   n64 -->|IssueDraft v2| n63
+%% edge {"id":"edge:handoff:product-planning:12","type":"handoff","producer":"capability:host-runtime","consumer":"skill:sync-parent-tracker","contract":"contract:ProductSubIssuePublication","contract_version":2}
+  n206 -->|ProductSubIssuePublication v2| n226
+%% edge {"id":"edge:handoff:product-planning:13","type":"handoff","producer":"skill:sync-parent-tracker","consumer":"agent:product-planner-agent","contract":"contract:ParentTrackerSynchronization","contract_version":1}
+  n226 -->|ParentTrackerSynchronization v1| n28
+%% edge {"id":"edge:handoff:product-planning:14","type":"handoff","producer":"skill:sync-parent-tracker","consumer":"skill:update-github-issue","contract":"contract:IssueUpdate","contract_version":1}
+  n226 -->|IssueUpdate v1| n108
 %% edge {"id":"edge:handoff:feedback:01","type":"handoff","producer":"skill:load-pull-request","consumer":"skill:collect-review-feedback","contract":"contract:LoadedPullRequest","contract_version":1}
   n90 -->|LoadedPullRequest v1| n54
 %% edge {"id":"edge:handoff:feedback:02","type":"handoff","producer":"skill:collect-review-feedback","consumer":"skill:identify-resolved-feedback","contract":"contract:CollectedReviewFeedback","contract_version":1}
@@ -641,10 +651,14 @@ flowchart LR
   n92 -->|PullRequestMerge v2| n112
 %% edge {"id":"edge:handoff:integration:15","type":"handoff","producer":"skill:verify-linked-issue-closure","consumer":"skill:close-linked-issue","contract":"contract:LinkedIssueClosureVerification","contract_version":1}
   n112 -->|LinkedIssueClosureVerification v1| n53
-%% edge {"id":"edge:handoff:integration:16","type":"handoff","producer":"skill:verify-linked-issue-closure","consumer":"skill:delete-merged-branch","contract":"contract:LinkedIssueClosureVerification","contract_version":1}
-  n112 -->|LinkedIssueClosureVerification v1| n69
-%% edge {"id":"edge:handoff:integration:17","type":"handoff","producer":"skill:delete-merged-branch","consumer":"skill:cleanup-worktree","contract":"contract:CleanupResult","contract_version":1}
-  n69 -->|CleanupResult v1| n51
+%% edge {"id":"edge:handoff:integration:16","type":"handoff","producer":"skill:verify-linked-issue-closure","consumer":"skill:cleanup-worktree","contract":"contract:LinkedIssueClosureVerification","contract_version":1}
+  n112 -->|LinkedIssueClosureVerification v1| n51
+%% edge {"id":"edge:handoff:integration:17","type":"handoff","producer":"skill:merge-pull-request","consumer":"skill:cleanup-worktree","contract":"contract:PullRequestMerge","contract_version":2}
+  n92 -->|PullRequestMerge v2| n51
+%% edge {"id":"edge:handoff:integration:18","type":"handoff","producer":"skill:cleanup-worktree","consumer":"skill:delete-merged-branch","contract":"contract:CleanupResult","contract_version":1}
+  n51 -->|CleanupResult v1| n69
+%% edge {"id":"edge:handoff:integration:19","type":"handoff","producer":"skill:merge-pull-request","consumer":"skill:delete-merged-branch","contract":"contract:PullRequestMerge","contract_version":2}
+  n92 -->|PullRequestMerge v2| n69
 %% edge {"id":"edge:handoff:preparation:01","type":"handoff","producer":"skill:load-github-issue","consumer":"skill:analyze-issue","contract":"contract:LoadedIssue","contract_version":1}
   n87 -->|LoadedIssue v1| n31
 %% edge {"id":"edge:handoff:preparation:02","type":"handoff","producer":"skill:analyze-issue","consumer":"skill:inspect-repository","contract":"contract:IssueAnalysis","contract_version":1}
@@ -719,6 +733,8 @@ flowchart LR
   n20 -.->|capability| n207
 %% edge {"id":"edge:terminal:product-planner-agent:01","type":"terminal","producer":"agent:product-planner-agent","consumer":"terminal:product-planning","contract":"contract:ProductPlannerRun","contract_version":2}
   n28 ==>|ProductPlannerRun v2| n208
+%% edge {"id":"edge:terminal:product-planner-agent:15","type":"terminal","producer":"agent:product-planner-agent","consumer":"terminal:product-planning","contract":"contract:ParentTrackerSynchronization","contract_version":1}
+  n28 ==>|ParentTrackerSynchronization v1| n208
 %% edge {"id":"edge:terminal:feedback-agent:02","type":"terminal","producer":"agent:feedback-agent","consumer":"terminal:feedback","contract":"contract:FeedbackLifecycleRun","contract_version":1}
   n19 ==>|FeedbackLifecycleRun v1| n209
 %% edge {"id":"edge:terminal:ci-fix-agent:03","type":"terminal","producer":"agent:ci-fix-agent","consumer":"terminal:ci-fix","contract":"contract:CiFixRun","contract_version":1}

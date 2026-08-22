@@ -21,8 +21,11 @@ prioritization, drafting, or publication behavior.
    parent identity, issue structure, dependency order, parallel groups,
    confirmed priorities, open decisions, exact titles, bodies, label
    operations, digest, blockers, authorization, and any publication or
-   verification result. Preserve partial or blocked results and do not perform
-   a second write from the command.
+   verification result. When publication is `published`, also display the
+   separate typed `ParentTrackerSynchronization v1` handoff, including its
+   child-state evidence, rendered owned section, operation, authorization,
+   preservation checks, and post-write verification. Preserve partial or
+   blocked results and do not perform a second write from the command.
 4. Do not treat this command invocation as overall-plan or publication
    approval. Do not build a technical implementation plan, create a worktree,
    commit, or pull request.

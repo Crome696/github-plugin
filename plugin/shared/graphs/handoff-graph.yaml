@@ -4,7 +4,7 @@ graph_id: "standalone-github-plugin"
 title: "Canonical typed workflow graph"
 repository: "Crome696/github-plugin"
 base_branch: "master"
-base_commit: "3849fd61ae41f8d7c4be5133292ee23806fb3a02"
+base_commit: "9f926cee06e514404423eb2c351f533505a5df23"
 source_of_truth: "plugin/shared/graphs/handoff-graph.yaml"
 projection: "plugin/shared/graphs/handoff-graph.mmd"
 meta_schema: "plugin/shared/schemas/HandoffGraph.yaml"
@@ -915,6 +915,13 @@ nodes:
     evidence:
       - "plugin/skills/summarize-feedback-resolution/SKILL.md"
       - "plugin/docs/architecture/system-overview.md"
+  - id: "skill:sync-parent-tracker"
+    type: "skill"
+    name: "sync-parent-tracker"
+    source: "plugin/skills/sync-parent-tracker/SKILL.md"
+    evidence:
+      - "plugin/skills/sync-parent-tracker/SKILL.md"
+      - "plugin/docs/architecture/system-overview.md"
   - id: "skill:update-github-issue"
     type: "skill"
     name: "update-github-issue"
@@ -1530,6 +1537,15 @@ nodes:
     source: "plugin/shared/schemas/ProductSubIssuePublication.yaml"
     evidence:
       - "plugin/shared/schemas/ProductSubIssuePublication.yaml"
+      - "plugin/shared/schemas/README.md"
+  - id: "contract:ParentTrackerSynchronization"
+    type: "contract"
+    name: "ParentTrackerSynchronization"
+    version: 1
+    meta: false
+    source: "plugin/shared/schemas/ParentTrackerSynchronization.yaml"
+    evidence:
+      - "plugin/shared/schemas/ParentTrackerSynchronization.yaml"
       - "plugin/shared/schemas/README.md"
   - id: "contract:PullRequestCheckInspection"
     type: "contract"
@@ -3773,7 +3789,7 @@ edges:
   - id: "edge:capability:integration-agent:18"
     type: "capability"
     producer: "agent:integration-agent"
-    consumer: "skill:delete-merged-branch"
+    consumer: "skill:cleanup-worktree"
     contract: null
     contract_version: null
     owning_workflow: "integration"
@@ -3795,11 +3811,11 @@ edges:
     audited_gap: null
     evidence:
       - "plugin/agents/integration-agent.md"
-      - "plugin/skills/delete-merged-branch/SKILL.md"
+      - "plugin/skills/cleanup-worktree/SKILL.md"
   - id: "edge:capability:integration-agent:19"
     type: "capability"
     producer: "agent:integration-agent"
-    consumer: "skill:cleanup-worktree"
+    consumer: "skill:delete-merged-branch"
     contract: null
     contract_version: null
     owning_workflow: "integration"
@@ -3821,7 +3837,7 @@ edges:
     audited_gap: null
     evidence:
       - "plugin/agents/integration-agent.md"
-      - "plugin/skills/cleanup-worktree/SKILL.md"
+      - "plugin/skills/delete-merged-branch/SKILL.md"
   - id: "edge:capability:issue-agent:01"
     type: "capability"
     producer: "agent:issue-agent"
@@ -5122,6 +5138,32 @@ edges:
     evidence:
       - "plugin/agents/product-planner-agent.md"
       - "plugin/skills/create-github-issue/SKILL.md"
+  - id: "edge:capability:product-planner-agent:13"
+    type: "capability"
+    producer: "agent:product-planner-agent"
+    consumer: "skill:sync-parent-tracker"
+    contract: null
+    contract_version: null
+    owning_workflow: "product-planning"
+    visibility: "internal"
+    optional: true
+    mode: null
+    condition: "Only after a complete published ProductSubIssuePublication v2 and a separate exact parent-body authorization are available."
+    sequence: 13
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "GitHub-or-workflow-mutation"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/agents/product-planner-agent.md"
+      - "plugin/skills/sync-parent-tracker/SKILL.md"
   - id: "edge:capability:review-agent:01"
     type: "capability"
     producer: "agent:review-agent"
@@ -5668,6 +5710,84 @@ edges:
     evidence:
       - "plugin/skills/create-product-sub-issues/SKILL.md"
       - "plugin/skills/create-github-issue/SKILL.md"
+  - id: "edge:handoff:product-planning:12"
+    type: "handoff"
+    producer: "capability:host-runtime"
+    consumer: "skill:sync-parent-tracker"
+    contract: "contract:ProductSubIssuePublication"
+    contract_version: 2
+    owning_workflow: "product-planning"
+    visibility: "external"
+    optional: true
+    mode: "published"
+    condition: "Only when ProductSubIssuePublication v2 is complete, status published, identity-matched, digest-matched, fully mapped, adapter-verified, and has no failed operations or omitted units."
+    sequence: 12
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/shared/schemas/ProductSubIssuePublication.yaml"
+      - "plugin/skills/sync-parent-tracker/SKILL.md"
+  - id: "edge:handoff:product-planning:13"
+    type: "handoff"
+    producer: "skill:sync-parent-tracker"
+    consumer: "agent:product-planner-agent"
+    contract: "contract:ParentTrackerSynchronization"
+    contract_version: 1
+    owning_workflow: "product-planning"
+    visibility: "internal"
+    optional: true
+    mode: null
+    condition: "The Agent receives the complete synchronization result, including updated, no-op, partial, or blocked status and all child, write, and preservation evidence."
+    sequence: 13
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/sync-parent-tracker/SKILL.md"
+      - "plugin/agents/product-planner-agent.md"
+  - id: "edge:handoff:product-planning:14"
+    type: "handoff"
+    producer: "skill:sync-parent-tracker"
+    consumer: "skill:update-github-issue"
+    contract: "contract:IssueUpdate"
+    contract_version: 1
+    owning_workflow: "product-planning"
+    visibility: "internal"
+    optional: true
+    mode: "body-only"
+    condition: "Only after exact parent identity, exact complete body, updated_at concurrency baseline, and separate body-update authorization are verified."
+    sequence: 14
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "GitHub-or-workflow-mutation"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/sync-parent-tracker/SKILL.md"
+      - "plugin/skills/update-github-issue/SKILL.md"
   - id: "edge:handoff:feedback:01"
     type: "handoff"
     producer: "skill:load-pull-request"
@@ -7153,7 +7273,7 @@ edges:
   - id: "edge:handoff:integration:16"
     type: "handoff"
     producer: "skill:verify-linked-issue-closure"
-    consumer: "skill:delete-merged-branch"
+    consumer: "skill:cleanup-worktree"
     contract: "contract:LinkedIssueClosureVerification"
     contract_version: 1
     owning_workflow: "integration"
@@ -7175,13 +7295,13 @@ edges:
     audited_gap: null
     evidence:
       - "plugin/skills/verify-linked-issue-closure/SKILL.md"
-      - "plugin/skills/delete-merged-branch/SKILL.md"
+      - "plugin/skills/cleanup-worktree/SKILL.md"
   - id: "edge:handoff:integration:17"
     type: "handoff"
-    producer: "skill:delete-merged-branch"
+    producer: "skill:merge-pull-request"
     consumer: "skill:cleanup-worktree"
-    contract: "contract:CleanupResult"
-    contract_version: 1
+    contract: "contract:PullRequestMerge"
+    contract_version: 2
     owning_workflow: "integration"
     visibility: "internal"
     optional: true
@@ -7200,8 +7320,60 @@ edges:
     terminal_rationale: null
     audited_gap: null
     evidence:
-      - "plugin/skills/delete-merged-branch/SKILL.md"
+      - "plugin/skills/merge-pull-request/SKILL.md"
       - "plugin/skills/cleanup-worktree/SKILL.md"
+  - id: "edge:handoff:integration:18"
+    type: "handoff"
+    producer: "skill:cleanup-worktree"
+    consumer: "skill:delete-merged-branch"
+    contract: "contract:CleanupResult"
+    contract_version: 1
+    owning_workflow: "integration"
+    visibility: "internal"
+    optional: true
+    mode: null
+    condition: "Only after the exact dedicated worktree removal is separately authorized, completed, and verified."
+    sequence: 18
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/cleanup-worktree/SKILL.md"
+      - "plugin/skills/delete-merged-branch/SKILL.md"
+  - id: "edge:handoff:integration:19"
+    type: "handoff"
+    producer: "skill:merge-pull-request"
+    consumer: "skill:delete-merged-branch"
+    contract: "contract:PullRequestMerge"
+    contract_version: 2
+    owning_workflow: "integration"
+    visibility: "internal"
+    optional: true
+    mode: null
+    condition: "Only after merge verification and after the separate worktree-cleanup transition has completed; local and remote branch deletion remain independently authorized."
+    sequence: 19
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "read-only handoff"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/merge-pull-request/SKILL.md"
+      - "plugin/skills/delete-merged-branch/SKILL.md"
   - id: "edge:handoff:preparation:01"
     type: "handoff"
     producer: "skill:load-github-issue"
@@ -8305,6 +8477,32 @@ edges:
     evidence:
       - "plugin/agents/product-planner-agent.md"
       - "plugin/agents/product-planner-agent.md"
+  - id: "edge:terminal:product-planner-agent:15"
+    type: "terminal"
+    producer: "agent:product-planner-agent"
+    consumer: "terminal:product-planning"
+    contract: "contract:ParentTrackerSynchronization"
+    contract_version: 1
+    owning_workflow: "product-planning"
+    visibility: "internal"
+    optional: true
+    mode: null
+    condition: "Reported as the separate auxiliary terminal result after the tracker Skill returns updated, no-op, partial, or blocked. ProductPlannerRun v2 remains a separate canonical result."
+    sequence: null
+    identity_requirements:
+      - "repository identity"
+      - "owning workflow identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current handoff state"
+      - "same issue/PR/head identity when applicable"
+    mutation_boundary: "report-only terminal result"
+    terminal: true
+    terminal_rationale: "The owning product-planning workflow reports this separate versioned synchronization result; any later standalone rerun is independently authorized."
+    audited_gap: null
+    evidence:
+      - "plugin/agents/product-planner-agent.md"
+      - "plugin/skills/sync-parent-tracker/SKILL.md"
   - id: "edge:terminal:feedback-agent:02"
     type: "terminal"
     producer: "agent:feedback-agent"
@@ -9268,6 +9466,7 @@ contract_classifications:
     produced_by:
       - "skill:apply-issue-priority-titles"
       - "skill:update-github-issue"
+      - "skill:sync-parent-tracker"
     consumed_by:
       - "skill:update-github-issue"
     rationale: "The current source inventory declares this versioned handoff for a downstream Skill, Agent, or host boundary."
@@ -9735,12 +9934,29 @@ contract_classifications:
       - "capability:host-runtime"
     consumed_by:
       - "agent:product-planner-agent"
+      - "skill:sync-parent-tracker"
     rationale: "The current source inventory declares this versioned handoff for a downstream Skill, Agent, or host boundary."
     terminal_rationale: null
     audited_gap: null
     evidence:
       - "plugin/shared/schemas/ProductSubIssuePublication.yaml"
       - "plugin/shared/schemas/README.md"
+      - "plugin/agents/product-planner-agent.md"
+  - contract: "contract:ParentTrackerSynchronization"
+    contract_version: 1
+    classification: "terminal"
+    produced_by:
+      - "skill:sync-parent-tracker"
+    consumed_by:
+      - "agent:product-planner-agent"
+      - "terminal:product-planning"
+    rationale: "The tracker Skill produces this separate versioned result for the owning product-planning Agent and its terminal boundary; later standalone reruns remain separately authorized."
+    terminal_rationale: "Terminal to the product-planning workflow as an auxiliary result; no later body update is implied."
+    audited_gap: null
+    evidence:
+      - "plugin/shared/schemas/ParentTrackerSynchronization.yaml"
+      - "plugin/shared/schemas/README.md"
+      - "plugin/skills/sync-parent-tracker/SKILL.md"
       - "plugin/agents/product-planner-agent.md"
   - contract: "contract:PullRequestCheckInspection"
     contract_version: 1
