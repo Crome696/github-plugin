@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.121
+
+- Add the independent `update-repository-metadata` Skill and
+  `RepositoryMetadataUpdate v1` contract for evidence-backed, exact-authorized
+  repository About description and Topics reconciliation.
+- Restrict the logical mutation payload to description and Topics, preserve
+  relevant existing Topics, protect the immediate preview baseline, and verify
+  protected unrelated metadata after the write.
+- Define `no-op`, `updated`, `partial`, and `blocked` outcomes with explicit
+  no-retry and no-automatic-rollback semantics, while retaining the
+  standalone plugin's external contract and scenario validation boundary.
+- Register the Skill, contract, workflow inventory, graph projection, and
+  synchronized package metadata. This additive capability requires no
+  migration.
+
 ## 0.3.120
 
 - Introduce the shared `PullRequestFixPlan v1` contract with a top-level

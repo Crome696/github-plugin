@@ -35,7 +35,7 @@ Graph schema changes follow the same producer/consumer review discipline as othe
 
 ## Contract families
 
-The plugin currently defines 91 versioned YAML schemas: 90 runtime handoff
+The plugin currently defines 92 versioned YAML schemas: 91 runtime handoff
 contracts plus the `HandoffGraph v1` architecture meta-schema.
 
 ### Issue and linkage contracts
@@ -71,6 +71,7 @@ contracts plus the `HandoffGraph v1` architecture meta-schema.
 | Contract | Purpose |
 | --- | --- |
 | `RepositoryContext` | Verified repository identity, Git state, remotes, instructions, relevant paths, technologies, and commands. |
+| `RepositoryMetadataUpdate` | Exact-authorized repository description and Topics proposal, mutation result, concurrency baseline, protected-field preservation, and post-write verification for one repository. |
 | `RepositoryConventions` | Evidence-backed mandatory and observed repository practices with authority, confidence, and conflicts. |
 | `AffectedAreas` | Direct, indirect, and uncertain repository impact mapped from a task or issue. |
 | `ImplementationEvaluation` | Feasibility, architectural fit, complexity, compatibility, dependencies, risks, testing implications, and alternatives. |

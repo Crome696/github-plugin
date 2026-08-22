@@ -21,7 +21,7 @@ capability of the host session or target repository.
 | Snapshot | Value |
 | --- | --- |
 | Status | Standalone workflow plugin |
-| Version | `0.3.120` |
+| Version | `0.3.121` |
 | License | MIT |
 | Plugin name | `github` |
 | Marketplace name | `github-plugin` |
@@ -37,7 +37,8 @@ repository, pull-request, review, feedback, branch, and check analysis plus
 task-authorized delivery workflows for branches, worktrees, commits, pushes,
 issue linkage, Draft pull requests, review-fix loops, CI-fix loops,
 Ready-for-Review, target refreshes, rebases, merges, issue-closure
-verification, and independent cleanup decisions.
+verification, independent cleanup decisions, and exact evidence-backed
+repository About description and Topics reconciliation.
 
 The plugin does not implement product or project source code, framework
 architecture, domain behavior, or project-specific test design. Those remain
@@ -115,7 +116,7 @@ node plugin/hooks/generate-project-hooks.mjs --hosts <cursor|codex|both|cursor,c
 The command invokes the installable generator at
 `plugin/hooks/generate-project-hooks.mjs`.
 
-When changing plugin identity, keep version `0.3.120` synchronized across the
+When changing plugin identity, keep version `0.3.121` synchronized across the
 four manifests under `plugin/` and the three root Marketplace manifests. When
 changing a Skill, Agent, Command, Rule, Hook, or Shared Contract, update the
 technical component inventory in [`plugin/docs/README.md`](plugin/docs/README.md)

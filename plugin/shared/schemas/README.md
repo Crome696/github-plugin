@@ -54,6 +54,7 @@ version changes.
 | `ImplementationPlan` | Version 1 task-authorized implementation objective with affected areas, ordered steps and dependencies, validation, capabilities, workspace, risks, prerequisites, blockers, assumptions, unresolved questions, and delivery authorization evidence. |
 | `RepositoryPolicy` | Version 1 repository-owned configuration for PR description, rebase posture, and secret-scan preferences with compatibility-default and fail-closed invariants. |
 | `RepositoryContext` | Version 1 verified repository identity, Git state, remotes, instructions, relevant paths, technologies, commands, and evidence-based findings. |
+| `RepositoryMetadataUpdate` | Version 1 exact-authorized repository description and Topics proposal, mutation result, concurrency baseline, protected-field preservation, and post-write verification for one repository. |
 | `RepositoryConventions` | Version 1 evidence-based development conventions for planning and implementation, including authority, scope, confidence, and conflicts. |
 | `BranchNameProposal` | Version 1 evidence-based Git branch name proposal with issue-number provenance, applied convention, rationale, and alternatives. |
 | `TargetBranchFetch` | Version 1 exact-target remote branch fetch and verification result with approval evidence, repository and ref identity, matching remote/tracking SHAs, and structured failure evidence. |
