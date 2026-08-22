@@ -159,6 +159,12 @@ workflows:
       - "agent:host-hooks-agent"
     terminal_nodes:
     traversal_requirement: "Inventory only; no six-family acceptance claim."
+  - id: "repository-metadata"
+    required_for_issue_18: false
+    entry_commands: []
+    owning_agents: []
+    terminal_nodes: []
+    traversal_requirement: "Inventory only; independent Skill boundary with no Command or Agent by design."
 nodes:
   - id: "command:address-pr-feedback"
     type: "command"
@@ -1905,6 +1911,23 @@ nodes:
     source: "plugin/shared/schemas/ExternalCapabilityResolution.yaml"
     evidence:
       - "plugin/shared/schemas/ExternalCapabilityResolution.yaml"
+      - "plugin/shared/schemas/README.md"
+  - id: "skill:update-repository-metadata"
+    type: "skill"
+    name: "update-repository-metadata"
+    source: "plugin/skills/update-repository-metadata/SKILL.md"
+    evidence:
+      - "plugin/skills/update-repository-metadata/SKILL.md"
+      - "plugin/shared/schemas/RepositoryMetadataUpdate.yaml"
+      - "plugin/docs/architecture/system-overview.md"
+  - id: "contract:RepositoryMetadataUpdate"
+    type: "contract"
+    name: "RepositoryMetadataUpdate"
+    version: 1
+    meta: false
+    source: "plugin/shared/schemas/RepositoryMetadataUpdate.yaml"
+    evidence:
+      - "plugin/shared/schemas/RepositoryMetadataUpdate.yaml"
       - "plugin/shared/schemas/README.md"
 edges:
   - id: "edge:entry:address-pr-feedback"
@@ -8672,6 +8695,32 @@ edges:
     evidence:
       - "plugin/agents/issue-close-agent.md"
       - "plugin/agents/issue-close-agent.md"
+  - id: "edge:handoff:repository-metadata:01"
+    type: "handoff"
+    producer: "skill:update-repository-metadata"
+    consumer: "capability:host-runtime"
+    contract: "contract:RepositoryMetadataUpdate"
+    contract_version: 1
+    owning_workflow: "repository-metadata"
+    visibility: "external"
+    optional: false
+    mode: "draft|approved"
+    condition: "The host receives the exact proposal or verified mutation result; future release workflows may consume the same Skill without duplicating metadata logic."
+    sequence: 1
+    identity_requirements:
+      - "repository identity"
+      - "producer/consumer identity"
+    freshness_requirements:
+      - "current invocation"
+      - "current repository metadata"
+    mutation_boundary: "GitHub repository metadata mutation"
+    terminal: false
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/skills/update-repository-metadata/SKILL.md"
+      - "plugin/shared/schemas/RepositoryMetadataUpdate.yaml"
+      - "plugin/docs/architecture/system-overview.md"
 contract_classifications:
   - contract: "contract:AffectedAreas"
     contract_version: 1
@@ -9911,6 +9960,20 @@ contract_classifications:
       - "plugin/shared/schemas/RepositoryConventions.yaml"
       - "plugin/shared/schemas/README.md"
       - "plugin/agents/preparation-agent.md"
+  - contract: "contract:RepositoryMetadataUpdate"
+    contract_version: 1
+    classification: "consumed"
+    produced_by:
+      - "skill:update-repository-metadata"
+    consumed_by:
+      - "capability:host-runtime"
+    rationale: "The standalone metadata Skill returns this exact versioned proposal or mutation result to the host boundary; later release workflows may consume the same handoff without duplicating the writer."
+    terminal_rationale: null
+    audited_gap: null
+    evidence:
+      - "plugin/shared/schemas/RepositoryMetadataUpdate.yaml"
+      - "plugin/shared/schemas/README.md"
+      - "plugin/skills/update-repository-metadata/SKILL.md"
   - contract: "contract:RepositoryPolicy"
     contract_version: 1
     classification: "temporary_orphan"

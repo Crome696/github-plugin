@@ -1,7 +1,7 @@
 {
   "name": "github",
   "version": "0.3.121",
-  "description": "Evidence-backed GitHub collaboration workflows for issue planning and publication, verified target branches, branches and worktrees, task-scoped autonomous commits and non-force pushes, controlled issue-linked draft pull requests, internal pull-request review-fix loops on existing head branches, CI wait, authorized required-check rerun, and bounded CI-fix loops, validated pull-request feedback integration, approved target refreshes and rebases with post-rebase validation, explicitly approved pull-request merges, verified post-merge and authorized triage issue closure, and separately authorized branch and worktree cleanup with current readiness, freshness, and strategy verification.",
+  "description": "Evidence-backed GitHub collaboration workflows for issue planning and publication, verified target branches, branches and worktrees, task-scoped autonomous commits and non-force pushes, controlled issue-linked draft pull requests, internal pull-request review-fix loops on existing head branches, CI wait, authorized required-check rerun, and bounded CI-fix loops, validated pull-request feedback integration, approved target refreshes and rebases with post-rebase validation, explicitly approved pull-request merges, verified post-merge and authorized triage issue closure, and separately authorized branch and worktree cleanup with current readiness, freshness, and strategy verification, plus exact evidence-backed repository About description and Topics reconciliation with concurrency protection and post-write verification.",
   "author": {
     "name": "CromeSDK"
   },
@@ -27,8 +27,8 @@
   "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "GitHub",
-    "shortDescription": "Evidence-backed GitHub issue, branch, worktree, commit, push, pull-request integration, issue-linkage, and draft pull-request workflows with task-scoped routine delivery, verification, and hard safety boundaries.",
-    "longDescription": "Read-only repository and issue analysis plus task-authorized GitHub delivery workflows. The plugin carries one verified task scope through issue publication and updates, branch and worktree preparation, exact commits, non-force pushes, issue linkage, draft pull requests, validated feedback follow-up, and an approved pull-request integration lifecycle with target refresh, rebase validation, merge, issue-closure verification, and separate cleanup decisions; it preserves explicit hard gates for force-pushes, rebases, merges, deletion, default-branch writes, and confidential data.",
+    "shortDescription": "Evidence-backed GitHub issue, branch, worktree, commit, push, pull-request integration, issue-linkage, draft pull-request, and repository metadata workflows with task-scoped routine delivery, verification, and hard safety boundaries.",
+    "longDescription": "Read-only repository and issue analysis plus task-authorized GitHub delivery workflows. The plugin carries one verified task scope through issue publication and updates, branch and worktree preparation, exact commits, non-force pushes, issue linkage, draft pull requests, validated feedback follow-up, exact repository About description and Topics reconciliation, and an approved pull-request integration lifecycle with target refresh, rebase validation, merge, issue-closure verification, and separate cleanup decisions; it preserves explicit hard gates for force-pushes, rebases, merges, deletion, default-branch writes, repository metadata outside description and Topics, and confidential data.",
     "developerName": "CromeSDK",
     "category": "Developer Tools",
     "capabilities": [
@@ -85,6 +85,7 @@
       "Review this GitHub issue and identify the decisions needed before rewriting it.",
       "Publish this approved issue draft as a new issue or an approved rewrite and verify the result.",
       "Apply this approved partial update to the existing GitHub issue and verify the result.",
+      "Prepare or apply an evidence-backed RepositoryMetadataUpdate v1 for exactly one verified GitHub repository, preview the exact description and complete Topics payload, preserve relevant existing Topics, and report no-op, updated, partial, or blocked without changing other repository metadata.",
       "Verify this existing worktree against its expected repository, branch, base revision, and safe starting state without repairing Git state.",
       "Classify this inspected worktree's changes by purpose, component, and issue or ImplementationPlan relationship using diff and plan evidence without modifying or staging anything.",
       "Detect changes unrelated to this issue or ImplementationPlan, distinguish necessary technical side effects from scope violations, and report evidence-backed blockers or clarification needs before commit or pull-request preparation without changing files.",

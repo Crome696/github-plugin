@@ -277,6 +277,7 @@ their explicit invocation boundary.
 | submit-pr-review | Publish one explicitly approved exact review payload. |
 | summarize-feedback-resolution | Summarize validated feedback as resolved, open, disputed, or blocked. |
 | update-github-issue | Apply one validated partial issue-field patch and verify it. |
+| update-repository-metadata | Derive and apply one exact evidence-backed repository About description and Topics payload with concurrency protection and verification. |
 | validate-feedback-resolution | Validate every selected feedback item against current diff, commits, tests, and checks. |
 | validate-implementation-result | Consolidate scope, completion, and validation evidence before delivery. |
 | validate-rebased-branch | Validate post-rebase history, scope, tests, and checks without mutation. |

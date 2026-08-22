@@ -11,7 +11,7 @@
         "path": "./plugin"
       },
       "version": "0.3.121",
-      "description": "Evidence-backed GitHub collaboration workflows for issue planning and publication, verified target branches, branches and worktrees, task-scoped autonomous commits and non-force pushes, controlled issue-linked draft pull requests, internal pull-request review-fix loops on existing head branches, CI wait, authorized required-check rerun, and bounded CI-fix loops, validated pull-request feedback integration, approved target refreshes and rebases with post-rebase validation, explicitly approved pull-request merges, verified post-merge and authorized triage issue closure, and separately authorized branch and worktree cleanup with current readiness, freshness, and strategy verification.",
+      "description": "Evidence-backed GitHub collaboration workflows for issue planning and publication, verified target branches, branches and worktrees, task-scoped autonomous commits and non-force pushes, controlled issue-linked draft pull requests, internal pull-request review-fix loops on existing head branches, CI wait, authorized required-check rerun, and bounded CI-fix loops, validated pull-request feedback integration, approved target refreshes and rebases with post-rebase validation, explicitly approved pull-request merges, verified post-merge and authorized triage issue closure, and separately authorized branch and worktree cleanup with current readiness, freshness, and strategy verification, plus exact evidence-backed repository About description and Topics reconciliation with concurrency protection and post-write verification.",
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"

@@ -5,11 +5,23 @@
 - Add the plugin-owned `github-readme` Skill for evidence-backed, draft-first
   README architecture, fixed-spine content planning, Mermaid guidance, and
   dependency-free local validation.
-- Synchronize the installable plugin manifests, Marketplace metadata,
-  documentation inventory, and canonical handoff-graph projection for the new
-  published capability.
+- Synchronize the documentation inventory and canonical handoff-graph
+  projection for the new published capability.
 - No Shared Contract migration is required; the Skill is standalone and has no
   new cross-component typed handoff.
+
+- Add the independent `update-repository-metadata` Skill and
+  `RepositoryMetadataUpdate v1` contract for evidence-backed, exact-authorized
+  repository About description and Topics reconciliation.
+- Restrict the logical mutation payload to description and Topics, preserve
+  relevant existing Topics, protect the immediate preview baseline, and verify
+  protected unrelated metadata after the write.
+- Define `no-op`, `updated`, `partial`, and `blocked` outcomes with explicit
+  no-retry and no-automatic-rollback semantics, while retaining the
+  standalone plugin's external contract and scenario validation boundary.
+- Register the Skill, contract, workflow inventory, graph projection, and
+  synchronized package metadata. This additive capability requires no
+  migration.
 
 ## 0.3.120
 

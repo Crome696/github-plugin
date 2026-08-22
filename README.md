@@ -37,7 +37,8 @@ repository, pull-request, review, feedback, branch, and check analysis plus
 task-authorized delivery workflows for branches, worktrees, commits, pushes,
 issue linkage, Draft pull requests, review-fix loops, CI-fix loops,
 Ready-for-Review, target refreshes, rebases, merges, issue-closure
-verification, and independent cleanup decisions.
+verification, independent cleanup decisions, and exact evidence-backed
+repository About description and Topics reconciliation.
 
 The plugin does not implement product or project source code, framework
 architecture, domain behavior, or project-specific test design. Those remain

@@ -471,6 +471,17 @@ the exact validated close-on-merge intent as its authorization for this single
 fallback without a second chat approval. Neutral `Refs` relationships remain
 open unless a separately authorized manual closure is requested.
 
+## Independent repository metadata reconciliation
+
+Repository About description and Topics reconciliation is an independent
+Skill-only boundary, not a step in the issue-to-merge lifecycle. The
+`update-repository-metadata` Skill accepts one verified repository and one
+exact `RepositoryMetadataUpdate v1` payload, protects the preview baseline,
+updates only description and Topics, and verifies the final repository state.
+It does not add a Command, Agent, Hook, release workflow, or issue/PR effect.
+The future release workflow described by Issue #33 must consume this Skill
+instead of duplicating repository metadata derivation or mutation logic.
+
 ## Typical command sequences
 
 The command-sequence table below is the maintained summary of Command
