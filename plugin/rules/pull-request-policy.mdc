@@ -13,6 +13,30 @@ the title. Routine authorization and the confidential-data boundary are
 defined by `interactive-approval.mdc` and `github-safety.mdc`; this rule
 defines the Draft PR contract.
 
+## Verified default base branch
+
+Before composing or publishing a new pull request, the workflow MUST verify the
+repository's configured default branch from repository metadata. It MUST NOT
+guess between `main` and `master` from a local branch, remote name, repository
+convention, or GitHub CLI default.
+
+- If the verified default branch is `main` or `master`, and no explicitly
+  authorized alternative is supplied, the workflow MUST use that exact branch
+  as `base_branch`.
+- A non-default base branch is allowed only when its exact name is explicitly
+  supplied by the user, task authorization, or applicable repository policy.
+  Carry that exact value through the implementation plan, workspace, Draft
+  payload, creation command, and live post-creation verification; do not
+  normalize or silently replace it.
+- If the verified default branch is neither `main` nor `master`, pull-request
+  creation or retargeting MUST block until an exact alternative target is
+  explicitly supplied and verified.
+- An existing pull request whose base branch does not match this policy MUST
+  NOT be silently retargeted; return the mismatch for explicit resolution.
+- Pushing the implementation/head branch is a separate operation from
+  selecting the pull-request base. The verified default branch remains
+  read-only for routine delivery.
+
 ## Required title and description
 
 The title MUST be concise, outcome-focused, and in English. Apply a repository

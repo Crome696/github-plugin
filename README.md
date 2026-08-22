@@ -139,10 +139,16 @@ Run the static repository validation from the repository root:
 
 ```console
 git diff --check
+node --check scripts/validate-pull-request-policy.mjs
+node scripts/validate-pull-request-policy.mjs
 node --check plugin/hooks/generate-project-hooks.mjs
 node plugin/hooks/generate-project-hooks.mjs --help
 node scripts/validate-assets.mjs
 ```
+
+The pull-request policy validator is a dependency-free contract check. It
+verifies the always-on policy, verified default-base behavior, exact explicit
+alternatives, and the existing typed Draft-PR creation and verification gates.
 
 The asset validator is a dependency-free packaging check. It verifies the
 signature, structure, decoded raster data, dimensions, and RGB format of the

@@ -30,7 +30,8 @@ compatibility router for `mode: fix`. The durable scenario matrix is
 [`workflows/agent-state-machine-scenarios.md`](workflows/agent-state-machine-scenarios.md).
 The dependency-free structural packaging check is
 `node scripts/validate-agent-state-machines.mjs`; the repository intentionally
-does not restore a local package or test runner.
+does not restore a local package or test runner. The focused pull-request policy
+contract check is `node scripts/validate-pull-request-policy.mjs`.
 
 ## Choose a reading path
 
@@ -294,7 +295,7 @@ their explicit invocation boundary.
 | [github-evidence.mdc](../rules/github-evidence.mdc) | Requires observable evidence for GitHub facts and review findings. |
 | [interactive-approval.mdc](../rules/interactive-approval.mdc) | Owns task-scoped routine autonomy and independent hard-operation gates. |
 | [commit-policy.mdc](../rules/commit-policy.mdc) | Defines exact-scope, validation, authorization, secret, and commit-history checks. |
-| [pull-request-policy.mdc](../rules/pull-request-policy.mdc) | Defines Draft PR content, validation, linkage, duplicate, and ready-state boundaries. |
+| [pull-request-policy.mdc](../rules/pull-request-policy.mdc) | Defines verified default-base targeting, Draft PR content, validation, linkage, duplicate, and ready-state boundaries. |
 | [merge-policy.mdc](../rules/merge-policy.mdc) | Defines current merge evidence, strategy, authorization, and post-merge boundaries. |
 | [gate-state-lifecycle.mdc](../rules/gate-state-lifecycle.mdc) | Defines the canonical host-neutral runtime path, one-shot lifecycle, atomic claim/write, replay markers, quarantine, legacy migration, and receipt rules. |
 | [cli-transport-file-lifecycle.mdc](../rules/cli-transport-file-lifecycle.mdc) | Defines the byte-exact temporary CLI transport lifecycle, safe cleanup, and sanitized diagnostics. |
