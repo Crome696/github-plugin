@@ -188,7 +188,7 @@ if (!graphYaml.includes("version: 1")) {
 }
 if (
   !graphYaml.includes(
-    'base_commit: "3849fd61ae41f8d7c4be5133292ee23806fb3a02"',
+    'base_commit: "9f926cee06e514404423eb2c351f533505a5df23"',
   )
 ) {
   fail("handoff-graph.yaml is not synchronized to the verified master base");

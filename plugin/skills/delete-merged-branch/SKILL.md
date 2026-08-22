@@ -39,7 +39,7 @@ This Skill is an explicitly invoked, destructive cleanup workflow.
 
 Require all of the following before any deletion:
 
-1. A version-1 `PullRequestMerge` with `status: merged` and successful
+1. A version-2 `PullRequestMerge` with `status: merged` and successful
    verification, including the exact repository, pull-request number, head
    branch, head SHA, base branch, base SHA, and merge commit SHA.
 2. An explicit cleanup request identifying exactly one feature branch and
@@ -55,6 +55,11 @@ Require all of the following before any deletion:
   authorization only when it clearly names the exact deletion operation and
   target, including each requested local or remote effect; record its source
   path and concise quote or paraphrase in the cleanup authorization evidence.
+
+Only `PullRequestMerge` version 2 is supported. A version-1, missing-version,
+or otherwise legacy merge handoff is an unsupported input: return `blocked`
+with the narrowest supported unsupported-version or legacy-input failure code
+and perform no deletion. Do not adapt a v1 merge result into v2.
 
 Reject missing, malformed, stale, cross-repository, contradictory, or
 multi-target input with `status: blocked`; do not search for a likely branch.
@@ -179,6 +184,8 @@ Use the narrowest applicable code:
 | Code | Meaning |
 | --- | --- |
 | `missing_input` | Required merge, cleanup, target, or repository evidence is absent or malformed. |
+| `unsupported_version` | The supplied merge handoff is not the supported `PullRequestMerge v2`. |
+| `legacy_input` | A `PullRequestMerge v1` or other legacy merge handoff was supplied; no adapter is allowed. |
 | `merge_not_verified` | The exact pull request is not proven successfully merged. |
 | `branch_not_integrated` | Full integration into the verified base is not proven. |
 | `target_protected` | The target is the default, base, protected, or otherwise forbidden branch. |

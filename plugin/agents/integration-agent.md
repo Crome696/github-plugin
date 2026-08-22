@@ -69,12 +69,14 @@ evidence_loaded and rebuilds the full readiness chain.
 6. merge-pull-request performs the authorized merge with method merge
    (Merge Commit), expected head SHA, and expected base identity.
 7. verify-linked-issue-closure verifies the Fixes relationship and issue state.
-8. delete-merged-branch handles the separately authorized remote and local
-   branch scopes.
-9. cleanup-worktree removes only the exact verified dedicated worktree after
-   the remote branch state is known.
-10. Cleanup order is remote branch, worktree, then local branch; each result
-    is verified before the next transition.
+8. cleanup-worktree removes only the exact verified dedicated worktree after
+   merge and linked-issue verification, with its own exact authorization.
+9. delete-merged-branch handles the separately authorized local and remote
+   branch scopes only after the worktree is gone; it verifies local deletion
+   before attempting the remote deletion.
+10. Cleanup order is worktree, local branch, then remote branch; each result
+    is verified before the next transition. No merge-time branch deletion or
+    stale-worktree pruning is implied.
 
 ## Authorization checkpoints
 

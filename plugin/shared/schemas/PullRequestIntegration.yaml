@@ -379,5 +379,6 @@ invariants:
   - Merge is reported only after a verified successful merge and its actual merge commit, base branch, and strategy are recorded.
   - Issue-closure verification starts only after merge verification and keeps automatic closure separate from an explicitly authorized manual closure.
   - Local branch deletion, remote branch deletion, worktree removal, and stale-metadata pruning remain separate cleanup decisions.
+  - When cleanup is authorized, the integration orchestration orders the separate effects as worktree removal, verified local branch deletion, and verified remote branch deletion; no merge result implicitly authorizes any cleanup effect.
   - A completed lifecycle may record cleanup as deferred or not_applicable; deferred cleanup is not reported as performed.
   - Missing, stale, unavailable, or ambiguous evidence is preserved as a blocker, limitation, or partial result and never treated as success.

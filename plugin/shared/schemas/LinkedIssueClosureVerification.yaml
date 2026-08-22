@@ -235,7 +235,7 @@ fields:
     fields:
       code:
         type: enum
-        values: [missing_identity, invalid_pull_request_number, pull_request_not_found, merge_not_verified, stale_merge_evidence, issue_not_found, inaccessible, auth_unavailable, api_failure]
+        values: [missing_identity, unsupported_version, legacy_input, invalid_pull_request_number, pull_request_not_found, merge_not_verified, stale_merge_evidence, issue_not_found, inaccessible, auth_unavailable, api_failure]
       message:
         type: string
       operation:

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.122
+
+- Add `ParentTrackerSynchronization v1` and the reusable
+  `sync-parent-tracker` Skill. It consumes only a complete verified
+  `ProductSubIssuePublication v2`, resolves current `open`, `merged`, and
+  `closed` child states, renders the deterministic marker-owned parent table,
+  and delegates only an exact body-only `IssueUpdate v1` with concurrency and
+  metadata-preservation verification.
+- Integrate tracker synchronization into `product-planner-agent` and
+  `plan-product` as a separate auxiliary handoff. `ProductPlannerRun v2`
+  remains the canonical planning/publication contract; standalone reruns use
+  the Skill with a new exact body-update authorization and do not introduce a
+  Command or Agent.
+- Migrate closure and cleanup consumers to `PullRequestMerge v2` and reject
+  legacy/v1 merge inputs fail-closed; no lossy v2-to-v1 adapter is provided.
+  Document the fixed post-merge cleanup order: verified worktree removal,
+  verified local branch deletion, then separately verified remote branch
+  deletion, each with independent authorization.
+- Synchronize the handoff graph, architecture/workflow documentation, and
+  package metadata and verified graph-base validator. Validation remains the
+  standalone Git/Node validation
+  boundary; the removed repository-local npm/Vitest/fixture workspace is not
+  restored or claimed as passing evidence.
+
 ## 0.3.121
 
 - Add the plugin-owned `github-readme` Skill for evidence-backed, draft-first

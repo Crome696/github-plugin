@@ -43,7 +43,7 @@ Triage close without a merged pull request belongs to
 
 Require all of the following before any write:
 
-1. A version-1 `PullRequestMerge` with `status: merged`, successful verification,
+1. A version-2 `PullRequestMerge` with `status: merged`, successful verification,
    and exact repository, PR number, head SHA, base branch, and merge commit.
 2. A version-1 `LinkedIssueClosureVerification` with `status: not-closed`,
    `closure.expected: true`, `linkage.status: linked`, one selected issue, and
@@ -62,6 +62,11 @@ Require all of the following before any write:
    true`, `authorization.close_authorized: true`, and an explicit
    authorization source. A separate requested comment requires
    `comment_authorized: true` and exact `comment_text`.
+
+Only `PullRequestMerge` version 2 is supported. A version-1, missing-version,
+or otherwise legacy merge handoff is an unsupported input: return `blocked`
+with `failure.code: unsupported_version` (or the contract's equivalent legacy
+failure code) and perform no write. Do not adapt a v1 merge result into v2.
 
 Reject missing, malformed, stale, cross-repository, or contradictory inputs
 with `status: blocked`; do not search for a likely issue or PR.
@@ -190,6 +195,8 @@ Use these failure codes:
 | Code | Meaning |
 | --- | --- |
 | `missing_input` | Required handoff or identity is absent or malformed. |
+| `unsupported_version` | The supplied merge handoff is not the supported `PullRequestMerge v2`. |
+| `legacy_input` | A `PullRequestMerge v1` or other legacy merge handoff was supplied; no adapter is allowed. |
 | `verification_not_eligible` | Merge, linkage, closure expectation, or implementation evidence is insufficient. |
 | `stale_verification` | Supplied evidence does not match the current PR head or issue baseline. |
 | `already_closed` | The target was already closed; use `no-op` without mutation. |

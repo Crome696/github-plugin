@@ -38,9 +38,14 @@ number: 123
 ```
 
 or one pull-request URL from which the exact repository and positive number can
-be parsed. Accept optional version-1 `PullRequestMerge`, `LinkedIssue`, and
+be parsed. Accept optional version-2 `PullRequestMerge`, version-1 `LinkedIssue`, and
 `PullRequestIssueLink` handoffs only when their repository, PR, issue, branch,
 and revision identities match the live target.
+
+Only `PullRequestMerge` version 2 is supported. A supplied version-1,
+missing-version, or otherwise legacy merge handoff must return `blocked` with
+`failure.code: unsupported_version` (or the contract's equivalent legacy
+failure code); do not reinterpret or adapt it into v2.
 
 Validate one non-empty owner/repository and a positive integer PR number.
 Reject aliases, decimals, zero, negative numbers, and repository mismatches.
@@ -212,6 +217,8 @@ Include:
 | Code | Use when | Result |
 | --- | --- | --- |
 | `missing_identity` | Repository or PR number is absent and cannot be established. | `blocked` |
+| `unsupported_version` | A supplied merge handoff is not the supported `PullRequestMerge v2`. | `blocked` |
+| `legacy_input` | A `PullRequestMerge v1` or other legacy merge handoff was supplied; no adapter is allowed. | `blocked` |
 | `invalid_pull_request_number` | The PR number is not a positive integer. | `blocked` |
 | `pull_request_not_found` | The exact PR cannot be loaded. | `blocked` |
 | `merge_not_verified` | The exact PR is not verifiably merged. | `blocked` |

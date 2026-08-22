@@ -178,7 +178,14 @@ identity and digest in `ProductPlannerRun v2`. After exact digest-bound
 approval, `create-product-sub-issues` consumes both handoffs, verifies a
 lossless `IssueDraft v2` adapter per unit, delegates the issue writes to
 `create-github-issue`, and records `ProductSubIssuePublication v2`. No
-independently authored IssueDraft set can bypass the canonical path.
+independently authored IssueDraft set can bypass the canonical path. When the
+publication is complete, `product-planner-agent` passes that exact v2 result
+to `sync-parent-tracker`, which reloads the parent and every child and returns
+the separate `ParentTrackerSynchronization v1` handoff. The integrated run is
+fully successful only when that handoff is `updated` or `no-op`; partial or
+blocked tracker evidence remains visible and performs no unsafe parent write.
+Later reconciliation uses the same Skill with a fresh exact body-update
+authorization; the original publication approval is not sufficient.
 
 ## Phase 2: preparation
 
@@ -451,13 +458,20 @@ verify exact pull request
   -> obtain exact merge authorization and select allowed strategy
   -> perform one merge and verify the merge commit
   -> verify expected linked-issue closure
-  -> present separate branch and worktree cleanup decisions
+  -> remove the exact dedicated worktree with separate authorization
+  -> delete and verify the local feature branch with separate authorization
+  -> delete and verify the remote feature branch with separate authorization
 ```
 
 Fetch, rebase, force-with-lease push, merge, issue closure, branch deletion,
 and worktree removal are not bundled by the integration Command. A repository
 policy can be the authorization source only when it names the exact operation
 and scope. See [Approval gates](../architecture/approval-gates.md).
+
+The cleanup order is fixed after merge verification: worktree, local branch,
+remote branch. Each operation is independently authorized and verified before
+the next begins. No `PullRequestMerge v1` input is accepted by closure or
+cleanup consumers; legacy inputs fail closed, and no v2-to-v1 adapter exists.
 
 After a successful merge, the claimed `pre-merge` authority may produce one
 non-authorizing `post-merge-receipt.json` under the canonical state path.
@@ -500,7 +514,7 @@ required, is provided by the applicable external testing capability.
 | `integrate-pr` | Complete fixed-order PR reader chain, immutable snapshot, deterministic readiness, conflict analysis, post-rebase validation, closure verification | Separately authorized refresh, rebase, push, merge, closure, cleanup | Implementation and review finding changes |
 | `implement-auto-issue` | Repository verification plus the create, refine, prepare, and delivery reads | Issue create and refine, worktree, commit, non-force push, Draft PR | Review publication, Ready-for-Review, feedback follow-up, rebase, merge, cleanup |
 | `refine-auto-issue` | Issue verification plus the refine, prepare, and delivery reads | Issue refine, worktree, commit, non-force push, Draft PR | Issue create, review publication, Ready-for-Review, feedback follow-up, rebase, merge, cleanup |
-| `plan-product` | Repository and parent-issue verification plus product analysis, interview, mapping, decomposition, graphing, and prioritization | Approved create of confirmed product sub-issues | Technical implementation planning, worktree, commit, pull request, parent overwrite |
+| `plan-product` | Repository and parent-issue verification plus product analysis, interview, mapping, decomposition, graphing, prioritization, publication, and tracker synchronization | Approved create of confirmed product sub-issues and exact marker-owned parent tracker body update | Technical implementation planning, worktree, commit, pull request, or parent overwrite outside the owned tracker section |
 | `reprioritize-issues` | Repository verification plus open-issue inventory and ranking | Authorized unique P-number title updates for the confirmed open-issue set | Body, label, or state changes; truncated or changed live sets |
 
 The table distinguishes what a Command coordinates from what its Agent is

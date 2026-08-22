@@ -119,7 +119,7 @@ The following files are the sources of truth for the corresponding concerns:
 | Canonical typed workflow graph | [`../shared/schemas/HandoffGraph.yaml`](../shared/schemas/HandoffGraph.yaml), [`../shared/graphs/handoff-graph.yaml`](../shared/graphs/handoff-graph.yaml), and its [`handoff-graph.mmd`](../shared/graphs/handoff-graph.mmd) projection |
 | Repository-owned configurable hook preferences | [`repository-policy.md`](repository-policy.md) |
 | Explicit evidence migration for `0.3.112` | [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md) |
-| Common `PullRequestFixPlan v1` for review, feedback, and CI-fix sources, lossless legacy adapters, canonical head-bound feedback lifecycle contracts, the shared external-capability firewall, independent effect authorization, immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, transactional ownership-safe project-hook generation, and the plugin-owned `github-readme` documentation capability for `0.3.121` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md), [`architecture/external-capabilities.md`](architecture/external-capabilities.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
+| Common `PullRequestFixPlan v1` for review, feedback, and CI-fix sources, lossless legacy adapters, canonical head-bound feedback lifecycle contracts, the shared external-capability firewall, independent effect authorization, immutable pull-request readiness evidence, atomic merge preflight, one-shot canonical hook gates, transactional ownership-safe project-hook generation, the plugin-owned `github-readme` documentation capability, and `ParentTrackerSynchronization v1` for `0.3.122` | [`architecture/contracts.md`](architecture/contracts.md), [`architecture/explicit-evidence-migration.md`](architecture/explicit-evidence-migration.md), [`architecture/external-capabilities.md`](architecture/external-capabilities.md), [`architecture/approval-gates.md`](architecture/approval-gates.md), [`workflows/issue-to-merge.md`](workflows/issue-to-merge.md), and [`../skills/build-pr-readiness-evidence/SKILL.md`](../skills/build-pr-readiness-evidence/SKILL.md) |
 | Contract inventory and workflow ownership | [`../shared/schemas/README.md`](../shared/schemas/README.md) and the owning Agent, Command, and Skill sources listed below |
 | Host compatibility assumptions and limitations | [`../../README.md`](../../README.md) and the host manifests |
 
@@ -152,7 +152,7 @@ the sources of truth.
 | [review-fix-agent](../agents/review-fix-agent.md) | Explicit | Preserve the discoverable compatibility identity for `/auto-review-fix-pr` while routing `fix` mode to `feedback-agent` without owning feedback state or decisions. |
 | [ci-fix-agent](../agents/ci-fix-agent.md) | Explicit | Wait for required checks on one verified pull request, rerun only exactly authorized required names, confirm remaining CI failures, coordinate external implementation on its existing head branch, commit and non-force push, and reassess checks until complete or blocked. |
 | [pr-ready-agent](../agents/pr-ready-agent.md) | Explicit | Verify one Draft pull request, unique linked issue, and optional reviewer set, then mark it Ready-for-Review after exact authorization. |
-| [product-planner-agent](../agents/product-planner-agent.md) | Explicit | Turn one verified parent issue into a prioritized graph, consume the canonical ProductSubIssueDrafts v2 set, bind approval to its digest, and hand that unchanged set to create-product-sub-issues. |
+| [product-planner-agent](../agents/product-planner-agent.md) | Explicit | Turn one verified parent issue into a prioritized graph, consume the canonical ProductSubIssueDrafts v2 set, hand its exact authorized publication to the publication Skill, and return a separate ParentTrackerSynchronization v1 result afterward. |
 | [issue-reprioritize-agent](../agents/issue-reprioritize-agent.md) | Explicit | Inventory currently open issues in one repository, rank them into unique consecutive P1-through-Pn titles with the user, and apply those titles only after exact ranked-set authorization. |
 | [issue-close-agent](../agents/issue-close-agent.md) | Explicit | Load one verified issue, require an exact close reason and duplicate target when needed, then close it without a merged pull request after exact authorization. |
 
@@ -182,7 +182,7 @@ preparation-agent, and delivery-agent sequentially.
 | [auto-review-fix-pr](../commands/auto-review-fix-pr.md) | feedback-agent (`fix`) | Resolve one pull request, start the canonical fix lifecycle, and display the ReviewFixRun v2 compatibility projection without publishing a review or merging. |
 | [auto-ci-fix-pr](../commands/auto-ci-fix-pr.md) | ci-fix-agent | Resolve one pull request, start the CI-fix Agent, and display the CiFixRun without publishing a review, merging, or treating green checks as Ready-for-Review. |
 | [ready-pr](../commands/ready-pr.md) | pr-ready-agent | Resolve one pull request, start Ready-for-Review, and display the PullRequestReady result. |
-| [plan-product](../commands/plan-product.md) | product-planner-agent | Resolve one repository and parent issue, compose and display the canonical ProductSubIssueDrafts v2 set with ProductPlannerRun v2, then publish only after digest-bound approval. |
+| [plan-product](../commands/plan-product.md) | product-planner-agent | Resolve one repository and parent issue, display ProductPlannerRun v2 and the canonical ProductSubIssueDrafts v2 set, then display the auxiliary ParentTrackerSynchronization v1 result after publication. |
 | [reprioritize-issues](../commands/reprioritize-issues.md) | issue-reprioritize-agent | Resolve one repository, start open-issue reprioritization, and display the IssueReprioritization result after exact ranked-set title application. |
 | [close-issue](../commands/close-issue.md) | issue-close-agent | Resolve one issue, start triage close, and display the IssueClosure result after exact close-reason authorization. |
 
@@ -277,6 +277,7 @@ their explicit invocation boundary.
 | structure-issue | Deterministically structure one issue request from a complete ProductInterview v2. |
 | submit-pr-review | Publish one explicitly approved exact review payload. |
 | summarize-feedback-resolution | Summarize validated feedback as resolved, open, disputed, or blocked. |
+| sync-parent-tracker | Reconcile the deterministic marker-owned parent child-status section from a complete ProductSubIssuePublication v2 through an exact body-only IssueUpdate v1. |
 | update-github-issue | Apply one validated partial issue-field patch and verify it. |
 | update-repository-metadata | Derive and apply one exact evidence-backed repository About description and Topics payload with concurrency protection and verification. |
 | validate-feedback-resolution | Validate every selected feedback item against current diff, commits, tests, and checks. |
@@ -340,9 +341,10 @@ evidence and missing or mismatched snapshots fail closed.
 source of truth. Its versioned YAML contracts cover issue
 snapshots and drafts, repository and planning handoffs, worktree and delivery
 handoffs, review and feedback handoffs, integration and cleanup handoffs, host
-gate snapshots, lifecycle and product-planning records, Ready-for-Review
-records, open-issue reprioritization records, triage-close records, and CI
-wait/rerun/fix records. Contract field names, versions, status values, and
+gate snapshots, lifecycle and product-planning records, parent-tracker
+synchronization results, Ready-for-Review records, open-issue
+reprioritization records, triage-close records, and CI wait/rerun/fix records.
+Contract field names, versions, status values, and
 approval semantics remain synchronized with Skills, Agents, Commands, and their
 documentation; breaking changes require a version change. Workflow ownership
 and forbidden operations remain documented by the owning components.
